@@ -6,3 +6,5 @@ Archive of EasyUO scripts.
 
 ## [Crafting Related Scripts](https://github.com/davidadas/easyuo/tree/main/Crafting%20Related%20Scripts/)
 ### [Blacksmithy](https://github.com/davidadas/easyuo/tree/main/Crafting%20Related%20Scripts/Blacksmithy)
+### [Tinkering](https://github.com/davidadas/easyuo/tree/main/Crafting%20Related%20Scripts/Tinkering)
+
