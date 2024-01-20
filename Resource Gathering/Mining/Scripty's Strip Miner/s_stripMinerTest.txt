@@ -1,0 +1,3192 @@
+; Credits: TM, Cyberpope, Machine
+; Performs first setup automatically.
+; If your buff bar is facing right and protection is off it will cast it.  ;)
+; Adjust swing count per spot for small ore optimizing?
+;s_stripMiner
+; Bank : tabHolder1_Bank sTabs_tabHolder1_1
+; Forge: tabHolder1_Forge 1_2
+; %bankContId
+; %weightOffset   ; Subtracts this amount from #maxweight
+;halt
+; Fixed grabbing/dropping ingots at bank.
+ignoreCont svz
+gosub oreFindCol
+set %blackrockMenu 0
+; OPTIONS
+set %ore_Total 0
+set %tree_Total 0
+set %mineNiter #true
+set %breakBreak #false
+set %fishTrash #false
+set %treeFarm #false
+set %usePole #false
+set %prospected #false
+set %scanBag #false
+set %craftwait 2
+set %logs zlk
+;set *axeTool . #charid n/a
+finditem *axeTool . #charid * C_ , #charid
+if #findcnt < 1
+  finditem *axeTool . #charid c_ , #backpackid
+if #findcnt < 1 || #findbagid = #backpackid
+{
+  if *axeTool . #charid = n/a 12
+    finditem * c_ , #charid
+    if #findcnt > 0 6
+      for #findindex 1 #findcnt
+      {
+        event property #findid
+        if ( axe in #property || hatchet in #property ) && insured in #property && channeling in #property 2
+          set *axeTool . #charid #findid
+          break
+      }
+    else 2
+      set %scanBag #true
+      break
+  if %scanBag = #true || #findbagid = #backpackid
+  {
+    finditem * c_ , #backpackid
+    if #findCnt > 0
+    {
+      for #findindex 1 #findcnt
+      {
+        event property #findid
+        if ( axe in #property || hatchet in #property ) && insured in #property 5
+          exevent drag #findid
+          exevent droppd
+          set *axeTool . #charid #findid
+          wait 20
+          break
+      }
+    }
+  }
+}
+if *axeTool . #charid = n/a 2
+  display yeano No Axe Found! Rescan for new axe?
+  if #dispRes = yes
+    goto #rescan
+
+; OPTIONS
+
+;--CP Addition
+set %pretty #true
+;--end of CP Addition
+
+if *scriptyMine . #charid = n/a || *scriptyMine . #charid = n/a 2
+  set *scriptyMine . #charid
+  set *scriptyMine . #charid *scriptyMine . #charid , _
+if *scriptyNoMine . #charid = n/a || *scriptyNoMine . #charid = n/a 2
+  set *scriptyNoMine . #charid
+  set *scriptyNoMine . #charid *scriptyNoMine . #charid , _
+set %axe BSF_
+set %runeForge 0
+set %bookForge 1
+set %runeBank 0
+set %bookBank 1
+set %book 1
+set %rune 1
+set %runeTrash 0
+set %bookTrash 1
+set %backFromBank #false
+set %backFromTrash #false
+set %redrawAllVeins #false
+set %totalIngotsMined 0
+set %totalColoredMined 0
+set %dull 0
+set %shadow 0
+set %copper 0
+set %bronze 0
+set %golden 0
+set %agapite 0
+set %verite 0
+set %valorite 0
+set %maximize #false
+
+gosub chopLogs
+tile init
+set %travelType R
+gosub setup
+repeat
+  if #menuButton <> n/a 3
+    if #menubutton = minimize || #menubutton = maximize || #menubutton = options || #menubutton = button1 || #menubutton = button2 || #menubutton = button3 || #menubutton = trashmenu
+      gosub minimize
+    call s_newMenu.txt s_handleTabs #menuButton
+  gosub checks
+  if #menuButton = startButton1 2
+    set %begin_time #scnt
+    gosub startFarming
+until #false
+halt
+sub startFarming
+  set #menuButton n/a
+  repeat
+    if #menuButton <> n/a 3
+      if #menubutton = minimize || #menubutton = maximize || #menubutton = options || #menubutton = button1 || #menubutton = button2 || #menubutton = button3 || #menubutton = trashmenu
+        gosub minimize
+      call s_newMenu.txt s_handleTabs #menuButton
+    gosub travelToMine
+  until #menuButton = closed || #menuButton = pauseButton1
+return
+sub minimize
+  set #lpc 1000
+  if %options = n/a || %trashmenu = n/a
+    gosub createOptionsMenu
+    if %trashMenu = #true && #menubutton <> n/a && trashmenu in #menubutton
+    {
+      call s_newMenu.txt s_setItemProp form0 panel2 #false visible #false
+      menu setDef parent form0
+      menu setprop trashMenu text t
+      set %trashMenu #false
+      set #menubutton n/a
+    }
+    if %trashMenu = #false && #menubutton <> n/a && trashmenu in #menubutton
+    {
+      call s_newMenu.txt s_setItemProp form0 panel2 #false visible #true
+      if %maximize = #false 4
+        set %maximize #true
+        menu setDef parent form0
+        menu Window Size 600 356
+        menu setprop maximize text M
+      if %options = on 4
+       call s_newMenu.txt s_setItemProp form0 panel1 #false visible #false
+       menu setDef parent form0
+       menu setprop options text o
+       set %options off
+      menu setDef parent form0
+      menu setprop trashMenu text T
+      set %trashMenu #true
+      set #menubutton n/a
+    }
+  if #menubutton = button1
+  {
+    menu setprop button1 color $FF
+    display yesno Are you sure? Click$Yes to reset.
+    if #dispres = yes 3
+      set *scriptyMine . #charid n/a
+      set *scriptyNoMine . #charid n/a
+      display ok Spots reset!
+    else
+      display ok Spots NOT reset!
+    menu setprop button1 color $F9F9F9
+    set #menubutton n/a
+  }
+  if #menubutton = button2
+  {
+    menu setprop button2 color $FF
+    menu setprop button2 text PAUSED!
+    set #menubutton n/a
+    repeat
+    wait 2
+    until #menubutton = button2
+    menu setprop button2 text Pause Script
+    menu setprop button2 color $F9F9F9
+    set #menubutton n/a
+  }
+  if #menubutton = button3
+  {
+    display yesno You must be at a bank! Are you?
+    if #dispres = yes
+    {
+      msg $
+      msg bank$
+      wait 20
+      if #conttype = IKF
+        set %bankContId #contId
+      else
+      {
+        display ok You aren't near a bank. Restart.
+        goto _nobankdamn
+      }
+        display ok Click ok and select your ore storage container.
+        set #targcurs 1
+        while #targcurs = 1         ; UNCOMMENT ALL THIS FOR AUTO SETUP
+          wait 2
+        set %oreStorageBank #ltargetid
+        set *oreStorageContainer . #charid #ltargetid
+        set #lobjectid %oreStorageBank
+        event macro 17
+        display ok Bank bag and bank reset!
+_nobankdamn:
+    }
+    set #menubutton n/a
+  }
+  if #menubutton = options
+   {
+    if %options = on && #menubutton <> n/a
+    {
+      call s_newMenu.txt s_setItemProp form0 panel1 #false visible #false
+      menu setDef parent form0
+      menu setprop options text o
+      set %options off
+      set #menubutton n/a
+    }
+    if %options = off && #menubutton <> n/a
+    {
+      call s_newMenu.txt s_setItemProp form0 panel1 #false visible #true
+      menu Window Size 600 356
+      menu setDef parent form0
+      menu setprop maximize text M
+      menu setprop options text O
+      if %trashmenu = #true 4
+        call s_newMenu.txt s_setItemProp form0 panel2 #false visible #false
+        menu setDef parent form0
+        menu setprop trashMenu text t
+        set %trashMenu #false
+      set %options on
+      set %maximize #true
+      set #menubutton n/a
+    }
+     menu setDef parent form0
+  }
+
+  if #menubutton = maximize && %maximize = #true
+  {
+    menu Window Size 299 356
+    call s_newMenu.txt s_setItemProp form0 panel1 #false visible #false
+    call s_newMenu.txt s_setItemProp form0 panel2 #false visible #false
+    menu setDef parent form0
+    menu setprop options text o
+    menu setprop trashmenu text t
+    menu setprop maximize text m
+    set %options off
+    set %trashMenu #false
+    set %maximize #false
+    set #menubutton n/a
+  }
+  if #menubutton = maximize && %maximize = #false
+  {
+    menu setprop maximize text M
+
+    if %trashmenu = #true 3
+      call s_newMenu.txt s_setItemProp form0 panel2 #false visible #true
+      menu setDef parent form0
+      menu setprop trashMenu text T
+    if %options = off 3
+      call s_newMenu.txt s_setItemProp form0 panel1 #false visible #false
+      menu setDef parent form0
+      menu setprop options text o
+    if %options = on 3
+      call s_newMenu.txt s_setItemProp form0 panel1 #false visible #true
+      menu setDef parent form0
+      menu setprop options text O
+    set %maximize #true
+    menu Window Size 600 356
+    set #menubutton n/a
+  }
+  set #lpc 25
+return
+
+sub createOptionsMenu
+        menu Font Size 8
+        call s_newMenu.txt s_createPanel form0 panel1 296 0 301 352 1150
+        call s_newMenu.txt s_setItemProp form0 panel1 #false visible #false
+        call s_newMenu.txt s_createMenuItem panel1 button1 button 10 30 80 25 Reset , #spc , Spots
+        menu setprop button1 tooltip Click here to reset mining spots.
+        call s_newMenu.txt s_createMenuItem panel1 button2 button 10 55 80 25 Pause , #spc , Script
+        menu setprop button2 tooltip Click here to pause script.
+        call s_newMenu.txt s_createMenuItem panel1 button3 button 10 80 80 25 Reset , #spc , Bank
+        menu setprop button3 tooltip Click here to reset your bank bag.
+        menu Font Size 10
+        menu Font Style b
+        menu Font Color White
+        menu Font BGColor 1150
+        menu Text EUOLabel1 140 10 OPTIONS
+        menu font size 7
+        menu font style
+        menu font color 0
+        menu font bgcolor white
+        if #menubutton = options
+          set %options on
+        else
+          set %options off
+      call s_newMenu.txt s_createPanel form0 panel2 296 0 301 352 1150
+      call s_newMenu.txt s_setItemProp form0 panel2 #false visible #false
+      gosub addMenuElements
+      if #menubutton = trashmenu
+        set %trashmenu #false
+      else
+        set %trashmenu #true
+return
+
+sub addmenuelements
+    namespace push
+    namespace local SP_Menu_Goodness
+    set !m1x 23
+    set !m1y 23
+    ;boards
+    set !m2x 23
+    set !m2y 203
+    ;rune details
+    set !m3x 150
+    set !m3y 0
+    ;Prospect details
+    set !m4x 3
+    set !m4y 23
+    ;vein details
+    set !m5x 150
+    set !m5y 0
+    ;All seeing eye - Magician casts SCSI
+    set !m6x 150
+    set !m6y 0
+
+    set !x !m5x + 57
+    set !y !m5y + 20
+    ;menu shape bezel !x !y 86 326 3 7 1 black 7 black
+    set !fcolorIron black
+    set !fcolorDull white
+    set !fcolorShadow white
+    set !fcolorCopper white
+    set !fcolorBronze white
+    set !fcolorGolden black
+    set !fcolorAgapite black
+    set !fcolorVerite white
+    set !fcolorValorite black
+    set !fcolorNormal black
+    set !fcolorOak black
+    set !fcolorAsh black
+    set !fcolorYew white
+    set !fcolorBloodwood white
+    set !fcolorHeartwood black
+    set !fcolorFrostwood white
+    set !BGcolorEmpty silver
+    set !Fcolor0 black
+    set !BGcolor0 silver
+    set !BGcolorIron silver
+    set !Ingot0 Iron
+    set !Granite0 High_Quality_Granite
+    set !Fcolor1 white
+    set !BGcolorDull $696969
+    set !bgcolor1 $696969
+    set !Ingot1 Dull
+    set !Granite1 High_Quality_Dull_Copper_Granite
+    set !Fcolor2 white
+    set !BGcolorShadow 5193792
+    set !bgcolor2 5193792
+    set !Ingot2 Shadow
+    set !Granite2 High_Quality_Shadow_Iron_Granite
+    set !Fcolor3 white
+    set !BGcolorCopper 5209999
+    set !bgcolor3 5209999
+    set !Ingot3 Copper
+    set !Granite3 High_Quality_Copper_Granite
+    set !Fcolor4 white
+    set !BGcolorBronze 3100783
+    set !BGcolor4 3100783
+    set !Ingot4 Bronze
+    set !Granite4 High_Quality_Bronze_Granite
+    set !Fcolor5 black
+    set !BGcolorGolden $20A7DA
+    set !BGcolor5 $20A7DA
+    set !Ingot5 Golden
+    set !Granite5 High_Quality_Golden_Granite
+    set !Fcolor6 black
+    set !BGcolorAgapite $6666C0
+    set !BGcolor6 $6666C0
+    set !Ingot6 Agapite
+    set !Granite6 High_Quality_Agapite_Granite
+    set !Fcolor7 black
+    set !BGcolorVerite $33855C
+    set !BGcolor7 $33855C
+    set !Ingot7 Verite
+    set !Granite7 High_Quality_Verite_Granite
+    set !Fcolor8 black
+    set !BGcolorValorite 12562319
+    set !BGcolor8 12562319
+    set !Ingot8 Valorite
+    set !Granite8 High_Quality_Valorite_Granite
+    set !tBGcolor0 $7ECFD8
+    set !bgcolor9 $7ECFD8
+    set !bgcolor10 $7ECFD8
+    set !bgcolor11 $2392BF
+    set !bgcolor12 $6BB7BD
+    set !bgcolor13 $3030A1
+    set !bgcolor14 12562319
+    set !Board0 Boards
+    set !BGColorNormal $7ECFD8
+    set !tBGcolor1 $2392BF
+    set !BGColorOak $2392BF
+    set !Board1 Oak
+    set !tBGcolor2 $6BB7BD
+    set !BGColorAsh $6BB7BD
+    set !Board2 Ash
+    set !tBGcolor3 $1B5EBD
+    set !BGColorYew $1B5EBD
+    set !Board3 Yew
+    set !tBGcolor4 $3030A1
+    set !BGColorBloodwood $3030A1
+    set !Board4 Bloodwood
+    set !tBGcolor5 $33855C
+    set !BGColorHeartwood $33855C
+    set !Board5 Heartwood
+    set !tBGcolor6 12562319
+    set !BGColorFrostwood 12562319
+    set !Board6 Frostwood
+    set !lbl0 EUOEdit0
+    set !lbl1 EUOEdit2419
+    set !lbl2 EUOEdit2406
+    set !lbl3 EUOEdit2413
+    set !lbl4 EUOEdit2418
+    set !lbl5 EUOEdit2213
+    set !lbl6 EUOEdit2425
+    set !lbl7 EUOEdit2207
+    set !lbl8 EUOEdit2219
+    set !lbl9 EUOEdit10
+    set !lbl10 EUOEdit12010
+    set !lbl11 EUOEdit11191
+    set !lbl12 EUOEdit11192
+    set !lbl13 EUOEdit11193
+    set !lbl14 EUOEdit11194
+    set !lbl15 EUOEdit11151
+    set !rbgcolor1 $7ECFD8
+    set !rbgcolor2 11382181
+    set !rbgcolor3 5209999
+    set !rbgcolor4 3100783
+    set !rbgcolor5 $33855C
+    set !rbgcolor6 $6666C0
+    set !rbgcolor7 $20A7DA
+    set !rbgcolor8 12562319
+    set !rbgcolor9 5193792
+    set !rbgcolor10 8671810
+    set !rbgcolor11 $2392BF
+    set !rbgcolor12 1615178
+    set !rbgcolor13 $3030A1
+    set !rbgcolor14 12562319
+    set !label1 brilliant_amber
+    set !label2 luminescent_fungi
+    set !label3 Switch
+    set !label4 bark_fragment
+    set !label5 parasitic_plant
+    set !label6 saltpeter
+    set !label7 crystalline_blackrock
+    set !label8 blue_diamond  ; Flawless diamond in text while mining
+    set !label9 small_piece_of_blackrock
+    set !label10 dark_sapphire
+    set !label11 ecru_citrine
+    set !label12 perfect_emerald
+    set !label13 fire_ruby
+    set !label14 turquoise
+      menu Font Size 10
+      menu Font Style b
+      menu Font Color White
+      menu Font BGColor 1150
+      menu Text panel2label 115 10 TRASH OPTIONS
+      menu font size 7
+      menu font style
+      menu font color 0
+      menu font bgcolor white
+    For !m 0 8
+    {
+      menu font style b
+      menu font align right
+      set !x !m4x
+      set !y !m4y - 20
+      ;menu image create prospectorTool !x !y 19 19
+      ;menu image file prospectorTool 0 0 prospectorTool.gif
+      set !x !m1x
+      set !y !m1y + ( !m * 20 )
+      menu font color !Fcolor . !m
+      menu Font BGColor !BGcolor . !m
+      Menu Shape front0 , !m !x !y 100 20 4 7 1 black 7 !BGcolor . !m
+      set !x !m1x + 100
+      Menu Shape front1 , !m !x !y 20 20 4 7 1 black 7 !BGcolor . !m
+      set !x !m1x + 103
+      set !y !y + 1
+      menu Check oreS , !m !x !y 13 17 #false #spc      ;RUNE ON OFF CHECK BOX
+      set !x !m4x
+      set !y !m4y + ( !m * 20 )
+      if !m < 9
+      {
+        ;Menu Shape front2 , !m !x !y 20 20 4 7 1 black 7 !BGcolor . !m
+        set !x !m4x + 3
+        set !y !y + 1
+        set %boodieya %color . !m
+        ;menu Check oreP , %boodieya !x !y 13 17 #false #spc  ;RUNE PROSPECT ON OFF CHECK BOX
+
+      }
+      set !x !m1x + 3
+      menu image create ingots . !m !x !y 27 20
+      menu image file ingots . !m 0 0 ingot , !m , #dot , gif
+      set !x !m1x + 90
+      set !y !m1y + 3 + ( !m * 20 )
+      menu Text !lbl . !m !x !y 0
+      if !m < 7
+      {
+        set !x !m2x
+        set !y !m2y + ( !m * 20 )
+        set !o !m + 9
+        menu font color black
+        if !m = 4
+          menu font color white
+        menu Font BGColor !tBGcolor . !m
+        Menu Shape front3 , !m !x !y 100 20 4 7 1 black 7 !tBGcolor . !m
+        set !x !m2x + 100
+        Menu Shape front4 , !m !x !y 20 20 4 7 1 black 7 !tBGcolor . !m
+        set !x !m2x + 103
+        set !y !y + 1
+        menu Check treeS , !m !x !y 13 17 #false #spc   ;;?? - CP NOTE -- not sure of the naming convention we want here, may want to universalize it to TDKSKIP and ENKSKIP for ingots then index or fincol
+        set !x !m2x + 3
+        ;set !shit board , !m , .gif
+        menu image create boards . !m !x !y 20 22
+        menu image file boards . !m 0 0 board , !m , #dot , gif
+        set !x !m2x + 90
+        set !y !m2y + 3 + ( !m * 20 )
+        menu Text !lbl . !o !x !y 0
+      }
+      menu font style
+    }
+    namespace pop
+return
+
+sub travelToMine
+  if #charid = #charid
+  {
+    set %book 1
+    set %rune 1
+    while %book <= %runeBookCnt
+    {
+      if %oreBookCnt . %book = #true 2
+        set %bookType Ore
+        gosub oreColors
+      while %genericWait > #sysTime
+        ;
+      if %locationCheck <> %runeBookId . %book , %rune
+        gosub runicAtlas %runeBookId . %book %rune %travelType c #backpackid
+      else
+        set #result #true
+      if #result = #true 2
+        set #lpc 25
+        gosub mine
+      set #lpc 100
+      if #menuButton <> n/a 3
+        if #menubutton = minimize || #menubutton = maximize || #menubutton = options || #menubutton = button1 || #menubutton = button2 || #menubutton = button3 || #menubutton = trashmenu
+          gosub minimize
+        call s_newMenu.txt s_handleTabs #menuButton
+      if %rune = 16 || %rune = 32
+        set %redrawAllVeins #true
+      set %rune %rune + 1
+      if %rune > %totalRunes . %book || %totalRunes . %book = n/a
+      {
+        set %book %book + 1
+        if %book > %runeBookCnt
+          set %book 1
+        set %redrawAllVeins #true
+        set %rune 1
+        if %treeBookCnt . %book = #true
+        {
+          finditem %ore c_ , #backpackid
+          if #findcnt > 0
+          {
+            for #findindex 1 #findcnt
+            {
+              if ( #findtype <> tvj && #findtype in %ore ) || ( #findtype = tvj && #findstack > 1 ) ;return
+                gosub travelTo
+                break
+            }
+          }
+        }
+      }
+    }
+  }
+return
+
+sub travelTo
+  set %ingotCnt 0
+  set %blackrockCnt 0
+  set %boardCnt #false
+  set %oreCnt #false
+  set %fishCnt #false
+  set %blackrock #false
+  set %blackrockCnt #false
+  finditem %bankOre c_ , #backpackid
+  for #findindex 1 #findcnt
+  {
+    if #findtype = uvf || #findtype = fwf || #findtype = ewf || #findtype = gwf
+      set %blackrockCnt %blackrockCnt + #findstack
+      if %blackrockCnt > 9
+        set %blackrock #true
+    if #findtype = enk
+      set %ingotCnt %ingotCnt + #findstack
+    if #findtype in %ore && #findtype <> tvj
+      set %oreCnt #true
+    if #findtype in %lumberjackResource
+      set %boardCnt #true
+    if #findtype in %fish
+      set %fishCnt #true
+  }
+  if %oreBookCnt . %book = #true || ( %treeBookCnt . %book = #true && %oreCnt = #true ) || ( %fishBookCnt . %book = #true && %oreCnt = #true )
+  gosub travelToForge
+  if %blackrock = #true || %ingotCnt > 550 || %treeBookCnt . %book = #true || %fishBookCnt . %book = #true || ( %oreBookCnt . %book = #true && ( %boardCnt = #true || %fishCnt = #true ) )
+    gosub travelToBank
+  gosub travelToTrash
+  gosub returnFrom
+return
+
+sub returnFrom
+_runeRetry1:
+  while %genericWait > #sysTime
+    ;
+  gosub runicAtlas %runeBookId . %book %rune %travelType c #backpackid
+  set %locationCheck %runeBookId . %book , %rune
+  if #result = gumpError || #result = recallError
+    goto _runeRetry1
+  if %redo = #true && #result = #true
+  {
+    set %mineX #charposx - 5
+    set %mineY #charposY - 5
+  for %i 1 4
+  {
+    if %oreBookCnt . %book = #true
+      menu set euoEditSpot . %i Iron
+  }
+    set %lTargX %mineX
+    set %lTargY %mineY
+    set %lTargZ #tileZ
+    set %lTargT #tileType
+    set %miningInfo %mineX , %mineY , #curskind
+    set %spot 1
+    set %redo #false
+  }
+  if #result <> #true
+  {
+    set %rune %rune + 1
+    if %rune > %totalRunes . %book || %totalRunes . %book = n/a 2
+      set %book %book + 1
+      set %rune 1
+    if %book > %totalRunes . %book 2
+      set %book 1
+      set %rune 1
+    set %redo #true
+    set %redoMiningInfo #true
+    goto _runeRetry1
+  }
+return
+
+sub oreColors
+  set %color0 Iron
+  set %color1 Dull
+  set %color2 Shadow
+  set %color3 Copper
+  set %color4 Bronze
+  set %color5 Golden
+  set %color6 Agapite
+  set %color7 Verite
+  set %color8 Valorite
+  set %colorCnt 8
+return
+sub treeColors
+  set %color0 Normal
+  set %color1 Oak
+  set %color2 Ash
+  set %color3 Yew
+  set %color4 Bloodwood
+  set %color5 Heartwood
+  set %color6 Frostwood
+  set %colorCnt 6
+return
+
+sub mine
+  set #lpc 100
+  set %spot 1
+  set %markedSpot 0
+  set %doItColor n/a
+_restartMineNewRune:
+  if %treeBookCnt . %book = #true || %fishBookCnt . %book = #true 2
+    set %mineX #charposx - 3
+  set %mineY #charposy - 3
+  else 2
+    set %mineX #charposx - 5
+  set %mineY #charposY - 5
+  for %i 1 4
+  {
+    if %oreBookCnt . %book = #true
+      menu set euoEditSpot . %i Iron
+  }
+  set %forAmount 10
+  if %oreBookCnt . %book = #true
+    gosub checks
+  for %yGraph 1 %forAmount
+  {
+    for %xGraph 1 %forAmount
+    {
+      set #lpc 200
+      tile get %mineX %mineY 1 #curskind
+      tile cnt %mineX %mineY #curskind
+      set %charposZHeight #charposz + 19
+      if ( %fishBookCnt . %book = #true && #tileCnt > 1 && water notin #tileName ) || ( %treeBookCnt . %book = #true && #tileCnt > 1 && | , #tileType , | notin %chopable ) || ( %oreBookCnt . %book = #true && #tileCnt > 1 && | , #tileType , | notin %digable ) || ( #tileZ > %charposZHeight && #tileCnt > 1 )
+      {
+        for %tileIndex 2 #tileCnt
+        {
+          tile get %mineX %mineY %tileIndex #curskind
+          if %treeBookCnt . %book = #true || %fishBookCnt . %book = #true || %oreBookCnt . %book = #true 2
+            if ( water in #tileName && %fishBookCnt . %book = #true ) || ( %treeBookCnt . %book = #true && | , #tiletype , | in %chopable ) || ( %oreBookCnt . %book = #true && | , #tileType , | in %digable )
+              break
+          if %oreBookCnt . %book = #true && cave in #tileName && | , #tileType , | in %digable
+            break
+        }
+      }
+      set %miningInfo %mineX , %mineY , #curskind
+      if ( ( %fishBookCnt . %book = #true && water in #tileName ) || ( | , #tiletype , | in %digable && %oreBookCnt . %book = #true ) || ( | , #tiletype , | in %chopable && %treeBookCnt . %book = #true ) ) && %spot < 5
+      {
+        if _ , %miningInfo , _ in *scriptyMine . #charid || ( _ , %miningInfo , _ notin *scriptyNoMine . #charid && _ , %miningInfo , _ notin *scriptyMine . #charid )
+        {
+          menu set oreEdit1 B: %book R: %rune
+          menu set bankEdit1 B: %bookBank R: %runeBank
+          menu set trashEdit1 B: %bookTrash R: %runeTrash
+          menu set forgeEdit1 B: %bookForge R: %runeForge
+          if #menuButton <> n/a 3
+            if #menubutton = minimize || #menubutton = maximize || #menubutton = options || #menubutton = button1 || #menubutton = button2 || #menubutton = button3 || #menubutton = trashmenu
+              gosub minimize
+            call s_newMenu.txt s_handleTabs #menuButton
+          if %breakBreak = #false
+            gosub dig %mineX %mineY #tileZ #tileType
+          if #menuButton <> n/a 3
+            if #menubutton = minimize || #menubutton = maximize || #menubutton = options || #menubutton = button1 || #menubutton = button2 || #menubutton = button3 || #menubutton = trashmenu
+              gosub minimize
+            call s_newMenu.txt s_handleTabs #menuButton
+          set #lpc 200
+          set %breakBreak #false
+          if _ , %miningInfo , _ in *scriptyMine . #charid 4
+            set %spot %spot + 1
+            if %spot < 5 && %spot > 0 2
+              set %swingcnt 0
+            gosub deleteRedrawSpot
+          if %resetNewRune = #true
+            goto _restartMineNewRune
+        }
+      }
+      if | , #tileType , | notin %digable
+      {
+      }
+      set %mineX %mineX + 1
+    }
+    set %forAmount 10
+    set %mineX %mineX - %forAmount
+    set %mineY %mineY + 1
+  }
+  set #lpc 25
+return
+
+sub dig
+  event sysmessage dig
+  set %lTargX %1
+  set %lTargY %2
+  set %lTargZ %3
+  set %lTargT %4
+  set %swingCnt 0
+  set %doneMining #false
+  repeat
+    if #menuButton <> n/a 3
+      if #menubutton = minimize || #menubutton = maximize || #menubutton = options || #menubutton = button1 || #menubutton = button2 || #menubutton = button3 || #menubutton = trashmenu
+        gosub minimize
+      call s_newMenu.txt s_handleTabs #menuButton
+    set %noResources #false
+    while %doneMining = #false
+    {
+_retryMiningAttempt:
+      if #weight > %maxWeight
+        gosub chopLogs
+      if #weight > %maxWeight ;
+      {
+        set #lpc 25
+        gosub travelTo
+        set #lpc 100
+      }
+      if %redrawAllVeins = #true
+      {
+        set %redrawAllVeins #false
+        for %gaga 1 16
+        {
+          for %gaga1 1 4
+          {
+            menu delete LC , %gaga , %gaga1
+            menu delete VC , %gaga , %gaga1
+            menu delete CurrVein , %gaga , %gaga1
+            menu delete CurrRune , %gaga , %gaga1
+            menu delete Danger , %gaga1
+          }
+        }
+      }
+        if %fishBookCnt . %book <> #true 7
+          repeat
+            finditem *axeTool . #charid c_ , #charid
+            if #findcnt < 1 3
+              event macro 37
+              set %genericWait #sysTime + 1000
+              wait 1
+          until #findcnt >= 1
+      if %oreBookCnt . %book = #true                       ;
+        finditem %shovels c_ , #backpackid
+      if %treeBookCnt . %book = #true
+        finditem *axeTool . #charid c_ , #charid
+      set #lobjectid #findid
+      set #ltargetX %lTargX
+      set #ltargetY %lTargY
+      set #ltargetZ %lTargZ
+      set #ltargetTile %lTargT
+      while %genericWait > #sysTime
+        ;
+      set #lpc 25
+      event macro 17
+      set #ltargetkind 2
+      if %treeBookCnt . %book = #true
+        set #ltargetkind 3
+      target 1s
+      set %jStart #jIndex
+      event macro 22
+      set #lpc 200
+      set #ltargetkind 1
+      set %doneMining #false
+      set %genericWait #sysTime + 1000
+      set %break #false
+      set %breakTimer #sysTime + 2000
+      if %fishBookCnt . %book = #true
+        set %breakTimer #sysTime + 8000
+      while %doneMining = #false && %breakTimer > #sysTime
+      {
+        if #jindex > %jstart
+        {
+          set %jstart %jstart + 1
+          scanjournal %jstart
+          if %break = #false && ( destroyed_a_shovel in #property || That_ore_looks_to_be_prospected_already in #journal || You_are_already_fishing in #journal || you_must_wait in #journal )
+          {
+            if you_must_wait in #journal || destroyed_a_shovel in #journal
+              goto _retryMiningAttempt
+          }
+          if %break = #false && ( cannot_see in #journal || too_far in #journal || seem_to_be_biting_here in #journal || no_metal_here in #journal || no_sand_here in #journal || not_enough_wood in #journal || You_mine_the_niter_deposit_but_fail_to_produce_any_usable_saltpeter in #journal || saltpeter_from_the_niter_deposit in #journal || You_loosen_some_rocks_but_fail_to_find_any_useable_ore in #journal || You_sift_through_the_ore_and_find in #journal || but_fail_to_catch_anything in #journal || You_pull_out_an_item_: in #journal || you_have_found_a in #journal || carefully_dig_up_sand in #journal || you_dig_some in #journal || you_hack_at_the_tree in #journal || you_chop in #journal || you_carefully_extract in #journal || You_uncover_a_small_piece_of_blackrock in #journal )
+          {
+            if ( _ , %miningInfo , _ notin *scriptyMine . #charid && _ , %miningInfo , _ notin *scriptyNoMine . #charid ) && ( You_loosen_some_rocks_but_fail_to_find_any_useable_ore in #journal || You_sift_through_the_ore_and_find in #journal || but_fail_to_catch_anything in #journal || You_pull_out_an_item_: in #journal || you_have_found_a in #journal || carefully_dig_up_sand in #journal || you_dig_some in #journal || you_hack_at_the_tree in #journal || you_chop in #journal || you_carefully_extract in #journal || You_uncover_a_small_piece_of_blackrock in #journal )
+              set *scriptyMine . #charid *scriptyMine . #charid , %miningInfo , _ ,
+            if ( seem_to_be_biting_here in #journal || no_metal_here in #journal || no_sand_here in #journal || not_enough_wood in #journal || too_far in #journal || cannot_see in #journal ) && %swingCnt = 0 && _ , %miningInfo , _ notin %scriptyMine . #charid
+            {
+              if _ , %miningInfo , _ notin *scriptyMine . #charid && _ , %miningInfo , _ notin %scriptyNoMine . #charid
+                set *scriptyNoMine . #charid *scriptyNoMine . #charid , %miningInfo , _ ,
+              set %break #true
+              set %doneMining #true
+              set %noResources #true
+            }
+            set %how_long ( #SCNT - %begin_time ) / 3600 ;60
+            if You_mine_the_niter_deposit_but_fail_to_produce_any_usable_saltpeter in #journal || saltpeter_from_the_niter_deposit in #journal || You_loosen_some_rocks_but_fail_to_find_any_useable_ore in #journal || You_sift_through_the_ore_and_find in #journal || but_fail_to_catch_anything in #journal || You_pull_out_an_item_: in #journal || you_have_found_a in #journal || carefully_dig_up_sand in #journal || you_dig_some in #journal || you_hack_at_the_tree in #journal || you_chop in #journal || you_carefully_extract in #journal || You_uncover_a_small_piece_of_blackrock in #journal
+            {
+              set %prospectColor n/a
+              if _ , %miningInfo , _ notin *scriptyMine . #charid && _ , %miningInfo , _ notin *scriptyNoMine . #charid
+                set *scriptyMine . #charid *scriptyMine . #charid , %miningInfo , _ ,
+              if _ , %miningInfo , _ in *scriptyMine . #charid && ( shadow in #journal || dull in #journal || copper in #journal || bronze in #journal || golden in #journal || verite in #journal || agapite in #journal || valorite in #journal || yew in #journal || oak in #journal || ash in #journal || bloodwood in #journal || heartwood in #journal || frostwood in #journal )
+              {
+                if Dull in #journal && Copper in #journal 3
+                  menu set euoEditSpot . %spot Dull
+                  set %prospectColor Dull
+                  set %doItColor Dull
+                if copper in #journal && Dull notin #journal 3
+                  menu set euoEditSpot . %spot Copper
+                  set %prospectColor Copper
+                  set %doItColor Copper
+                for %i 1 %colorCnt
+                {
+                  if ( ( %i = 1 || %i = 3 ) && %colorCnt = 8 && %oreBookCnt . %book = #true ) || ( %treeBookCnt . %book = #true && %colorCnt > 6 ) || ( %oreBookCnt . %book <> #true && %treeBookCnt . %book <> #true )
+                    continue
+                  if %color . %i in #journal 3
+                    menu set euoEditSpot . %spot %color . %i
+                    set %doItColor %color . %i
+                    set %prospectColor %color . %i
+                }
+                set % . %doitColor % . %doitColor + 1
+                set %ore_avg % . %doItColor / %how_long
+                if %orebookCnt . %book = #true || %treeBookCnt . %book = #true 2
+                  call s_newMenu.txt s_getIndexByAnyData tabHolder1_ . %bookType %doItColor #false
+                  call s_newMenu.txt s_updateItemNameByIndex tabHolder1_ . %bookType #result #true #false %doitColor , : , #spc , Avg: , #spc , %ore_avg , #spc , Total: , #spc , % . %doitcolor
+              }
+              if %orebookCnt . %book = #true 4
+                set %ore_total %ore_total + 1
+                set %ore_avg %ore_total / %how_long
+                call s_newMenu.txt s_getIndexByAnyData tabHolder1_ . %bookType oretotal #false
+                call s_newMenu.txt s_updateItemNameByIndex tabHolder1_ . %bookType #result #true #false Ore: , #spc , Avg: , #spc , %ore_avg , #spc , Total: , #spc , %ore_total
+              set %swingCnt %swingCnt + 1
+              set %break #true
+              if %oreProspect . %prospectColor = #true && %prospected <> #true 3
+                set %previousProspectColor %prospectColor
+                gosub prospect
+                set %swingCnt %swingCnt - 1
+            }
+            else
+            {
+              set %break #true
+              set %doneMining #true
+            }
+          }
+          if %break = #false && %swingCnt = 0 && ( You_cannot_use_your_prospector_tool_on_that in #journal || use_this_on_corpses_to_carve in #journal || You_need_water_to_fish_in in #journal || reach in #journal || You_need_to_be_closer_to_the_water_to_fish in #journal || mine_that in #journal || not_accessible in #journal || cannot_see in #journal || mine_there in #journal || use_an_axe_on_that in #journal || too_far in #journal || do_that in #journal || can_only_skin_dead in #journal || use_this_on_corpses_to_carve in #journal ) ;you_skin_it in #journal ||
+          {
+            if _ , %miningInfo , _ notin *scriptyNoMine . #charid && _ , %miningInfo , _ notin *scriptyMine . #charid
+              set *scriptyNoMine . #charid *scriptyNoMine . #charid , %miningInfo , _
+            set %doneMining #true
+            set %break #true
+            break
+          }
+          if cannot_see in #journal && %swingCnt > 0 2
+            set %break #true
+            set %doneMining #true
+          if %break = #true
+          {
+            if %spot < 5 && %spot > 0
+              gosub deleteRedrawSpot
+            break
+          }
+        }
+        if %break = #true
+          break
+        if #targCurs = #true
+        {
+          while %genericWait > #sysTime
+            ;
+          event macro 22
+          if #targCurs = 1
+            set #targCurs 0
+          set %genericWait #sysTime + 500
+          set %break #true
+        }
+      }
+      if #menuButton <> n/a 3
+        if #menubutton = minimize || #menubutton = maximize || #menubutton = options || #menubutton = button1 || #menubutton = button2 || #menubutton = button3 || #menubutton = trashmenu
+          gosub minimize
+        call s_newMenu.txt s_handleTabs #menuButton
+      if %doneMining = #true || %break = #true
+      {
+        if %swingCnt > 9
+        {
+        }
+        else
+        {
+        }
+        break
+      }
+      if %breakTimer < #sysTime || ( %ltargx < #charposx - 4 || %ltargy < #charposy - 4 ) || ( %ltargx > #charposx + 4 || %ltargy > #charposy + 4 ) 3
+        set %breakBreak #true
+      set %doneMining #true
+      set %break #true
+    }
+    if %doneMining = #true
+      break
+    if %oreBookCnt . %book = #true || %fishBookCnt . %book = #true 5
+      finditem %logs C_ , #backpackid
+      if #findcnt > 0
+        set %bankLogs #true
+      else
+        set %bankLogs #false
+    if #weight > %maxWeight
+    {
+      set #lpc 25
+      gosub travelTo
+      set #lpc 200
+    }
+  until %doneMining = #true
+  set %prospected #false
+return
+
+sub wingdings
+    namespace push
+    namespace local CP_Menu_Goodness
+      set !m %rune
+      menu font color black
+      menu font size 7
+      menu Font BGColor btnface
+      set !k #random % 10
+      set %wingDings webDings
+      menu font name %wingDings
+      menu font color black
+      if %spot = 1
+        set !x !m6x + 13
+      if %spot = 2
+        set !x !m6x + 11 + ( 6 * %spot )
+      if %spot = 3
+        set !x !m6x + 9 + 24
+      if %spot = 4
+        set !x !m6x + 8 + 36
+      set !y !m * 20 + 5 + !m6y
+      set !z #random % 6
+      set %spot . %spot d
+      set !c %spot . %spot
+      menu text Danger , !m !x !y !c
+      menu font color black
+      menu font name MS Sans Serif
+    namespace pop
+return
+
+sub chopLogs
+  finditem *axeTool . #charid c_ , #backpackid
+  if #findcnt > 0
+    set %axeToolId #findid
+  else 3
+    finditem *axeTool . #charid c_ , #charid
+    if #findcnt > 0
+      set %axeToolId #findid
+  finditem %logs c_ , #backpackid
+  if #findcnt > 0
+  {
+    for #findindex 1 #findcnt
+    {
+      while %genericWait > #sysTime
+      {
+      }
+      set #lobjectid %axeToolId
+      set #ltargetid #findid
+      event macro 17
+      target 1s
+      event macro 22
+      set %genericWait #sysTime + 1000
+    }
+  }
+return
+
+sub travelToBank
+  event sysmessage traveltoBANK
+  if %firstBank = #true
+    goto _firstBank
+  if %useBankBooks = #true
+  {
+_tryAgainBank:
+    set %runeBank %runeBank + 1
+    if %runeBank > %totalBankRunes . %bookBank || %totalBankRunes . %bookBank = n/a 2
+      set %bookBank %bookBank + 1
+    set %runeBank 1
+    if %bookBank > %bankCnt 2
+      set %bookBank 1
+    set %runeBank 1
+    menu set bankEdit1 B: %bookBank R: %runeBank
+    menu set oreEdit1 B: %book R: %rune
+    menu set trashEdit1 B: %bookTrash R: %runeTrash
+    menu set forgeEdit1 B: %bookForge R: %runeForge
+    while %genericWait > #sysTime
+    {
+    }
+    gosub runicAtlas %bankId . %bookBank %runeBank %travelType c #backpackid
+    set %resultBank #result
+    if #result <> #true
+      goto _tryAgainBank
+
+    if #result = #true
+    {
+      while %genericWait > #sysTime
+      {
+      }
+      msg $
+      msg bank$
+      set %genericWait #sysTime + 1000
+      while ( #conttype <> IKF ) && %genericWait > #sysTime
+      {
+      }
+      if %genericWait < #sysTime || ( #conttype <> IKF )
+        goto _tryAgainBank
+_firstBank:
+      if %firstBank = #true
+        set %firstBank #false
+      if #menuButton <> n/a 3
+        if #menubutton = minimize || #menubutton = maximize || #menubutton = options || #menubutton = button1 || #menubutton = button2 || #menubutton = button3 || #menubutton = trashmenu
+          gosub minimize
+        call s_newMenu.txt s_handleTabs #menuButton
+      finditem %resourceTypes C_ , #backpackid
+      if #findCnt > 0
+      {
+        set #lpc 100
+        for #findIndex 1 #findCnt
+        {
+          if #findtype = zlk
+            continue
+          set %findStack 0
+          if #findtype in %resourceTypes && #findtype <> enk && #findtype <> tlk
+            set %findstack #findstack
+          event property #findId
+          if #findtype in _vws_gxs_axs_zws_tws_fxs_yws_xws_uws_bwr_nws_mdhb_fwf_ewf_gwf_uvf_
+          {
+            call s_newMenu.txt AddUnderscore #property
+            for %doopers 1 14
+            {
+              if %resource . %doopers in #result 2
+                gosub doopers
+                break
+            }
+          }
+          if #findType = enk && _ , #findCol , _ in _0_2419_2406_2413_2418_2213_2425_2207_2219_ 7
+            if #findcol = 0 && #findstack > 50
+              set %oreColor . #findCol %oreColor . #findCol + ( #findStack - 50 )
+            ;if #findStack < 50 && #findCol = 0
+              ;set %oreColor . #findCol %oreColor . #findCol + 0
+            if #findCol <> 0
+              set %oreColor . #findCol %oreColor . #findCol + #findStack
+            menu set euoEdit . #findCol %oreColor . #findCol
+          if #findType = tlk && _ , #findCol , _ in _0_2010_1192_1191_1193_1194_1151_ 3
+            set %woodColor . #findCol %woodColor . #findCol + #findStack
+          menu set euoEdit1 . #findCol %woodColor . #findCol
+          set %findStack #findStack
+          if #findCol = 0 && #findType = enk && #findStack >= 50
+            set %findStack #findStack - 50
+          if #findCol <> 0 && #findType = enk
+            set %findStack #findStack
+          if #findType = enk && #findCol = 0
+            set %totalIngotsMined %totalIngotsMined + %findStack
+          if #findCol <> 0 && #findType = enk
+            set %totalColoredMined %totalColoredMined + #findStack
+          while %genericWait > #sysTime
+          {
+          }
+          if #findtype = BVI || #findtype = tlk
+            set %findStack #findstack
+          exevent drag #findId %findStack
+          wait 1
+          exevent dropc %oreStorageBank
+          set %genericWait #sysTime + 1000
+          set #lpc 25
+        }
+        gosub updateTimes
+        gosub findIngots
+        gosub findShovels
+        gosub findTinkerTools
+      }
+    }
+    if %resultBank = #false
+      break
+  }
+return #true
+sub doopers
+  namespace push
+  namespace local CP_Menu_Goodness
+    set %menuDoop . %doopers %menuDoop . %doopers + #findstack
+    menu set !label . %doopers %menuDoop . %doopers
+  namespace pop
+  menu font style
+return
+sub travelToForge
+  event sysmessage traveltoforge
+_tryAgainForge:
+    set %runeForge %runeForge + 1
+    if %runeForge > %totalForgeRunes . %bookForge || %totalForgeRunes . %bookForge = n/a 2
+      set %bookForge %bookForge + 1
+      set %runeForge 1
+    if %bookForge > %forgeCnt 2
+      set %bookForge 1
+      set %runeForge 1
+    menu set bankEdit1 B: %bookBank R: %runeBank
+    menu set oreEdit1 B: %book R: %rune
+    menu set trashEdit1 B: %bookTrash R: %runeTrash
+    menu set forgeEdit1 B: %bookForge R: %runeForge
+    set %miningInfoCheck _ , #charPosX , #charPosY , #cursKind , _
+_trytrytry:
+        while %genericWait > #sysTime
+        {
+        }
+        gosub runicAtlas %forgeId . %bookForge %runeForge %travelType c #backpackid
+  if #result = gumpError || #result = recallError
+    goto _trytrytry
+        if #result <> #true
+          goto _tryAgainForge
+        set %resultForge #result
+        if #menuButton <> n/a 3
+          if #menubutton = minimize || #menubutton = maximize || #menubutton = options || #menubutton = button1 || #menubutton = button2 || #menubutton = button3 || #menubutton = trashmenu
+            gosub minimize
+          call s_newMenu.txt s_handleTabs #menuButton
+        if %resultForge = #true
+        {
+          set %findBreak #sysTime + 500
+          repeat
+            finditem %forges G_2
+          until #findcnt > 0 || %findBreak < #sysTime
+          if #findcnt > 0
+          {
+            wait 5
+            set %forgeTarget #findid
+            finditem %ore C_ , #backpackid
+            if #findcnt > 0
+            {
+              for #findindex 1 #findcnt
+              {
+                if #findtype <> tvj || ( #findtype = tvj && #findstack > 1 )
+                {
+                  while %genericWait > #sysTime
+                  {
+                  }
+                  set #lobjectid #findid
+                  set #ltargetid %forgeTarget
+                  event macro 17
+                  target 1s
+                  event macro 22
+                  set %genericWait #sysTime + 1000
+                }
+              }
+              gosub findShovels
+              gosub findTinkerTools
+            }
+          }
+          else
+            goto _tryAgainForge
+        }
+return #true
+
+
+sub deleteRedrawSpot
+  set #lpc 200
+  set %m3x 447
+  set %m3y 0
+  menu get euoEditSpot . %spot
+  set %m %rune
+  if %rune > 16 && %rune < 33
+    set %m %m - 16
+  if %rune > 32 && %rune < 48
+    set %m %m - 32
+  set %x %m3x
+  set %y %m * 20 + 5 + %m3y
+  if %m > 9
+    set %x %m3x - 3
+  set %x %m3x + 17
+  set %y %m * 20 + 4 + %m3y
+  set %y %y - 1
+  set %z %spot
+  set %x %m3x + 40 + %z * 20
+  menu delete LC , %m , %z
+  menu delete VC , %m , %z
+  namespace push
+  namespace local CP_Menu_Goodness
+  menu font color !fcolor . #menuRes
+  menu font bgcolor !BGcolor . #menuRes
+  if %oreProspect . %previousProspectColor = #true && %prospected = #true 2
+    Menu Shape LC , %m , %z %x %y 20 20 4 7 3 !BGcolor . %previousProspectColor 7 !BGcolor . #menuRes
+  else
+    menu shape LC , %m , %z %x %y 20 20 4 7 3 !bgColor . #menuRes 7 !bgColor . #menuRes   ; First BGCOLOR was black!
+  if %prospected = #true
+    set %x %m3x + 44 + %z * 20
+  else
+    set %x %m3x + 45 + %z * 20
+  set %y %y + 4
+  menu font style b
+  menu font size 7
+  if %swingCnt < 10 && %swingCnt > 0 4
+    if %prospected = #true
+      menu text VC , %m , %z %x %y 0 , %swingCnt
+    else
+      menu text VC , %m , %z %x %y 0 , %swingCnt
+  else 9
+    if %prospected = #true
+      menu text VC , %m , %z %x %y %swingCnt
+    else
+    {
+      if %swingCnt > 0
+        menu text VC , %m , %z %x %y %swingCnt
+      else
+        menu text VC , %m , %z %x %y NO
+    }
+  gosub drawCurrRune %m
+  gosub drawCurrVein %m %spot
+  menu font style
+  menu font color 0
+  menu font bgcolor white
+  namespace pop
+  set %y %y - 3
+  set #lpc 25
+return
+Sub DrawCurrVein
+  namespace push
+  namespace local CP_Menu_Goodness
+  menu delete CurrVein
+  set !x !m3x + 40 + ( %2 * 20 )
+  set !y %1 * 20 + 3 + !m3y
+  Menu Shape CurrVein !x !y 20 20 6 7 3 lime 2 red
+  namespace pop
+Return
+Sub DrawCurrRune
+  namespace push
+  namespace local CP_Menu_Goodness
+  menu delete CurrRune
+  set !x !m3x - 5
+  set !y !m3y + 2 + %1 * 20
+  Menu Shape CurrRune !x !y 19 19 6 7 2 red 2 red
+  namespace pop
+Return
+
+sub checks
+  for %loopyCheck 0 16
+  {
+    if %loopyCheck > 0
+    {
+      menu get runeOnOffCheckBox . %loopyCheck
+      set %rune . %loopyCheck #menuRes
+    }
+
+    if %loopyCheck < 8
+    {
+      set %boodieya %color . %loopyCheck
+      menu get oreProspect , %boodieya
+      set %oreProspect . %boodieya #menures
+    }
+  }
+return
+
+sub CheckForCave
+  for %tile 1 #tilecnt
+  {
+    tile get %coordx %coordy %tile #curskind
+    if cave in #tilename && | , #tiletype , | in %digable
+    {
+      set %coordz #tilez
+      set %dighere #true
+      set %color %cave_color
+      set %index 3
+    }
+  }
+Return
+
+sub organizeBooks
+  set %runeBookCnt 0
+  set %tabWidth 0
+  set %bankCnt 0
+  set %oreCnt 0
+  set %treeCnt 0
+  set %forgeCnt 0
+  set %fishCnt 0
+  set %leatherCnt 0
+  set %sandCnt 0
+  set %gemCnt 0
+  set %trashCnt 0
+  set %runeCnt 0
+  finditem %runeBooks c_ , #backpackid
+  for #findindex 1 #findcnt
+  {
+    event property #findid
+    str count #property $
+    set %pos #strres - 1
+    str pos #property $ %pos
+    str del #property 1 #strres
+    set %property #strres
+    str pos %property $ 1
+    set %pos #strres - 1
+    str left %property %pos
+    if ( gem in #property || bank in #property || ore in #property || tree in #property || forge in #property || fish in #property || trash in #property || leather in #property || sand in #property )
+    {
+      if #findtype = zbn
+        set %runeTotal 16
+      if #findtype = mfhc
+        set %runeTotal 48
+      for %runeNum 1 %runeTotal
+      {
+        if %runeNum <= 9
+        {
+          if 0 , %runeNum in #property
+          {
+            set %runeCnt %runeNum
+            break
+          }
+        }
+        if %runeNum > 9
+        {
+          if %runeNum in #property
+          {
+            set %runeCnt %runeNum
+            break
+          }
+        }
+      }
+      if ore in #property
+      {
+        set %runeBookCnt %runeBookCnt + 1
+        set %oreBookCnt . %runeBookCnt #true
+        set %runeBookId . %runeBookCnt #findid
+        set %totalRunes . %runeBookCnt %runeCnt
+        gosub setupBooks tabHolder1 Ore ( , Ore , ) , #spc , ( , %runeCnt , ) , #spc , ( , #findid , ) , #spc , ( , #strres , ) #false #findid #property %runeCnt
+      }
+      if bank in #property
+      {
+        set %bankCnt %bankCnt + 1
+        set %bankId . %bankCnt #findid
+        gosub setupBooks tabHolder1 Bank ( , Bank , ) , #spc , ( , %runeCnt , ) , #spc , ( , #findid , ) , #spc , ( , #strres , ) #false #findid #property %runeCnt
+        set %totalBankRunes . %bankCnt %runeNum
+      }
+      if forge in #property
+      {
+        set %forgeCnt %forgeCnt + 1
+        set %forgeId . %forgeCnt #findid
+        gosub setupBooks tabHolder1 Forge ( , Forge , ) , #spc , ( , %runeCnt , ) , #spc , ( , #findid , ) , #spc , ( , #strres , ) #false #findid #property %runeCnt
+        set %totalForgeRunes . %forgeCnt %runeCnt
+      }
+      if trash in #property
+      {
+        set %trashCnt %trashCnt + 1
+        set %trashId . %trashCnt #findid
+        set %trashBookCnt . %trashCnt #true
+        set %totalTrashRunes . %trashCnt %runeNum
+        gosub setupBooks tabHolder1 Trash ( , Trash , ) , #spc , ( , %runeCnt , ) , #spc , ( , #findid , ) , #spc , ( , #strres , ) #false #findid #property %runeCnt
+      }
+    }
+  }
+  for %doIt 1 8
+    call s_newMenu.txt s_addItemToList tabHolder1_Ore %color . %doit #false %color . %doit tag2 tag3 tag4 tag5
+  gosub treeColors
+  for %doIt 1 6
+    call s_newMenu.txt s_addItemToList tabHolder1_Tree %color . %doIt #false %color . %doit tag2 tag3 tag4 tag5
+  gosub oreColors
+  ;for %doIt 1 8
+    call s_newMenu.txt s_addItemToList tabHolder1_Ore Ore , #spc , Avg/Min: , #spc , 0 #false oretotal tag2 tag3 tag4 tag5
+    call s_newMenu.txt s_addItemToList tabHolder1_Tree Tree , #spc , Avg/Min: , #spc , 0 #false treetotal tag2 tag3 tag4 tag5
+
+  set %useForgeBooks #false
+  set %useOreBooks #false
+  set %useTrashBooks #false
+  call s_newMenu.txt s_getListSize tabHolder1_Forge
+  if #result > 0
+    set %useForgeBooks #true
+  call s_newMenu.txt s_getListSize tabHolder1_Ore
+  if %oreCnt > 0
+    set %useOreBooks #true
+  call s_newMenu.txt s_getListSize tabHolder1_Tree
+  if %treeCnt > 0
+    set %useTreeBooks #true
+  call s_newMenu.txt s_getListSize tabHolder1_Leather
+  if %leatherCnt > 0
+    set %useLeatherBooks #true
+  call s_newMenu.txt s_getListSize tabHolder1_Fish
+  if %fishCnt > 0
+    set %useFishBooks #true
+  call s_newMenu.txt s_getListSize tabHolder1_Sand
+  if %sandCnt > 0
+    set %useSandBooks #true
+  call s_newMenu.txt s_getListSize tabHolder1_Gem
+  if %gemCnt > 0
+    set %useGemBooks #true
+  call s_newMenu.txt s_getListSize tabHolder1_Trash
+  if #result > 0
+    set %useTrashBooks #true
+  call s_newMenu.txt s_getListSize tabHolder1_Bank
+  if #result > 0
+    set %useBankBooks #true
+return
+
+sub setupBooks
+  call s_newMenu.txt s_addItemToTabList %1 %2 %3 %4 %5 %6 %7 %8 %9
+return
+
+sub showEUOMenu1
+  set #lpc 10000
+  menu Clear
+  menu Window Title Scripty's Strip Miner
+  menu Window Color BtnFace
+  menu Window Size 600 382
+  menu Font Transparent #true
+  menu Font Align Right
+  menu Window Color white
+  menu Show
+  if %pretty
+  {
+    namespace push
+    namespace local CP_Menu_Goodness
+    set !m1x 320
+    set !m1y 23
+    set !m2x 320
+    set !m2y 203
+    set !m3x 447
+    set !m3y 0
+    set !m4x 300
+    set !m4y 23
+    set !m5x 447
+    set !m5y 0
+    set !m6x 447
+    set !m6y 0
+    set !x !m5x + 57
+    set !y !m5y + 20
+    menu shape bezel !x !y 86 326 3 7 1 black 7 black
+    set !fcolorIron black
+    set !fcolorDull white
+    set !fcolorShadow white
+    set !fcolorCopper white
+    set !fcolorBronze white
+    set !fcolorGolden black
+    set !fcolorAgapite black
+    set !fcolorVerite white
+    set !fcolorValorite black
+    set !fcolorNormal black
+    set !fcolorOak black
+    set !fcolorAsh black
+    set !fcolorYew white
+    set !fcolorBloodwood white
+    set !fcolorHeartwood black
+    set !fcolorFrostwood white
+    set !BGcolorEmpty silver
+    set !Fcolor0 black
+    set !BGcolor0 silver
+    set !BGcolorIron silver
+    set !Ingot0 Iron
+    set !Granite0 High_Quality_Granite
+    set !Fcolor1 white
+    set !BGcolorDull $696969
+    set !bgcolor1 $696969
+    set !Ingot1 Dull
+    set !Granite1 High_Quality_Dull_Copper_Granite
+    set !Fcolor2 white
+    set !BGcolorShadow 5193792
+    set !bgcolor2 5193792
+    set !Ingot2 Shadow
+    set !Granite2 High_Quality_Shadow_Iron_Granite
+    set !Fcolor3 white
+    set !BGcolorCopper 5209999
+    set !bgcolor3 5209999
+    set !Ingot3 Copper
+    set !Granite3 High_Quality_Copper_Granite
+    set !Fcolor4 white
+    set !BGcolorBronze 3100783
+    set !BGcolor4 3100783
+    set !Ingot4 Bronze
+    set !Granite4 High_Quality_Bronze_Granite
+    set !Fcolor5 black
+    set !BGcolorGolden $20A7DA
+    set !BGcolor5 $20A7DA
+    set !Ingot5 Golden
+    set !Granite5 High_Quality_Golden_Granite
+    set !Fcolor6 black
+    set !BGcolorAgapite $6666C0
+    set !BGcolor6 $6666C0
+    set !Ingot6 Agapite
+    set !Granite6 High_Quality_Agapite_Granite
+    set !Fcolor7 black
+    set !BGcolorVerite $33855C
+    set !BGcolor7 $33855C
+    set !Ingot7 Verite
+    set !Granite7 High_Quality_Verite_Granite
+    set !Fcolor8 black
+    set !BGcolorValorite 12562319
+    set !BGcolor8 12562319
+    set !Ingot8 Valorite
+    set !Granite8 High_Quality_Valorite_Granite
+    set !tBGcolor0 $7ECFD8
+    set !bgcolor9 $7ECFD8
+    set !bgcolor10 $7ECFD8
+    set !bgcolor11 $2392BF
+    set !bgcolor12 $6BB7BD
+    set !bgcolor13 $3030A1
+    set !bgcolor14 12562319
+    set !Board0 Boards
+    set !BGColorNormal $7ECFD8
+    set !tBGcolor1 $2392BF
+    set !BGColorOak $2392BF
+    set !Board1 Oak
+    set !tBGcolor2 $6BB7BD
+    set !BGColorAsh $6BB7BD
+    set !Board2 Ash
+    set !tBGcolor3 $1B5EBD
+    set !BGColorYew $1B5EBD
+    set !Board3 Yew
+    set !tBGcolor4 $3030A1
+    set !BGColorBloodwood $3030A1
+    set !Board4 Bloodwood
+    set !tBGcolor5 $33855C
+    set !BGColorHeartwood $33855C
+    set !Board5 Heartwood
+    set !tBGcolor6 12562319
+    set !BGColorFrostwood 12562319
+    set !Board6 Frostwood
+    set !lbl0 EUOEdit0
+    set !lbl1 EUOEdit2419
+    set !lbl2 EUOEdit2406
+    set !lbl3 EUOEdit2413
+    set !lbl4 EUOEdit2418
+    set !lbl5 EUOEdit2213
+    set !lbl6 EUOEdit2425
+    set !lbl7 EUOEdit2207
+    set !lbl8 EUOEdit2219
+    set !lbl9 EUOEdit10
+    set !lbl10 EUOEdit12010
+    set !lbl11 EUOEdit11191
+    set !lbl12 EUOEdit11192
+    set !lbl13 EUOEdit11193
+    set !lbl14 EUOEdit11194
+    set !lbl15 EUOEdit11151
+    set !rbgcolor1 $7ECFD8
+    set !rbgcolor2 11382181
+    set !rbgcolor3 5209999
+    set !rbgcolor4 3100783
+    set !rbgcolor5 $33855C
+    set !rbgcolor6 $6666C0
+    set !rbgcolor7 $20A7DA
+    set !rbgcolor8 12562319
+    set !rbgcolor9 5193792
+    set !rbgcolor10 8671810
+    set !rbgcolor11 $2392BF
+    set !rbgcolor12 1615178
+    set !rbgcolor13 $3030A1
+    set !rbgcolor14 12562319
+    set !label1 brilliant_amber
+    set !label2 luminescent_fungi
+    set !label3 Switch
+    set !label4 bark_fragment
+    set !label5 parasitic_plant
+    set !label6 saltpeter
+    set !label7 crystalline_blackrock
+    set !label8 blue_diamond  ; Flawless diamond in text while mining
+    set !label9 small_piece_of_blackrock
+    set !label10 dark_sapphire
+    set !label11 ecru_citrine
+    set !label12 perfect_emerald
+    set !label13 fire_ruby
+    set !label14 turquoise
+    namespace pop
+    set %resource1 brilliant_amber
+    set %resource2 luminescent_fungi
+    set %resource3 Switch
+    set %resource4 bark_fragment
+    set %resource5 parasitic_plant
+    set %resource6 saltpeter
+    set %resource7 crystalline_blackrock
+    set %resource8 blue_diamond  ; Flawless diamond in text
+    set %resource9 small_piece_of_blackrock
+    set %resource10 dark_sapphire
+    set %resource11 ecru_citrine
+    set %resource12 perfect_emerald
+    set %resource13 fire_ruby
+    set %resource14 turquoise
+  }
+  ;menu Shape blackBGShape1 0 0 500 361 3 7 1 Black 7 Black
+  ;--End of CP Addition
+  menu Font Name MS Sans Serif
+  menu Font Size 8
+  menu Font Style
+  menu Font Color WindowText
+  menu Font Transparent #false
+  menu Font Align Left
+  menu Font BGColor white
+  menu Text EUOLabel1 4 184 Current Bank:
+  menu Text EUOLabel2 72 184 Current Rune:
+  menu Text EUOLabel3 141 184 Current Trash:
+  menu Text EUOLabel4 212 184 Current Forge:
+  ;menu Text EUOLabel5 320 5 Resource Count:
+  ;--CP Addition
+  if ! %pretty
+  {
+    menu Text EUOLabel6 298 26 Iron Ore:
+    menu Text EUOLabel7 298 46 Dull    :
+    menu Text EUOLabel8 298 66 Shadow  :
+    menu Text EUOLabel9 298 86 Copper  :
+    menu Text EUOLabel10 298 106 Bronze  :
+    menu Text EUOLabel11 298 126 Gold    :
+    Menu Text EUOLabel12 298 146 Agapite :
+    Menu Text EUOLabel13 298 166 Verite  :
+    Menu Text EUOLabel14 298 186 Valorite:
+    Menu Text EUOLabel15 298 206 Normal  :
+    Menu Text EUOLabel16 298 226 Oak     :
+    Menu Text EUOLabel17 298 246 Ash     :
+    Menu Text EUOLabel18 298 266 Yew     :
+    Menu Text EUOLabel19 298 286 Bloodwud:
+    Menu Text EUOLabel20 298 306 HeartWud:
+    Menu Text EUOLabel21 298 326 FrostWud:
+  }
+  else
+  {
+    namespace push
+    namespace local CP_Menu_Goodness
+    For !m 0 8
+    {
+      menu font style b
+      menu font align right
+      set !x !m4x
+      set !y !m4y - 20
+      menu image create prospectorTool !x !y 19 19
+      menu image file prospectorTool 0 0 prospectorTool.gif
+      set !x !m1x
+      set !y !m1y + ( !m * 20 )
+      menu font color !Fcolor . !m
+      menu Font BGColor !BGcolor . !m
+      Menu Shape Back0 , !m !x !y 100 20 4 7 1 black 7 !BGcolor . !m
+      set !x !m1x + 100
+      Menu Shape Back1 , !m !x !y 20 20 4 7 1 black 7 !BGcolor . !m
+      set !x !m1x + 103
+      set !y !y + 1
+      menu Check oreSkip , !m !x !y 13 17 #false #spc      ;RUNE ON OFF CHECK BOX
+      set !x !m4x
+      set !y !m4y + ( !m * 20 )
+      if !m < 9
+      {
+        Menu Shape Back2 , !m !x !y 20 20 4 7 1 black 7 !BGcolor . !m
+        set !x !m4x + 3
+        set !y !y + 1
+        set %boodieya %color . !m
+        menu Check oreProspect , %boodieya !x !y 13 17 #false #spc  ;RUNE PROSPECT ON OFF CHECK BOX
+
+      }
+      set !x !m1x + 3
+      menu image create ingot . !m !x !y 27 20
+      menu image file ingot . !m 0 0 ingot , !m , #dot , gif
+      set !x !m1x + 90
+      set !y !m1y + 3 + ( !m * 20 )
+      menu Text !lbl . !m !x !y 0
+      if !m < 7
+      {
+        set !x !m2x
+        set !y !m2y + ( !m * 20 )
+        set !o !m + 9
+        menu font color black
+        if !m = 4
+          menu font color white
+        menu Font BGColor !tBGcolor . !m
+        Menu Shape Back3 , !m !x !y 100 20 4 7 1 black 7 !tBGcolor . !m
+        set !x !m2x + 100
+        Menu Shape Back4 , !m !x !y 20 20 4 7 1 black 7 !tBGcolor . !m
+        set !x !m2x + 103
+        set !y !y + 1
+        menu Check treeSkip , !m !x !y 13 17 #false #spc
+        set !x !m2x + 3
+        menu image create board . !m !x !y 20 22
+        menu image file board . !m 0 0 board , !m , #dot , gif
+        set !x !m2x + 90
+        set !y !m2y + 3 + ( !m * 20 )
+        menu Text !lbl . !o !x !y 0
+      }
+      menu font style
+    }
+    namespace pop
+  }
+  namespace push
+  namespace local CP_Menu_Goodness
+  set !x 3
+  set !y 265
+  for !whacha 1 3
+  {
+    set %menuDoop , !whacha 0
+    menu Shape Back5 , !whacha !x !y 65 20 4 7 1 black 7 !rbgcolor . !whacha
+    menu image create resource . !whacha !x !y 20 19
+    menu image file resource . !whacha 0 0 resource , !whacha , #dot , gif
+    set !x1 !x + 60
+    set !y1 !y + 3
+    if !whacha = 3 4
+      menu font style b
+      menu font color white
+      menu Font BGColor !rbgcolor . !whacha
+      menu Text !label . !whacha !x1 !y1 0
+    else 4
+      menu font style b
+      menu font color white
+      menu Font BGColor !rbgcolor . !whacha
+      menu Text !label . !whacha !x1 !y1 0
+    set !y !y + 20
+  }
+  set !y 265
+  set !x 72
+  for !whacha 4 6
+  {
+    set %menuDoop , !whacha 0
+    menu Shape Back5 , !whacha !x !y 65 20 4 7 1 black 7 !rbgcolor . !whacha
+    menu image create resource . !whacha !x !y 20 19
+    menu image file resource . !whacha 0 0 resource , !whacha , #dot , gif
+    set !x1 !x + 60
+    set !y1 !y + 3
+    if !whacha = 4 || !whacha = 5 4
+      menu font style b
+      menu font color white
+      menu Font BGColor !rbgcolor . !whacha
+      menu Text !label . !whacha !x1 !y1 0
+    else 4
+      menu font style b
+      menu font color black
+      menu Font BGColor !rbgcolor . !whacha
+      menu Text !label . !whacha !x1 !y1 0
+    set !y !y + 20
+  }
+  set !y 265
+  set !x 141
+  for !whacha 7 10
+  {
+    set %menuDoop , !whacha 0
+    menu Shape Back5 , !whacha !x !y 65 20 4 7 1 black 7 !rbgcolor . !whacha
+    menu image create resource . !whacha !x !y 20 19
+    menu image file resource . !whacha 0 0 resource , !whacha , #dot , gif
+    set !x1 !x + 60
+    set !y1 !y + 3
+    if !whacha = 9 || !whacha = 10 4
+      menu font style b
+      menu font color white
+      menu Font BGColor !rbgcolor . !whacha
+      menu Text !label . !whacha !x1 !y1 0
+    else 4
+      menu font style b
+      menu font color black
+      menu Font BGColor !rbgcolor . !whacha
+      menu Text !label . !whacha !x1 !y1 0
+    set !y !y + 20
+  }
+  set !y 265
+  set !x 210
+  for !whacha 11 14
+  {
+    set %menuDoop , !whacha 0
+    menu Shape Back5 , !whacha !x !y 65 20 4 7 1 black 7 !rbgcolor . !whacha
+    menu image create resource . !whacha !x !y 20 19
+    menu image file resource . !whacha 0 0 resource , !whacha , #dot , gif
+    set !x1 !x + 60
+    set !y1 !y + 3
+    if !whacha = 13 4
+      menu font style b
+      menu font color white
+      menu Font BGColor !rbgcolor . !whacha
+      menu Text !label . !whacha !x1 !y1 0
+    else 4
+      menu font style b
+      menu font color black
+      menu Font BGColor !rbgcolor . !whacha
+      menu Text !label . !whacha !x1 !y1 0
+    set !y !y + 20
+  }
+  menu font style
+  namespace pop
+  menu Font BGColor Window
+  menu Edit bankEdit1 4 200 65
+  menu Edit oreEdit1 72 200 65
+  menu Edit trashEdit1 143 200 65
+  menu Edit forgeEdit1 212 200 65
+  menu Text EUOLabel6 68 222 Spot 1 Color:
+  menu Text EUOLabel7 137 222 Spot 2 Color:
+  menu Text EUOLabel8 205 222 Spot 3 Color:
+  menu Text EUOLabel9 275 222 Spot 4 Color:
+  menu Edit euoEditSpot1 4 240 65
+  menu Edit euoEditSpot2 72 240 65
+  menu Edit euoEditSpot3 141 240 65
+  menu Edit euoEditSpot4 212 240 65
+  menu Font BGColor white
+  if ! %pretty
+  {
+    menu Check runeOnOffCheckBox1 404 1 13 17 #false runeOnOffCheckBox1
+    menu Check runeOnOffCheckBox2 404 21 13 17 #false runeOnOffCheckBox1
+    menu Check runeOnOffCheckBox3 404 41 13 17 #false runeOnOffCheckBox1
+    menu Check runeOnOffCheckBox4 404 61 13 17 #false runeOnOffCheckBox1
+    menu Check runeOnOffCheckBox5 404 81 13 17 #false runeOnOffCheckBox1
+    menu Check runeOnOffCheckBox6 404 101 13 17 #false runeOnOffCheckBox1
+    menu Check runeOnOffCheckBox7 404 121 13 17 #false runeOnOffCheckBox1
+    menu Check runeOnOffCheckBox8 404 141 13 17 #false runeOnOffCheckBox1
+    menu Check runeOnOffCheckBox9 404 161 13 17 #false runeOnOffCheckBox1
+    menu Check runeOnOffCheckBox10 404 181 13 17 #false runeOnOffCheckBox1
+    menu Check runeOnOffCheckBox11 404 201 13 17 #false runeOnOffCheckBox1
+    menu Check runeOnOffCheckBox12 404 221 13 17 #false runeOnOffCheckBox1
+    menu Check runeOnOffCheckBox13 404 241 13 17 #false runeOnOffCheckBox1
+    menu Check runeOnOffCheckBox14 404 261 13 17 #false runeOnOffCheckBox1
+    menu Check runeOnOffCheckBox15 404 281 13 17 #false runeOnOffCheckBox1
+    menu Check runeOnOffCheckBox16 404 301 13 17 #false runeOnOffCheckBox1
+  }
+  else
+  {
+    namespace push
+    namespace local CP_Menu_Goodness
+    for !m 1 16
+    {
+      menu font style b
+      menu font align center
+      set !x !m3x
+      set !y !m * 20 + 5 + !m3y
+      if !m > 9
+        set !x !m3x - 3
+      menu text m1 !x !y !m
+    }
+    set !x !m3x - 3
+    set !y !m3y + 5
+    menu image create rune !x !y 10 12
+    menu image file rune 0 0 rune.gif
+    menu font color red
+    menu font name webdings
+    set !x !m3x + 17
+    set !y !m3y + 4
+    set !x !m1x + 104
+    set !y !m1y - 20
+    menu text m1 !x !y x
+    set !x !m6x + 24
+    set !y !m6y + 5
+    menu font color blue
+    menu font style
+    menu font size 9
+    menu text m1 !x !y N
+    menu font size 8
+    menu font style b
+    menu font name MS Sans Serif
+    set !x !m3x + 82
+    set !y !m3y + 6
+    menu font color black
+    menu text m1 !x !y VEINS
+    menu font style
+    namespace pop
+  }
+  call s_newMenu.txt s_createMenuItem form0 StartButton1 button 4 328 47 25 Start
+  menu setprop startbutton1 tooltip Click to start script.
+  call s_newMenu.txt s_createMenuItem form0 maximize button 80 328 25 25 m
+  menu setprop maximize tooltip Click to open the farming menu.
+  call s_newMenu.txt s_createMenuItem form0 options button 107 328 25 25 o
+  menu setprop options tooltip Click to open the main options menu.
+  call s_newMenu.txt s_createMenuItem form0 trashMenu button 53 328 25 25 t
+  menu setprop trashmenu tooltip Click to open the trash options menu.
+  menu Window Size 299 356
+  menu Font BGColor Window
+  if ! %pretty
+  {
+    menu Edit EUOEdit0 350 22 49
+    menu Edit EUOEdit2419 350 42 49
+    menu Edit EUOEdit2406 350 62 49
+    menu Edit EUOEdit2413 350 82 49
+    menu Edit EUOEdit2418 350 102 49
+    menu Edit EUOEdit2213 350 122 49
+    menu Edit EUOEdit2425 350 142 49
+    menu Edit EUOEdit2207 350 162 49
+    menu Edit EUOEdit2219 350 182 49
+    menu Edit EUOEdit10 350 202 49
+    menu Edit EUOEdit12010 350 222 49
+    menu Edit EUOEdit11192 350 242 49
+    menu Edit EUOEdit11191 350 262 49
+    menu Edit EUOEdit11193 350 282 49
+    menu Edit EUOEdit11194 350 302 49
+    menu Edit EUOEdit11151 350 322 49
+  }
+  set #lpc 25
+return
+
+sub scanBar
+  namespace push
+  namespace local scanBar . #charid
+  if %whawhawha = #false 2
+    namespace clear
+  set %whawhawha #true
+  set !tempLpc #lpc
+  set #lpc 10000
+  if %1 <> n/a && %2 <> n/a && %1 > -10000000 && %1 < 49000000000 2
+    set !percentOhx %1
+  set !percentOhy %2
+  else 2
+    set !percentOhx n/a
+  set !percentOhy n/a
+  if !scanOffset = n/a
+    gosub setVars %1 %2
+  set !buttonX . 1 !blueButtonX . 1 + !blueContPosX . 1
+  set !buttonY . 1 !blueButtonY . 1 + !blueContPosY . 1
+  if #contname <> buffIcons_Gump || ( #contName = buffIcons_Gump && ( #contposx <> !blueContPosX . 1 || #contposy <> !blueContPosY . 1 ) ) 3
+    savepix !buttonX . 1 !buttonY . 1 !savePixelNumber
+  if ( #pixcol < !blueButtonPixCol . 1 - !scanOffset || #pixcol > !blueButtonPixcol . 1 + !scanOffset ) && #pixcol < !high
+    gosub findBarVars
+  set %icons . #charid _
+  set !notFound 0
+  for !scanIcons 1 !scanBarIconCount
+  {
+    set !x !scanX + ( ( !scanIcons - 1 ) * 31 )
+    savepix !x !scanY !savePixelNumber
+    if #pixcol = 0 || #pixcol > 16779215
+      break
+    if ! . #pixcol <> n/a && ! . #pixcol <> block && ! . #pixcol <> massCurse && ! . #pixcol <> Curse && ! . #pixcol <> Sleep && ! . #pixcol <> Consecrate && ! . #pixcol <> HeatOfBattle && ! . #pixcol <> SplinteringDebuff && ! . #pixcol <> Feeblemind && ! . #pixcol <> Tribulation && ! . #pixcol <> MedusaStone && ! . #pixcol <> FastSkillGain 4
+      if _ , ! . #pixcol , _ in %icons . #charid
+      continue
+    set %icons . #charid %icons . #charid , ! . #pixcol , _
+    continue
+    gosub S1
+    if !notFound >= 2
+      break
+  }
+  set #result %icons . #charid
+  set #lpc 25
+  namespace pop
+return #result
+sub S1
+  set !x1 ( !scanX + 22 ) + ( ( ( !scanIcons - 1 ) * 31 ) - 5 )
+  if ! . #pixcol = Block
+    set !y1 !scanY + 22 - 17
+  else
+    set !y1 !scanY + 22 - 8
+  savepix !x1 !y1 !savePixelNumber
+  if !i2 . #pixcol <> n/a && _ , !i2 . #pixcol , _ notin %icons . #charid
+    set %icons . #charid %icons . #charid , !i2 . #pixcol , _
+  else
+    set !notFound !notFound + 1
+return
+sub findBarVars
+  while #contname <> BuffIcons_Gump
+  {
+    event macro 57
+    wait 1
+  }
+  if #contname = bufficons_gump && !percentOhx <> n/a && !percentOhy <> n/a 2
+    contpos !percentOhx !percentOhy
+  wait 1
+  set !blueContPosX . 1 #contposx
+  set !blueContPosY . 1 #contposy
+  set !buttonX . 1 !blueButtonX . 1 + #contposx
+  set !buttonY . 1 !blueButtonY . 1 + #contposy
+  set !scanX 26 + #contposx
+  set !scanY 11 + #contposy
+return
+sub setVars
+  namespace clear
+  set !percentOhx %1
+  set !percentOhy %2
+  while #contname <> BuffIcons_Gump
+    event macro 57
+  if !percentOhx <> n/a && !percentOhy <> n/a && ( #contposx <> !percentOhx || #contposy <> !percfentOhy ) 2
+    contpos !percentOhx !percentOhy
+  wait 1
+  set #lpc 5000
+  set !savePixelNumber 88  ; Number to use for savepix
+  set !scanOffset 512
+  set !buffGumpName buffIcons_gump
+  set !blueButtonX1 10
+  set !blueButtonY1 45
+  set !blueButtonPixCol1 10238224
+  set !blueContPosX1 #contposx
+  set !blueContPosY1 #contposy
+  set !blueButtonX2 10
+  set !blueButtonY2 46
+  set !blueButtonPixCol2 11354640
+  set !blueContPosX2 #contposx
+  set !blueContPosY2 #contposy
+  set !scanX 26 + #contposx
+  set !scanY 11 + #contposy
+  set !high 4594967295
+  gosub Add ImmolatingWeapon  1606689        49
+  gosub Add VampiricEmbrace   2198561   4382282
+  gosub Add CurseBloodOath    2171342   1579230
+  gosub Add EvilOmen          2171375  11908607
+  gosub Add GiftOfRenewal     1625616   2741784
+  gosub Add AnemiaDebuff      2171259       181
+  gosub Add DefenseMastery    1608728   1092880
+  gosub Add Inspire           2177346   3259681
+  gosub Add HorrificBeast     2221857   1094928
+  gosub Add ForceArrow        2693252   5388676
+  gosub Add WraithForm        2701617    566552
+  gosub Add HitLowerDefense   4344394    526476
+  gosub Add PoisonImmunity    5951066   2215465
+  gosub Add Honored           4889674   1621272
+  gosub Add CounterAttack     4371761     12544
+  gosub Add DivineFury        5950984   5951009
+  gosub Add MindRot           7046267  16775143
+  gosub Add Bless             7065096   6540841
+  gosub Add Cunning           7065187      2056
+  gosub Add HonorableExecute  5426787      8472
+  gosub Add GazeOfDespair     528491    1581171
+  gosub Add ReaperForm        4891978   6542947
+  gosub Add Protection        7069266   7071562
+  gosub Add HiryuDebuff       255       1054852
+  gosub Add LightningStrike   48516     1627771
+  gosub Add TribulationCaster 2056       528400
+  gosub Add WeaponFocus       6276        12799
+  gosub Add CorruptionDebuff  6350      1050764
+  gosub Add SpellFocus        50721       52777
+  gosub Add FishPie           50754     3754586
+  gosub Add TalonStrike       526468     526468
+  gosub Add Criminal          526492    2171160
+  gosub Add Poison            526534    1052903
+  gosub Add Perfection        1082376   1096984
+  gosub Add Confidence        1084432   1617176
+  gosub Add Healing           1088520   9229956
+  gosub Add BleedAttack       1579230    526575
+  gosub Add CurseWeapon       1088561     14592
+  gosub Add HitLowerAttack    1579032  11908533
+  gosub Add VeterinaryBuff    1084440  13551310
+  gosub Add FearDebuff        1572930   1577092
+  gosub Add DiseaseDebuff     1583459       115
+  gosub Add Clumsy            528400    2179641
+  gosub Add RageDebuff        528474    1583467
+  gosub Add Evasion           549648    2716440
+  gosub Add Consecrate        558088     558088
+  gosub Add Block             558088    6511194
+  gosub Add Feint             560144    2188114
+  gosub Add PsychicAttack     528606    8101037
+  gosub Add LichForm          560136    3763026
+  gosub Add DualWield         562184    1052696
+  gosub Add SplinteringDebuff 1050747   1577133
+  gosub Add Curse             1052911   1579255
+  gosub Add MassCurse         1052911   7576749
+  gosub Add Feeblemind        1052911   9747918  ;7918
+  gosub Add CorpseSkin        1059071   1579263
+  gosub Add Sleep             1050747   2173217
+  gosub Add Weaken            1052853   3750366
+  gosub Add PainSpike         1052870   7566319
+  gosub Add Tribulation       1052820   1052820
+  gosub Add MedusaStone       1052820   2173382
+  gosub Add RoseOfTrinsic     1080080   1621272
+  gosub Add GrapesOfWrath     2712361   3232355
+  gosub Add Strength          4337721   7575205
+  gosub Add CasterBloodOath   2741776   2217472
+  gosub Add MagicReflection   2748217   1632041
+  gosub Add FireDebuff        2748415   2226175
+  gosub Add Invisibility      3792441   3792441
+  gosub Add Despair           3223890   1052837
+  gosub Add StatLoss          3230455   1052804
+  gosub Add ArcaneEmpowerment 3257856   2725409
+  gosub Add Dismount          4342511   1579255
+  gosub Add WebDebuff         7566245   1579131
+  gosub Add Disarm            8092663   1052919
+  gosub Add MomentumStrike    10274312  2733336
+  gosub Add MortalStrike      9211111   1052886
+  gosub Add EnemyOfOne        9217445   1096960
+  gosub Add Agility           8710011  10270389
+  gosub Add Resilience        8103291   9234316
+  gosub Add Berserk           8107470   5963602
+  gosub Add EnchantBuff       8701440   3794770
+  gosub Add Invigorate        8714116  11919029
+  gosub Add StoneForm         10272206  1579041
+  gosub Add Polymorph         10854044  7048877
+  gosub Add EssenseOfWind     9211135  10274526
+  gosub Add Paralyze          10855935  4868855
+  gosub Add EtherealVoyage    10870346  7578962
+  gosub Add Strangle          12434943 11392743
+  gosub Add Flying            11902100  5395026
+  gosub Add EOODebuff         11910614  3217655
+  gosub Add ReactiveArmour    12445638  9217676
+  gosub Add OrangePetals      11375789  3261993
+  gosub Add Thunderstorm      11388630 13555406
+  gosub Add Preservance       12447677 11885138
+  gosub Add Attunement        13035387  5929868
+  gosub Add SpellPlague       13035503  5408412
+  gosub Add HeatOfBattle      1050747     61439
+  gosub Add AnimalForm        13546999        8
+  gosub Add NightSight        13553630  3270424
+  gosub Add DespairCaster     14056291  9189656
+  gosub Add ManaPhaseBuff     14081643 16252705
+  gosub Add WeaponWard        14589547 14061138
+  gosub Add Meditation        15157793 16777215
+  gosub Add Incognito         16751632  5392986
+  gosub Add HiddenStealthing  16764597  2703946
+  gosub Add GiftOfLife        16777215 15204327
+  gosub Add AureofNausea      1577149     16937
+  set %icons . #charid _
+  set #lpc 25
+return
+sub Add
+  if !scanBarIconCount = N/A
+    set !scanBarIconCount 0
+  set !scanBarIconCount !scanBarIconCount + 1
+  set ! . %2 %1
+  set !1 %2 + 256
+  set !2 %2 - 256
+  set !3 %2 + !scanOffset
+  set !4 %2 - !scanOffset
+  set ! . !1 %1
+  set ! . !2 %1
+  set ! . !3 %1
+  set ! . !4 %1
+  if %1 = massCurse || %1 = Curse || %1 = Sleep || %1 = Consecrate || %1 = HeatOfBattle || %1 = SplinteringDebuff || %1 = Feeblemind || %1 = Tribulation || %1 = MedusaStone
+  {
+    set !i2 . %3 %1
+    set !5 %3 + 256
+    set !6 %3 - 256
+    set !7 %3 + !scanOffset
+    set !8 %3 - !scanOffset
+    set ! . !5 %1
+    set ! . !6 %1
+    set ! . !7 %1
+    set ! . !8 %1
+  }
+return
+
+sub itemTypes
+  set %niterDeposit rgh_vgh_qgh_bhh_wgh
+  set %corpse YFM
+  set %leatherAnimals be_yg_ig_zf_xg_ng_eg_wc_ah_tg_sg_kb_pg
+  set %birdTypes wc_ag
+  set %beetleType jj
+  set %prospectTool gbg
+  set %fishingPole xhf
+  set %fish wws_udhb_zyz_uyz_caab_tyz_wyz_smz_nmz_rmz_omz_dqd_gqd_fqd_eqd_mmz
+  set %scissors jag
+  set %shoes cwi_awi_nvi_ovi_pvi_qvi_zvi_tvi_deg
+  set %fished_stuff wws_htd_udf_pof_jjg_svh_ydf_ind_hnd_pov_szf_deg_kuf
+  set %rare_fish ydf
+  set %dagger wsf_tsf_gmh_bnf
+  set %serpent ki
+  set %blackrock uvf_ewf_fwf_gwf
+  set %garbage %shoes , _ , %rare_fish
+  set %leather jjg
+  set %trashCans hif_ikf_bkf_iif_bkf_kif_jif_abg_umf
+  set %ingots enk
+  set %shovels wwf
+  set %runebooks zbn_mfhc_
+  set %ore dwj_ewj_tvj_gwj
+  set %saltpeter afz
+  set %lumberjackResource yws_bwr_xws_nws_fxs_tlk_sdhb
+  set %tinkerTools jtl_gtl_ktl
+  set %gems uvf_axs_tws_uws_vws_zws_gxs_bvj_gvf_evf_vuf_fvf_rvf_hvf_ovf_bvf
+  set %gemmers hvf_gvf_vuf_rvf_fvf_evf_bvf_uvf_ovf
+  set %sand afz
+  set %stone bvi
+  set %blackrocks uvf_fwf_ewf_gwf
+  set %crystalline mdhb
+  set %dropItems %logs , _ , %ore
+  set %resourceFirstBank %ingots , _ , %blackrocks , _ , %saltPeter , _ , %gemmers , _ , %lumberjackResource , _ , %leather , _ , %logs , _ , %gems , _ , %crystalline , _ , %sand , _ , %stone , _ , %fish , _ , pof
+  set %resourceTypes %ingots , _ , %blackrocks , _ , %saltPeter , _ , %lumberjackResource , _ , %leather , _ , %logs , _ , %gems , _ , %crystalline , _ , %sand , _ , %stone , _ , %fish , _ , pof
+  set %oreResourceTypes %saltPeter , _ , %lumberjackResource , _ , %leather , _ , %logs , _ , %gems , _ , %crystalline , _ , %sand , _ , %stone , _ , %fish , _ , pof
+  set %ninjaForms sh_sc_eh_vd_eg_jg_bb_jd_hg_rf
+  set %peopleScan NCB_BZ_AV_XU_NAB_OAB_QAB_PAB_MAB_RAB_SAB_LAB_OCB_NCB_HS_IS
+  set %advanceCntTypes re_uf_md_sz_gd_vgb_ub_TI_lz_ue_fb_ej_hd_cd_ve_jgb_to_ed_ve_de_rb_ui_w_sd_bd_od_hd_UO_uc_se_je_rd_ld_qe_jd_qd_td_ud_pe_xc_hs_is_ncb_bz_av_xu_sh_sc_eh_vd_eg_jg_bb_jd_hg_rf_QGB_VGB_khb_ugb_wgb_jab_khb_nab_oab_qab_pab_mab_rab_sab_lab_ocb_ncb
+  set #ltargetkind 1
+  set %craftGumpSize 530_497
+  set %bankGumpSize 180_240
+  set %bankOre enk , _ , %fish , _ , %ore , _ , %lumberjackResource , _
+return
+
+sub findIngots
+  finditem %ingots c_ , %bankContId
+  for #findIndex 1 #findCnt
+  {
+    if #findcol = 0 && #findType = enk 3
+      set %bankStacky #findStack
+    set %bankStackyId #findid
+    break
+  }
+
+  finditem %ingots c_ , #backpackid
+  for #findIndex 1 #findCnt
+  {
+    while %genericWait > #sysTime
+     ;
+    if #findcol = 0 && #findtype = enk && #findStack >= 50 6
+      set %findStack #findStack - 50
+    exevent drag #findId %findStack
+    wait 1
+    exevent dropc %oreStorageBank
+    set %genericWait #sysTime + 1000
+    break
+    if #findCol = 0 && #findType = enk && #findStack < 50 6
+      set %findStack 50 - #findStack
+    exevent drag %bankStackyId %findStack
+    wait 1
+    exevent dropc #backpackid
+    set %genericWait #sysTime + 1000
+    break
+  }
+return
+
+sub findTinkerTools
+  finditem %tinkerTools C_ , #backPackId
+  if #findcnt = 0 3
+    display ok You MUST have at least ONE$
+  + tinker tool in your pack to start!
+  halt
+  if #findcnt < 3
+  {
+    repeat
+      repeat
+        finditem %tinkerTools C_ , #backPackId
+        set #lObjectId #findId
+        while %genericWait > #sysTime
+        {
+        }
+        event macro 17
+        set %genericWait #sysTime + 1000
+        event sysmessage %genericWait
+        gosub waitForVar contsize = %craftGumpSize %craftWait
+        event sysmessage %genericWait
+      until #result = #true
+      repeat
+        gosub craftItem act1_2-sel_1-cat_4-sel_4
+        event sysmessage %genericWait
+        gosub waitForVar contsize = %craftGumpSize %craftWait
+        event sysmessage %genericWait
+        finditem %tinkerTools c_ , #backpackid
+      until #findCnt > 1
+      gosub craftItem act1_6
+      set %genericWait #sysTime + 250
+      ;gosub findIngots
+      finditem %tinkerTools C_ , #backPackId
+    until #findCnt > 2
+  }
+return
+
+sub findShovels
+  finditem %shovels c_ , #backpackid
+  if #findcnt < 4
+  {
+    repeat
+      repeat
+        finditem %tinkerTools c_ , #backpackid
+        set #lobjectid #findid
+        while %genericWait > #sysTime
+        {
+        }
+        event macro 17
+        set %genericWait #sysTime + 1000
+        gosub waitForVar contsize = %craftGumpSize %craftWait
+      until #result = #true
+      repeat
+        gosub craftItem cat_4-nextpage-sel_1
+        gosub waitForVar contsize = %craftGumpSize %craftWait
+        finditem %shovels C_ , #backpackid
+      until #findcnt > 1
+      gosub craftItem act1_6
+      set %genericWait #sysTime + 250
+      finditem %shovels c_ , #backpackid
+    until #findcnt > 3
+  }
+return
+
+sub craftItem
+  namespace push
+  namespace crafter
+  set !contsizecraft 530_497
+  set !contsizedesc 530_417
+  set !contsize !contsizecraft
+  set !increment 20
+  set !xOffsetCat 30
+  set !yOffsetCat 50
+  set !xOffsetSel 235
+  set !yOffsetSel 50
+  set !xOffsetAct1 30
+  set !yOffsetAct1 330
+  set !xOffsetAct2 285
+  set !yOffsetAct2 330
+  set !xOffsetNextPage 385
+  set !yOffsetNextPage 250
+  set !xOffsetDesc 495
+  set !yOffsetDesc 50
+  set !xOffsetMakeNow 420
+  set !yOffsetMakeNow 380
+  set !xOffsetBack 30
+  set !yOffsetBack 375
+  set !xOffsetMakeNum 265
+  set !yOffsetMakeNum 380
+  set !command %1
+  if %0 > 1
+    set !waitTime %2
+  else
+    set !waitTime 5
+  if %0 > 2
+    set !clickMode %3
+  else
+    set !clickMode dmc
+  str Count !command -
+  set !nrSplits #strRes
+  set !nrActions !nrSplits + 1
+  set !i 1
+  if !nrSplits > 0
+  {
+    for !i 1 !nrSplits
+    {
+      str Pos !command - 1
+      set !dashPos #strRes
+      set !actEnd !dashPos - 1
+      str Left !command !actEnd
+      set !act . !i #strRes
+      str Del !command 1 !dashPos
+      set !command #strRes
+    }
+  }
+  set !act . !i !command
+  for !i 1 !nrActions
+  {
+    gosub waitForVar contsize = !contsize !waitTime
+    set !successful #result
+    if !successful = #true
+    {
+      set !currCom !act . !i
+      str Pos !act . !i _
+      set !nr 1
+      if #strRes <> 0
+      {
+        set !usPos #strRes
+        set !comEnd !usPos - 1
+        str Left !act . !i !comEnd
+        set !type #strRes
+        str Del !act . !i 1 !usPos
+        set !nr #strRes
+      }
+      else
+        set !type !act . !i
+      set !xOffset !xOffset . !type + #contPosX
+      set !yOffset !yOffset . !type + !nr * !increment + #contPosY
+      while %genericWait > #sysTime
+      {
+      }
+      click !xOffset !yOffset !clickMode
+      set %genericWait #sysTime + 250
+      if !type = desc
+        set !contsize !contsizeDesc
+      else
+        set !contsize !contsizeCraft
+      if !type = makenum
+        break
+    }
+    else
+      break
+  }
+  set #result !successful
+  namespace pop
+return #result
+
+sub waitForVar
+  set %timeout #time + 2
+  if  %0 > 3
+    set %timeout #time + %4
+waitForVarLoop:
+  if # . %1 %2 %3
+    return #true
+  if #time >= %timeout
+  return #false
+goto waitForVarLoop
+
+sub oreFindCol
+  set %oreColor0 0
+  set %oreColor2419 0
+  set %oreColor2406 0
+  set %oreColor2413 0
+  set %oreColor2418 0
+  set %oreColor2213 0
+  set %oreColor2425 0
+  set %oreColor2207 0
+  set %oreColor2219 0
+return
+
+sub setup
+  set %fontAriel MS , #SPC , Ariel
+  set %fontsize 8
+  set %width 232
+  set %height 165
+  set %runebooks zbn
+  set %weightOffset 47
+  gosub itemTypes
+  gosub oreColors
+  menu setprop form0 top 0
+  menu setprop form0 left #clixres
+  gosub showEUOMenu1
+  call s_newMenu.txt s_maketabHolder tabHolder1 4 20 290 165 white black %fontArial 8
+  call s_newMenu.txt s_addTab tabHolder1 Bank Bank #false n/a Click , #spc , for , #spc , bank , #spc , info.
+  call s_newMenu.txt s_addTab tabHolder1 Forge Forge #false n/a Click , #spc , for , #spc , forge , #spc , info.
+  call s_newMenu.txt s_addTab tabHolder1 Ore Ore #false n/a Click , #spc , for , #spc , ore , #spc , info.
+  call s_newMenu.txt s_addTab tabHolder1 Tree Tree #false n/a Click , #spc , for , #spc , tree , #spc , info.
+  call s_newMenu.txt s_addTab tabHolder1 Leather Leather #false n/a Click , #spc , for , #spc , leather , #spc , info.
+  call s_newMenu.txt s_addTab tabHolder1 Fish Fish #false n/a Click , #spc , for , #spc , fish , #spc , info.
+  call s_newMenu.txt s_addTab tabHolder1 Sand Sand #false n/a Click , #spc , for , #spc , sand , #spc , info.
+  call s_newMenu.txt s_addTab tabHolder1 Gem Gem #false n/a Click , #spc , for , #spc , gem , #spc , info.
+  call s_newMenu.txt s_addTab tabHolder1 Trash Trash #false n/a Click , #spc , for , #spc , trash , #spc , info.
+  call s_newMenu.txt s_selectTabByName tabHolder1 Bank
+  gosub organizeBooks
+  set #menuButton n/a
+  msg $
+  msg bank$
+  wait 20
+  if #conttype = IKF
+    set %bankContId #contId
+  else
+    display ok You aren't near a bank. Restart.
+  if %oreStorageBank = n/a && *oreStorageContainer . #charid = n/a 9
+    display ok Click ok and select your ore storage container.
+    set #targcurs 1
+    while #targcurs = 1
+      wait 2
+    set %oreStorageBank #ltargetid
+    set *oreStorageContainer . #charid #ltargetid
+    set #lobjectid %oreStorageBank
+    event macro 17
+    wait 20
+  else
+    set %oreStorageBank *oreStorageContainer . #charid
+  set %firstBank #true
+  gosub travelToBank
+  set %firstBank #false
+  gosub findIngots
+  gosub findTinkerTools
+  gosub findIngots
+  gosub findShovels
+  gosub maxweight %weightOffset
+  while %genericWait > #sysTime
+  {
+  }
+  event macro 8 1
+  wait 10
+  gosub GumpWait paperdoll_gump paperdoll_gump
+  contpos 617 358
+  wait 10
+  event macro 8 7
+  wait 10
+  gosub GumpWait container_gump container_gump
+  wait 10
+  contpos 132 449
+  wait 10
+  event macro 8 2
+  gosub GumpWait status_gump status_gump
+  contpos 0 680
+  wait 20
+  gosub scanbar
+  event sysmessage #result
+  if _protection_ notin #result
+  {
+    event macro 15 14
+    while a in #charstatus
+      wait 1
+    wait 5
+  }
+  if #followers > 0 8
+    finditem #charid
+  set #lobjectid #findid
+  event macro 17
+  set %genericWait #sysTime + 1000
+  wait 20
+  if #contname = paperdoll_gump && ( #contposx <> 804 || #contposy <> 0 ) 2
+    contpos 804 0
+  set %genericWait #sysTime + 500
+  set %forges jbg_bvj_ivj_vuj_hvj_luj_guj_zbn_ouj_buj_cuj_soj_wuj
+  gosub oreColors
+  set %digable |220|221|222|223|224|225|226|227|228|229|230|231|236|237|238|239|240|241|242|243|
+  +244|245|246|247|252|253|254|255|256|257|258|259|260|261|262|263|268|269|270|271|
+  +272|273|274|275|276|277|278|279|286|287|288|289|290|291|292|293|294|296|296|297|
+  +321|322|323|324|467|468|469|470|471|472|473|474|476|477|478|479|480|481|482|483|
+  +484|485|486|487|492|493|494|495|543|544|545|546|547|548|549|550|551|552|553|554|
+  +555|556|557|558|559|560|561|562|563|564|565|566|567|568|569|570|571|572|573|574|
+  +575|576|577|578|579|581|582|583|584|585|586|587|588|589|590|591|592|593|594|595|
+  +596|597|598|599|600|601|610|611|612|613|1010|1741|1742|1743|1744|1745|1746|1747|
+  +1748|1749|1750|1751|1752|1753|1754|1755|1756|1757|1771|1772|1773|1774|1775|1776|
+  +1777|1778|1779|1780|1781|1782|1783|1784|1785|1786|1787|1788|1789|1790|1801|1802|
+  +1803|1804|1805|1806|1807|1808|1809|1811|1812|1813|1814|1815|1816|1817|1818|1819|
+  +1820|1821|1822|1823|1824|1831|1832|1833|1834|1835|1836|1837|1838|1839|1840|1841|
+  +1842|1843|1844|1845|1846|1847|1848|1849|1850|1851|1852|1853|1854|1861|1862|1863|
+  +1864|1865|1866|1867|1868|1869|1870|1871|1872|1873|1874|1875|1876|1877|1878|1879|
+  +1880|1881|1882|1883|1884|1981|1982|1983|1984|1985|1986|1987|1988|1989|1990|1991|
+  +1992|1993|1994|1995|1996|1997|1998|1999|2000|2001|2002|2003|2004|2028|2029|2030|
+  +2031|2032|2033|2100|2101|2102|2103|2104|2105|1339|1340|1341|1342|1343|1344|1345|
+  +1346|1347|1348|1349|1350|1351|1352|1353|1354|1355|1356|1357|1358|1359|
+
+  set %chopable |3274|3275|3276|3277|3278|3279|3280|3281|3282|3283|3284|3285|3286|
+  +3287|3288|3289|3290|3291|3292|3293|3294|3295|3296|3297|3298|3299|
+  +3300|3301|3302|3304|3320|3321|3322|3323|3324|3325|3326|3327|3328|
+  +3329|3330|3331|3393|3394|3395|3396|3397|3398|3399|3400|3401|3402|
+  +3403|3404|3405|3406|3407|3408|3409|3410|3411|3415|3416|3417|3418|
+  +3419|3420|3421|3422|3423|3424|3425|3426|3427|3428|3429|3430|3431|
+  +3432|3433|3438|3439|3440|3441|3442|3443|3444|3445|3446|3447|3448|
+  +3449|3450|3451|3452|3453|3454|3455|3460|3461|3462|3463|3464|3465|
+  +3466|3467|3468|3469|3470|3471|3472|3477|3478|3479|3481|3482|3483|
+  +3485|3486|3487|3489|3490|3491|3493|3494|3495|3497|3498|3499|4789|
+  +4790|4791|4792|4793|4794|4795|4796|4797|4798|4799|4801|4802|4803|
+  +4804|4805|4806|4807|8781|8778|3496|8780|8779|3230|3220|3221|3222|
+  +3492|3484|3488|3480|
+return
+
+sub gumpWait
+  namespace push
+  namespace local GW
+  set !timedelay #SCNT
+  while #SCNT <= !timedelay + 2
+  {
+    if #CONTNAME = %1 || #CONTNAME = %2 2
+      namespace pop
+    return #TRUE
+  }
+  namespace pop
+return #FALSE
+
+sub maxweight
+  set %offset %1
+  set %maxWeight #maxWeight
+  finditem #CHARID
+  if #findtype NOTIN AV_XU_OCB_NCB
+    set %maxWeight %maxWeight + 20
+  if %maxWeight > 550
+    set %maxWeight 550
+  set %maxWeight %maxWeight - %offset
+return
+
+sub setMaxWeight
+  set %itemWeight 0
+  set %property #result
+  if weight in #property
+  {
+    set %weightStr %property
+    str pos %weightStr weight 1
+    set %weightLen #strres
+    str len %weightStr
+    set %weightLen #strres - ( %weightLen + 7 )
+    str right %weightStr %weightLen
+    set %weightStr #strres
+    str pos %weightStr _ 1
+    set %weightLen #strres - 1
+    str left %weightStr %weightLen
+    set %weightStr #strres
+    if #strres > 0 && #strres <> $
+      set %itemWeight #strres
+  }
+  if #charType in hs_is_
+    set %maxweight ( 40 + ( 3 * #str ) + ( #str / 2 ) ) + 60
+  else
+    set %maxweight ( 40 + ( 3 * #str ) + ( #str / 2 ) )
+return
+
+sub runicAtlas
+  namespace push
+  namespace local s_runicAtlas . %1
+  set !lpc #lpc
+  set #lpc 100
+  set !recastRune 0
+  set #result
+  if G in %3
+  {
+    repeat
+      set #ltargetKind 1
+      finditem OTF G_0
+      if #findcnt > 0
+      {
+        set #ltargetid #findid
+        if #targCurs = 1
+          set #targCurs 0
+        while !genTimer > #sysTime
+        {
+        }
+        event macro 15 33
+        while A in #charStatus
+        {
+        }
+        target 2s
+        event macro 22
+        set !genTimer #sysTime + 1000
+        wait 5
+      }
+    until #findCnt < 1
+  }
+_recast:
+  if !recastRune > 3 6
+    while !genTimer > #sysTime 5
+    {
+    }
+    set #lpc !lpc
+    namespace pop
+    return recallError
+  if %5 <> n/a
+    finditem %1 %4 , _ , %5
+  else
+    finditem %1 %4
+  if #findcnt < 1 6
+    while !genTimer > #sysTime
+    {
+    }
+    set #lpc !lpc
+    namespace pop
+    return findError
+    set #lobjectid %1
+  while !genTimer > #sysTime
+  {
+  }
+  event macro 17
+  set !genTimer #sysTime + 1000
+  set !id %1
+  set !rune %2
+  set !spell %3
+  if #findtype = MFHC
+  {
+    set !recast !rune
+    set !id %1
+    set !rune %2
+    set !spell %3
+    set !defaultX 50
+    set !defaultY 298
+    set !dropRuneX 50
+    set !dropRuneY 318
+    set !rX 268
+    set !rY 292
+    set !pixCode 11000110000
+    if !gX = n/a 4
+      set !gX 268
+    set !gY 310
+    set !sX 268
+    set !sY 328
+    set !ssX 268
+    set !ssY 346
+    set !runeLX 55
+    set !runeY 39 ; + 20
+    set !runeRX 257
+    set !pageLX  40
+    set !pageLY 20
+    set !pageRX 395
+    set !pageRY 20
+    while #contSizeX <> 432 || #contSizeY <> 396
+    {
+      if !genTimer < #sysTime 3
+        set #lpc !lpc
+        namespace pop
+        return gumpError
+    }
+    wait 5
+    if %0 = 2 7
+      click 252 17
+      wait 5
+      msg
+      msg %2 , $
+      set #lpc !lpc
+      namespace pop
+      return #true
+    if !pageNum = n/a
+    {
+      set !x #contPosX + !pageLX
+      set !y #contPosY + !pageLY
+      savepix !x !y 999
+      set !pixCol #pixCol
+      if #pixCol >= 9221566 && #pixCol <= 9225678
+        set !pageNum 1
+      else 7
+        set !x #contPosX + !pageRX
+      set !y #contPosY + !pageRY
+      savepix !x !y 999
+      if #pixcol >= 8098981 && #pixcol <= 8103093
+        set !pageNum 3
+      else
+        set !pageNum 2
+      if !pageNum = n/a 3
+        set #lpc !lpc
+        namespace pop
+        return pageError
+      set !pixcol
+      for !i 110 120
+      {
+        set !xx #contPosX + !i
+        set !yy #contPosY + 18
+        savepix !xx !yy 999
+        if #pixcol >= 1576976 && #pixcol <= 1581088
+          set !pixcol !pixcol , 1
+        else
+          set !pixcol !pixcol , 0
+      }
+      if !pixcol <> !pixCode
+        set !charges #true
+      chooseSkill mage
+      if #skill >= 670
+        set !gate #true
+      chooseSkill chiv
+      if hs in #charType || is in #chartype || #skill > 150
+        set !sacred #true
+      if !charges = #true
+      {
+        if !gate = #true
+        {
+          set !gY 328
+          if !sacred = #true
+            set !sY 346
+          else
+            set !sacred #false
+        }
+        else
+        {
+          set !gate #false
+          if !sacred = #true
+            set !sY 328
+          else
+            set !sacred #false
+        }
+      }
+      else
+      {
+        if !gate = #true
+        {
+          set !gY 310
+          if !sacred = #true
+            set !sY 328
+          else
+            set !sacred #false
+        }
+        else
+        {
+          set !gate #false
+          if !sacred = #true
+            set !sY 310
+          else
+            set !sacred #false
+        }
+      }
+    }
+    set #lpc !lpc
+    if !rune > 0 && !rune < 17
+      set !page 1
+    if !rune > 16 && !rune < 33
+      set !page 2
+    if !rune > 32 && !rune < 48
+      set !page 3
+    while !page <> !pageNum
+    {
+      if !page < !pageNum
+      {
+        set !pageNum !pageNum - 1
+        set !x #contPosX + !pageLX
+        set !y #contPosY + !pageLY
+        click !x !y
+        wait 5
+      }
+      else
+      {
+        if !page > !pageNum 5
+          set !pageNum !pageNum + 1
+          set !x #contPosX + !pageRX
+          set !y #contPosY + !pageRY
+          click !x !y
+          wait 5
+      }
+      set !genTimer #sysTime + 1000
+      while #contSizeX <> 432 || #contSizeY <> 396
+      {
+        if !genTimer < #sysTime 6
+          while !genTimer > #sysTime
+          {
+          }
+          set #lpc !lpc
+          namespace pop
+          return gumpError
+      }
+      wait 5
+    }
+    set !locationX #charPosX
+    set !locationY #charPosY
+    if ( !rune < 17 && !rune > 0 ) || ( !rune > 16 && !rune < 49 )
+    {
+      if ( !rune > 8 && !rune < 17 ) || ( !rune > 24 && !rune < 33 ) || ( !rune > 40 && !rune < 48 )
+        set !runeLX !runeRX
+      if ( !rune < 9 && !rune > 0 )
+        set !rune1 !rune
+      if !rune > 8 && !rune < 17
+        set !rune1 !rune - 8
+      if !rune > 16 && !rune < 25
+        set !rune1 !rune - 16
+      if !rune > 24 && !rune < 33
+        set !rune1 !rune - 24
+      if !rune > 32 && !rune < 41
+        set !rune1 !rune - 32
+      if !rune > 40 && !rune < 49
+        set !rune1 !rune - 40
+      set !y #contPosY + ( !runeY + ( !rune1 * 20 ) )
+      if !rune < 1 || !rune > 48 6
+        while !genTimer > #sysTime
+      {
+      }
+      set #lpc !lpc
+      namespace pop
+      return pageError
+      set !x #contPosX + !runeLX
+      click !x !y
+      wait 5
+      set !genTimer #sysTime + 1000
+      while #contSizeX <> 432 || #contSizeY <> 396
+      {
+        if !genTimer < #sysTime 6
+          while !genTimer > #sysTime
+          {
+          }
+          set #lpc !lpc
+          namespace pop
+          return gumpError
+      }
+      set !xx %3 , X
+      set !x #contPosX + ! . !xx
+      set !yy %3 , Y
+      set !y #contPosY + ! . !yy
+      set !jStart #jIndex
+      click !x !y
+      wait 5
+    }
+    if G in %3
+      set !genTimer #sysTime + 27000
+    if R in %3
+      set !genTimer #sysTime + 10000
+    if S in %3
+      set !genTimer #sysTime + 4000
+    set !fizzles #false
+    while #charPosX = !locationX && #charPosY = !locationY
+    {
+      if !genTimer < #sysTime && !locationX = #charPosX && !locationY = #charPosY
+      {
+        pause
+        while ( !genTimer > #sysTime + 9000 && R in %3 ) || ( G in %3 && #sysTime > #sysTime + 27000 )
+        {
+        }
+        set #lpc !lpc
+        namespace pop
+        ;pause
+        return recallError
+      }
+      while #jIndex > !jStart
+      {
+        set !jStart !jStart + 1
+        scanJournal !jStart
+        if This_book_needs_time_to_recharge in #journal || The_spell_fizzles in #journal || More_reagents_are_needed_for_this_spell in #journal
+        {
+          set !fizzles #true
+          set !recastRune !recastRune + 1
+        }
+        if ( !fizzles = #true && R in %3 && !genTimer < #sysTime + 9000 ) || ( !fizzles = #true && G in %3 && !genTimer < #sysTime + 24000 ) || ( !fizzles = #true && S in %3 && !genTimer < #sysTime + 3000 ) || !recastRune > 2
+        {
+          set !rune !recast
+          goto _recast
+        }
+        if This_place_in_the_book_is_empty in #journal
+        {
+          set !genTimer #sysTime + 250
+          while ( !genTimer > #sysTime + 24000 && G in %3 ) || ( S in %3 && !genTimer > #sysTime + 3000 ) || ( R in %3 && !genTimer > #sysTime + 9000 )
+          {
+          }
+          ;pause
+          set #lpc !lpc
+          namespace pop
+          return emptyError
+        }
+        if Something_is_blocking_the_location in #journal || You_cannot_teleport_into_that_area in #journal
+        {
+          set !genTimer #sysTime + 250
+          while ( !genTimer > #sysTime ) ;&& S in %3 ) || ( !genTimer > #sysTime && G in %3 ) || ( R in %3 && !genTimer > #sysTime )
+          {
+          }
+          set #lpc !lpc
+          namespace pop
+          ;pause
+          return blockingError
+        }
+      }
+      if %3 = G && A notin #charStatus
+      {
+        finditem OTF G_0
+        if #findcnt > 0 && A notin #charStatus
+        {
+          while !clickTimer > #sysTime
+          {
+          }
+          set #lObjectId #findId
+          event macro 17
+          set !clickTimer #sysTime + 1000
+          wait 20
+        }
+      }
+    }
+    while !clickTimer > #sysTime
+    {
+    }
+    set !genTimer #sysTime + 1
+    while !clickTimer > #sysTime && !clickTImer <> #sysTime + 1000
+    {
+    }
+    namespace pop
+  }
+  if #findType = ZBN
+  {
+    set !recast !rune
+    if !rune in _1_3_5_7_9_11_13_15_ 2
+      set !page ( !rune + 1 ) / 2
+      set !rune 1
+    else 3
+      if !rune in _2_4_6_8_10_12_14_16_ 2
+        set !page ( !rune + 1 ) / 2
+        set !rune 2
+    set !page1X 104 ; 174 209 244
+    set !page1Y 192
+    set !page2X 274  ; +35
+    set !r1X 139
+    set !r1Y 143 ;  g161 s179
+    set !g1Y 161
+    set !s1Y 179
+    while #contSizeX <> 452 || #contSizeY <> 236
+    {
+      if !genTimer < #sysTime 3
+        set #lpc !lpc
+      namespace pop
+      return gumpError
+    }
+    wait 5
+    if !page < 5 && !page > 0
+    {
+      set !x #contPosX + !page1X + ( 35 * !page )
+      set !y #contPosY + !page1Y
+    }
+    else
+    {
+      if !page > 4 && !page < 17
+      {
+        set !page !page - 4
+        set !x #contPosX + !page2X + ( 35 * !page )
+        set !y #contPosY + !page1Y
+      }
+      else
+      {
+        set #lpc !lpc
+        namespace pop
+        return pageError
+      }
+    }
+    click !x !y
+    wait 5
+    set !genTimer #sysTime + 500
+    while #contSizeX <> 452 || #contSizeY <> 236
+    {
+      if !genTimer < #sysTime 3
+        set #lpc !lpc
+        namespace pop
+        return gumpError
+    }
+    if !rune = 1
+    {
+      set !y #contPosY + !r1Y
+      if !spell = r
+        set !x #contPosX + !r1X
+      if !spell = g
+        set !x #contPosX + !g1X
+      if !spell = s
+        set !x #contPosX + !s1X
+    }
+    else
+    {
+      if !rune = 2
+      {
+        set !y #contPosY + !r1Y
+        if !spell = r
+          set !x #contPosX + !r1X + 160
+        if !spell = g
+          set !x #contPosX + !g1X + 160
+        if !spell = s
+          set !x #contPosX + !s1X + 160
+      }
+    }
+    set !jStart #jIndex
+    set !locationX #charPosX
+    set !locationY #charPosY
+    click !x !y
+    if G in %3
+      set !genTimer #sysTime + 27000
+    if R in %3
+      set !genTimer #sysTime + 10000
+    if S in %3
+      set !genTimer #sysTime + 4000
+    set !fizzles #false
+    while #charPosX = !locationX && #charPosY = !locationY
+    {
+      if !genTimer < #sysTime && !locationX = #charPosX && !locationY = #charPosY
+      {
+       ; while ( !genTimer > #sysTime + 3000 && S in %3 ) || ( !genTimer > #sysTime + 9000 && R in %3 ) || ( G in %3 && !genTimer > #sysTime + 26000 )
+        ;{
+       ; }
+        ;pause
+        set #lpc !lpc
+        namespace pop
+        return recallError
+      }
+      while #jIndex > !jStart
+      {
+        set !jStart !jStart + 1
+        scanJournal !jStart
+        if This_book_needs_time_to_recharge in #journal || The_spell_fizzles in #journal || More_reagents_are_needed_for_this_spell in #journal
+        {
+          set !recastRune !recastRune + 1
+          set !fizzles #true
+        }
+        if This_place_in_the_book_is_empty in #journal
+        {
+          set !genTimer #sysTime + 250
+          while ( !genTimer > #sysTime )
+          {
+          }
+          set #lpc !lpc
+          namespace pop
+          return emptyError
+        }
+        if Something_is_blocking_the_location in #journal || You_cannot_teleport_into_that_area in #journal
+        {
+          set !genTimer #sysTime + 250
+          while ( !genTimer > #sysTime )
+          {
+          }
+          set #lpc !lpc
+          namespace pop
+          return blockingError
+        }
+        if ( !fizzles = #true && R in %3 && !genTimer < #sysTime + 9000 ) || ( !fizzles = #true && G in %3 && !genTimer < #sysTime + 26000 ) || ( !fizzles = #true && S in %3 && !genTimer < #sysTime + 3000 )
+        {
+          set !rune !recast
+          set !genTimer #sysTime + 1
+          goto _recast
+        }
+      }
+      if %3 = G && A notin #charStatus
+      {
+        finditem OTF G_0
+        if #findcnt > 0 && A notin #charStatus
+        {
+          while !clickTimer > #sysTime
+          {
+          }
+          set #lObjectId #findId
+          event macro 17
+          set !clickTimer #sysTime + 1000
+          wait 20
+        }
+      }
+    }
+    while !clickTimer > #sysTime
+    {
+    }
+    set !genTimer #sysTime + 1
+    while !clickTimer > #sysTime && !clickTimer <> #sysTime + 1000
+    {
+    }
+  }
+  set #lpc !lpc
+  namespace pop
+return #true
+
+sub travelToLeather
+  if %useLeatherBooks = #true
+  {
+  }
+return
+sub travelToFish
+  if %useFishBooks = #true
+  {
+  }
+return
+sub travelToSand
+  if %useSandBooks = #true
+  {
+  }
+return
+sub travelToGem
+  if %useGemBooks = #true
+  {
+  }
+return
+
+sub travelToTrash
+  finditem %garbage c_ , #backPackId
+  if #findcnt > 10 || ( %fishBookCnt . %book = n/a && %fishTrash = #true )
+  {
+    set %fishTrash #false
+    set %backFromTrash #false
+    set %backFromBank #true
+_tryAgainTrash:
+    set %runeTrash %runeTrash + 1
+    if %runeTrash > %totalTrashRunes . %bookTrash || %totalTrashRunes . %bookTrash = n/a 2
+      set %bookTrash %bookTrash + 1
+      set %runeTrash 1
+    if %bookTrash > %trashCnt 2
+      set %bookTrash 1
+      set %runeTrash 1
+    menu set bankEdit1 B: %bookBank R: %runeBank
+    menu set oreEdit1 B: %book R: %rune
+    menu set trashEdit1 B: %bookTrash R: %runeTrash
+    menu set forgeEdit1 B: %bookForge R: %runeForge
+    while %genericWait > #sysTime
+    {
+    }
+    gosub runicAtlas %trashId . %bookTrash %runeTrash %travelType c #backpackid
+    set %resultTrash #result
+    if %resultTrash <> #true
+      goto _tryAgainTrash
+    if #menuButton <> n/a 3
+      if #menubutton = minimize || #menubutton = maximize || #menubutton = options || #menubutton = button1 || #menubutton = button2 || #menubutton = button3 || #menubutton = trashmenu
+        gosub minimize
+      call s_newMenu.txt s_handleTabs #menuButton
+    set %trashFindTimer #sysTime + 1000
+    repeat
+      finditem %trashCans G_2
+    until #findcnt > 0 || %trashFindTimer < #sysTime
+    if #findcnt > 0
+    {
+      set %trashBin #findid
+      finditem %garbage c_ , #backpackid
+      if #findcnt > 0
+      {
+        for #findindex 1 #findcnt
+        {
+          event property #findid
+          if crystalline notin #property && insured notin #property
+          {
+            while %genericWait > #sysTime
+            {
+            }
+            exevent drag #findid
+            wait 1
+            exevent dropc %trashBin
+            set %genericWait #sysTime + 1000
+          }
+        }
+      }
+    }
+  }
+return
+
+

@@ -1,0 +1,1807 @@
+; Scripty's New Menu Stuff
+
+set %test1234 #false
+if %test1234 = #true
+  goto _test1234
+
+set !lpc1234 #lpc
+set #lpc 300
+set !subDone #FALSE
+if %0 = 1 && !subDone = #FALSE
+  gosub %1
+if %0 = 2 && !subDone = #FALSE
+  gosub %1 %2
+if %0 = 3 && !subDone = #FALSE
+  gosub %1 %2 %3
+if %0 = 4 && !subDone = #FALSE
+  gosub %1 %2 %3 %4
+if %0 = 5 && !subDone = #FALSE
+  gosub %1 %2 %3 %4 %5
+if %0 = 6 && !subDone = #FALSE
+  gosub %1 %2 %3 %4 %5 %6
+if %0 = 7 && !subDone = #FALSE
+  gosub %1 %2 %3 %4 %5 %6 %7
+if %0 = 8 && !subDone = #FALSE
+  gosub %1 %2 %3 %4 %5 %6 %7 %8
+if %0 = 9 && !subDone = #FALSE
+  gosub %1 %2 %3 %4 %5 %6 %7 %8 %9
+if %0 = 10 && !subDone = #FALSE
+  gosub %1 %2 %3 %4 %5 %6 %7 %8 %9 %10
+if %0 = 11 && !subDone = #FALSE
+  gosub %1 %2 %3 %4 %5 %6 %7 %8 %9 %10 %11
+if %0 = 12 && !subDone = #FALSE
+  gosub %1 %2 %3 %4 %5 %6 %7 %8 %9 %10 %11 %12
+if %0 > 12
+{
+  display ok You sent %0 parameters!  Only 12 max allowed.  Halting.
+  stop
+}
+;if !subDone = #false
+;{
+ ; display ok You cannot run this directly! Halting.
+ ; halt
+;}
+set #lpc !lpc1234
+exit
+
+_test1234:
+gosub s_createForm form1 100 100 300 250 Scripty's_Newmenu: , #spc , #charname #true
+gosub s_setItemProp form1 form1 #false tooltip This , #spc , is , #spc , form , #spc , 1.
+gosub s_createForm form2 410 100 300 250 Scripty's_Newmenu: , #spc , #charname #true
+gosub s_setItemProp form2 form2 #false color 155 tooltip This , #spc , is , #spc , form , #spc , 2.
+gosub s_createPanel form2 panel1 16 60 200 150 0
+gosub s_setItemProp form2 panel1 #true text Panel , #spc , 1 color 0 tooltip This , #spc , is , #spc , panel , #spc , 1.
+gosub s_createMenuItem form2 button1 button 30 30 80 25 Button , #spc , 1
+set #menuButton n/a
+gosub s_setItemProp form2 button1 #true text Button , #spc , 1 tooltip This , #spc , is , #spc , button , #spc , 1.
+set #menuButton n/a
+;gosub s_setItemProp form1 button1 #false
+;set #menuButton n/a
+;gosub s_setItemProp form1 panel1
+;gosub s_setItemProp form2 panel1
+;gosub s_setItemProp form2 button1
+gosub s_setItemProp form2 button1 #false top 80 color 100
+gosub s_createMenuItem form2 button2 button 30 110 80 25 Button , #spc , 2
+gosub s_setItemProp form2 button2 #true text Button , #spc , 2 tooltip This , #spc , is , #spc , button , #spc , 2. fontsize 14 color 255
+gosub s_createMenuItem form2 button3 button 30 140 80 25 Button , #spc , 3
+gosub s_setItemProp form2 button3 #true text Button , #spc , 3 tooltip This , #spc , is , #spc , button , #spc , 3.
+gosub s_createMenuItem form1 radio1 radio 30 90 146 24 #true Radio , #spc , button , #spc , 1.
+gosub s_setItemProp form1 radio1 #true text Radio , #spc , button , #spc , 1. color $FF tooltip This , #spc , is , #spc , radio , #spc , button , #spc , 1.
+gosub s_createMenuItem form1 button4 button 30 140 80 25 Button , #spc , 4
+gosub s_setItemProp form1 button4 #false text Button , #spc , 4 tooltip This , #spc , is , #spc , button , #spc , 4.
+set %font_arial MS , #SPC , Ariel
+menu setDef parent form1
+gosub s_maketabHolder listBox1 200 50 100 100 white black %font_arial 8
+gosub s_addTab listBox1 Active Active #false
+gosub s_addTab listBox1 History History #false
+gosub s_makeList list list1 30 30 100 55 white black %font_arial 8
+gosub s_setItemProp form1 list1 #false tooltip This , #spc , is , #spc , list , #spc , box , #spc , 1.
+gosub s_addItemToList list1 uno #true tag1 tag22 tag3 tag4 tag5
+gosub s_setItemProp form1 list1 #true
+gosub s_makeList combo combo1 30 220 100 55 white black %font_arial 8
+gosub s_setItemProp form1 combo1 #true tooltip This , #spc , is , #spc , combo , #spc , box , #spc , 1. color 255
+gosub s_addItemToList combo1 Cheffe #true booya1 booya2 booya3 booya4 booya5
+gosub s_addItemToList combo1 Kal , #spc , In , #spc , Ex #false booya6 booya7 booya8 booya9 booya10
+gosub s_addItemToList combo1 Orngrimm #false booya11 booya12 booya13 booya14 booya15
+menu check check1 30 180 100 21 #true Check 1.
+gosub s_setItemProp form1 check1 #true tooltip This , #spc , is , #spc , check , #spc , box , #spc , 1.
+menu radio radio1 20 20 80 20 #true Option 1
+menu radio radio2 20 40 80 20 #true Option 2
+menu radio radio3 20 60 80 20 #true Option 3
+menu setdef color $C000C0
+menu panel panel1 20 80 80 60
+menu radio radio4 00 00 80 20 #true Option 4
+menu radio radio5 00 20 80 20 #false Option 5
+menu radio radio6 00 40 80 20 #false Option 6
+wait 2s
+menu set radio5 #true
+wait 2s
+menu setprop radio2 checked #true
+halt
+set #lpc 10
+halt
+
+  ; ROUTINES USED
+  ; TAB SUBS
+
+  ; s_deleteTabHolder             ; Delete entire tab holder by name.
+  ; s_deleteTabByIndex            ; Delete tab by holder name and index.
+  ; s_makeTabHolder               ; Create tab holder.
+  ; s_addItemToTabList            ; Works same as s_add but you use tab name also.
+  ; s_hideTabHolder               ; Hide whole tab holder.
+  ; s_hideTabByName               ; Hides tab by name and tab text.
+  ; s_showTabHolder               ; Show whole tab control, keeping info.
+  ; s_showTabByName               ; Shows tab by name and tab text.
+  ; s_selectTabByName             ; Selects tab by tab name.
+  ; s_selectTabByIndex            ; Selects tab by tab index.
+  ; s_getTabNameFromSelectedTab   ; Returns tab name of selected tab from holder.
+  ; s_getListNameFromSelectedTab  ; Returns list name of selected tab from holder.
+  ; s_updateTabNameByName         ; Update tab text by tab name.
+  ; s_handleTabs                  ; Used in main loop to take care of tab functions.
+
+  ; NEW MENU SUBS
+
+  ; s_createForm                  ; Create a new form.
+  ; s_createPanel                 ; Create a new panel inside any form.
+  ; s_setItemProp                 ; Set properties for menu items, including forms.
+
+  ; LIST SUBS
+
+  ; GENERAL
+  ; s_makeList                    ; Create list or combo box.
+  ; s_addItemToList               ; Add item to list or combo box.
+  ; s_draw                        ; Draw list or combo box. (Called from s_makeList.)
+  ; s_reDraw                      ; Redraw list.
+  ; s_hideList                    ; Hide list on menu without deleting data.
+
+  ; SAVE/LOAD
+  ; s_saveListToRegistry          ; Saves list by listname and filename to registry.
+  ; s_loadListFromRegistry        ; Loads list by listname and filename from registry.
+
+  ; COPY ITEMS
+  ; s_copyAll                     ; Copy all items/data from one list to another.
+  ; s_copyItemByIndex             ; Copy single item and it's data between lists.
+  ; s_copySelectedItem            ; Copy selected item in list to another list.
+  ; s_copyItemByData   NOT DONE   ; Copy item in list to another list by data 1-5.
+
+  ; UPDATE LISTS
+  ; s_updateItemNameByIndex       ; Change name of item in list by index.
+  ; s_updateItemNameByName        ; Change name of item in list by name.
+  ; s_updateAllDataByIndex        ; Update all 5 stored data fields by index selectively.
+  ; s_updateAllDataByName         ; Update all 5 stored data fields by name selectively.
+
+  ; SELECT ITEMS
+  ; s_selectItemByIndex           ; Select item in list by it's index.
+  ; s_selectItemByData            ; Select item in list by searching stored data.
+
+  ; COMPARE DATA
+  ; s_compareAnyDataByIndex       ; Compare 2 data values from 2 menu items by index.
+  ; s_compareAnyDataByName        ; Compare 2 data values from 2 menu items by name.
+
+  ; DELETE ITEM/DATA
+  ; s_deleteList                  ; Delete list and clears namespace removing all data.
+  ; s_deleteAllItems              ; Delete all items/data in a list.
+  ; s_deleteItemByName            ; Delete item/s and it's data in list by name.
+  ; s_deleteItemByIndex           ; Delete item/s and it's data in list by index.
+  ; s_deleteItemByAnyData         ; Delete item/s and data by any stored data 1-5.
+
+  ; GET ITEM/DATA/SIZE
+  ; s_getListSize                 ; Get size of list or combo box.
+  ; s_getIndexByItem              ; Get item by name and return index in list.
+  ; s_getIndexByAnyData           ; Get item by data and return index in list.
+  ; s_getIndexBySpecificData      ; Get item index by selected data 1-5.
+  ; s_getItemByIndex              ; Return item in list by it's index.
+  ; s_getDataByIndex              ; Return any data in list by it's index in list and 1-5.
+  ; s_getSelectedItem             ; Return selected item in list.
+  ; s_getSelectedData             ; Return selected data in list.
+  ; s_getSelectedIndex            ; Returns index of selected item in list.
+
+  ; MOVE ITEM/DATA
+  ; s_moveIndexUp                 ; Move item up list by it's index.
+  ; s_moveIndexDown               ; Move item down list by it's index.
+  ; s_moveSelectedUp              ; Move selected item and it's data up list.
+  ; s_moveSelectedDown            ; Move selected item and it's data down list.
+  ; s_moveIndexUpByAny            ; Move index up by any data or item name.
+  ; s_moveIndexDownByAny          ; Move index down by any data or item name.
+
+; %1 = form name
+; %2 = x location
+; %3 = y location
+; %4 = x width
+; %5 = y height
+; %6 = form text
+; %7 = visible/not visible #true/#false
+sub s_createForm
+  namespace push
+  namespace local s_newMenu
+  menu form %1 %2 %3 %4 %5 %6
+  if %0 > 6 && %7 = #true
+    menu setprop %1 visible #true
+  if %0 > 6 && %7 = #false
+    menu setprop %1 visible #false
+  namespace pop
+return
+
+; %1 default parent
+; %2 panel name
+; %3 = x location
+; %4 = y location
+; %5 = x width
+; %6 = y height
+; %7 color number or n/a
+sub s_createPanel
+  namespace push
+  namespace local s_newMenu
+  menu panel %2 %3 %4 %5 %6
+  if %0 > 6 && %7 <> n/a
+    menu setprop %2 color %7
+  menu setprop %2 parent %1
+  namespace pop
+return
+
+; %1 default parent
+; %2 menu item name
+; %3 menu item type (button, combo, list..) ; Make this %2?
+; %4 = x location
+; %5 = y location
+; %6 = x width
+; %7 = y height
+; %8 #true/#false if applicable (radio buttons)
+; %9 menu item text
+sub s_createMenuItem
+  namespace push
+  namespace local s_newMenu
+  if ( %8 = #true || %8 = #false ) && %0 > 8
+    menu %3 %2 %4 %5 %6 %7 %8 %9
+  else
+    menu %3 %2 %4 %5 %6 %7 %8
+  menu setprop %2 parent %1
+  namespace pop
+return
+
+; %1 default parent
+; %2 item name (button, panel, whatever)
+; %3 #true/#false pushDef/popDef
+; %4 setprop for item (top, button, color, whatever, now able to set multiple properties)
+; %5 setprop value
+sub s_setItemProp
+;event sysmessage %1 %2 %3 %4 %5
+  namespace push
+  namespace local s_newMenu
+  if %3 = #true
+    menu pushDef
+  if %0 > 4
+  {
+    for !i 4 %0
+    {
+      set !o !i + 1
+      menu setprop %2 % . !i % . !o
+      set !i !i + 1
+    }
+  }
+  else
+  {
+    if %0 = 2
+      menu setprop %2
+    if %0 = 3
+      menu setprop %2 %3
+    if %0 = 5
+      menu setprop %2 %4 %5
+  }
+  menu setprop %2 parent %1
+  if %3 = #true
+    menu popDef
+  namespace pop
+return
+
+; %1 Tab control name
+sub s_getListNameFromSelectedTab
+  set !subDone #true
+  namespace push
+  namespace local sTabs_ . %1
+  if !tabCnt = 0 2
+    namespace pop
+    return #false
+  for !i 1 !tabCnt
+  {
+    if !i = !selected 3
+      set #result !tabName . !i
+      namespace pop
+      return #result
+  }
+  namespace pop
+return #false
+
+; %1 Tab control name
+sub s_getTabNameFromSelectedTab
+  set !subDone #true
+  namespace push
+  namespace local sTabs_ . %1
+  if !tabCnt = 0 2
+    namespace pop
+    return #false
+  for !i 1 !tabCnt
+  {
+    if !i = !selected 3
+      set #result !tText . !i
+      namespace pop
+      return #result
+  }
+  namespace pop
+return #false
+
+; %1 Tab control name
+sub s_handleTabs
+  ;event sysmessage handle tabs
+  set !subDone #true
+  if stabs_ notin #menubutton
+    return #false
+  set #lpc 10000
+  ;event sysmessage makelist #menubutton
+  set !stabsMenubutton #menubutton
+  str pos !stabsMenuButton _ 1
+  str del !stabsMenubutton 1 #strres
+  set !stabsMenubutton #strres
+  str pos !stabsMenuButton _ 1
+  str del !stabsMenubutton #strres 2
+  set !stabsMenubutton #strres
+  if #menubutton = n/a || #menubutton = closed 2
+    set #lpc 10
+    return #false
+  namespace push
+  namespace local sTabs_ . !stabsMenubutton
+  str pos #menubutton _ 2
+  set !pos #STRRES + 1
+  str len #menubutton
+  set !len #STRRES - !pos + 1
+  str mid #menubutton !pos !len
+  set !selectedTab #STRRES
+  set !returnFunction n/a
+  if !tabFunction . !selectedTab <> n/a
+    set !returnFunction !tabFunction . !selectedTab
+  gosub !tabFunction . !selectedTab
+  gosub s_clearTabs
+  gosub s_drawTabs
+  set #result n/a
+  if !returnFunction <> n/a
+    set #result !returnFunction
+  set #menubutton N/A
+  namespace pop
+  set #lpc 10
+return #result
+
+; %1 Tab control Name
+; %2 x
+; %3 y
+; %4 x1
+; %5 y1
+; %6 background color
+; %7 text color
+; %8 font
+; %9 font size
+sub s_makeTabHolder
+  set !subDone #true
+  namespace push
+  namespace local sTabs_ . %1
+  set #menubutton N/A
+  for %i 1 11
+    set ! . %i % . %i
+  ;event sysmessage !1
+  set !holderName %1
+  set !x %2
+  set !y %3
+  set !x1 %4
+  set !y1 %5
+  set !bgcolor %6
+  set !txtcolor %7
+  set !font %8
+  set !fontsize %9
+  set !tabCnt 0
+  set !tHeight 21
+  set !tfontSize 7
+  set !tFont MS , #SPC , Ariel
+  set !tNSelColor BtnFace
+  set !tSelColor Silver
+  set !selectedTab N/A
+  namespace pop
+return
+
+; %1 control name
+; %2 tab name
+; %3 tab text
+; %4 hidden #true/#false
+; %5 function name to call when tab clicked?
+; %6 tooltip
+sub s_addTab
+  set !subDone #TRUE
+  namespace push
+  namespace local sTabs_ . %1
+  set !holderName %1
+  set !tabName %2
+  set !tText %3
+  set !hidden %4
+  if %0 >= 5 && %5 <> n/a
+    set !function %5
+  else
+    set !function N/A
+  set !tabCnt !tabCnt + 1
+  str len !tText
+  set !tabWidth ( #STRRES * !tfontSize ) + 2
+  set !tabName . !tabCnt !holderName
+  set !tabName . !tabCnt !tabName . !tabCnt , _ , !tabName
+  set !tText . !tabCnt !tText
+  set !tTip . !tabCnt %6
+  set !tabWidth . !tabCnt !tabWidth
+  ;pause
+  ;if !tabCnt = 1 2
+    ;set !tabWidthHolder 0
+    ;set !lastTabWidth 0
+  ;if !lastTabWidth < !tabCnt
+  ;{
+    ;set !tabWidthHolder 0
+    ;for !i 1 !tabCnt
+      ;set !tabWidthHolder !tabWidthHolder + !tabWidth . !tabCnt
+    ;set !lastTabWidth !tabCnt
+  ;}
+  set !tabHidden . !tabCnt !hidden
+  set !tabFunction . !tabCnt !function
+  set !selectedTab !tabCnt
+  gosub s_makeList list_nodraw %1 , _ , %2 !2 !3 !4 !5 !6 !7 !8 !9 !10
+  gosub s_clearTabs
+  gosub s_drawTabs
+  namespace pop
+return
+; %1 control name
+sub s_hideTabHolder
+  set !subDone #TRUE
+  namespace push
+  namespace local sTabs_ . %1
+  set !holderName %1
+  gosub s_clearTabs
+  namespace pop
+return
+; %1 holder name
+sub s_deleteTabHolder
+  set !subDone #TRUE
+  namespace push
+  namespace local sTabs_ . %1
+  set !holderName %1
+  if !tabCnt = 0
+    return #false
+  for !i 1 !tabCnt
+  {
+    menu delete sTabs_ . !holderName , _ , !i
+    gosub s_deleteList !tabName . !i
+  }
+  namespace clear
+  namespace pop
+return #true
+; %1 holder name
+; %2 index
+sub s_deleteTabByIndex
+  set !subDone #TRUE
+  namespace push
+  namespace local sTabs_ . %1
+  set !refresh #FALSE
+  set !booya1 n/a
+  if %2 > 0 && %2 <= !tabCnt
+  {
+    set !refresh #true
+    for !i 1 !tabCnt
+    {
+      if !i >= %2 12
+        if !i = %2 && !selectedTab = %2 && !selectedTab > 0
+          set !selectedTab !i - 1
+        if !i > %2 && !i <= !tabCnt 9
+          set !e !i - 1
+          namespace push
+          namespace local sTabs_ . !i
+          set !tabName . !e !tabName . !i
+          set !tText . !e !tText . !i
+          set !tabWidth . !e !tabWidth . !i
+          set !tabHidden . !e !tabHidden . !i
+          set !tabFunction . !e !tabFunction . !i
+          namespace pop
+    }
+    set !tabCnt !tabCnt - 1
+  }
+  if !refresh = #true 5
+    gosub s_clearTabs
+    gosub s_drawTabs
+    gosub s_reDraw !holderName , _ , !tabName
+    namespace pop
+    return #true
+  namespace pop
+return #false
+; %1 control name
+sub s_showTabHolder
+  set !subDone #TRUE
+  namespace push
+  namespace local sTabs_ . %1
+  set !holderName %1
+  gosub s_clearTabs
+  gosub s_drawTabs
+  namespace pop
+return
+; %1 control name
+; %2 tab name
+sub s_hideTabByName
+  set !subDone #TRUE
+  namespace push
+  namespace local sTabs_ . %1
+  set !holderName %1
+  set !tabName %2
+  set !refresh #FALSE
+  set !booya1 n/a
+  for !i 1 !tabCnt
+  {
+    if !tabName . !i = !holderName , _ , !tabName 5
+      set !tabHidden . !i #TRUE
+      set !refresh #TRUE
+      if !i > 1
+        set !selectedTab !i - 1
+      break
+  }
+  if !refresh = #true 5
+    gosub s_clearTabs
+    gosub s_drawTabs
+    gosub s_reDraw !holderName , _ , !tabName
+    namespace pop
+    return #true
+  namespace pop
+return #false
+; %1 control name
+; %2 tab name
+; %3 refresh?
+sub s_showTabByName
+  set !subDone #true
+  namespace push
+  namespace local sTabs_ . %1
+  set !HolderName %1
+  set !tabName %2
+  if %3 = #true
+    set !refresh %3
+  else
+    set !refresh #false
+  for !i 1 !tabCnt
+  {
+    if !tabName . !i = !holderName , _ , !tabName 5
+      set !tabHidden . !i #false
+      set !refresh #TRUE
+      if !i >= 1
+        set !selectedTab !i
+      break
+  }
+  if !refresh = #true 5
+    gosub s_clearTabs
+    gosub s_drawTabs
+    gosub s_reDraw !controlName , _ , !tabName
+    namespace pop
+    return #true
+  namespace pop
+return #false
+; %1 control name
+; %2 tab name
+sub s_selectTabByName
+  set !subDone #true
+  namespace push
+  namespace local sTabs_ . %1
+  set !HolderName %1
+  set !tabName %2
+  set !refresh #FALSE
+  for !i 1 !tabCnt
+  {
+    if !tabName . !i = !holderName , _ , !tabName 4
+      set !tabHidden . !i #FALSE
+      set !selectedTab !i
+      set !refresh #TRUE
+      break
+  }
+  if !refresh = #TRUE 4
+    gosub s_clearTabs
+    gosub s_drawTabs
+    namespace pop
+    return #true
+  namespace pop
+return #false
+; %1 control name
+; %2 tab name
+sub s_updateTabTextByName
+  set !subDone #TRUE
+  namespace push
+  namespace local sTabs_ . %1
+  set !HolderName %1
+  set !tabName %2
+  set !refresh #FALSE
+  for !i 1 !tabCnt
+  {
+    if !tabName . !i = !holderName , _ , !tabName 4
+      set !tabHidden . !i #FALSE
+      set !tText . !i %3
+      set !refresh #TRUE
+      break
+  }
+  if !refresh = #TRUE 4
+    gosub s_clearTabs
+    gosub s_drawTabs
+    namespace pop
+    return #true
+  namespace pop
+return #false
+
+; %1 control name
+; %2 tab index
+sub s_selectTabByIndex
+  set !subDone #true
+  namespace push
+  namespace local sTabs_ . %1
+  set !HolderName %1
+  set !refresh #false
+  if !selectedTab <> %2 && %2 > 0 && %2 <= !tabCnt 4
+    set !tabHidden . %2 #FALSE
+    set !selectedTab %2
+    set !refresh #true
+    break
+  if !refresh = #true 4
+    gosub s_clearTabs
+    gosub s_drawTabs
+    namespace pop
+    return #true
+  namespace pop
+return #false
+sub s_clearTabs
+  if !tabCnt = 0
+    return
+  for !i 1 !tabCnt
+  {
+    menu delete sTabs_ . !holderName , _ , !i
+    gosub s_hideList !tabName . !i
+  }
+return
+; %1 selected tab (Usually not called directly.)
+sub s_drawTabs
+  set !selected %1
+  if !tabCnt = 0
+    return
+  if %0 = 0
+    set !selected !selectedTab
+  set !runWidth !2
+  set !y !3 - !tHeight
+  for !i 1 !tabCnt
+  {
+    if !tabHidden . !i = #FALSE
+    {
+      if !i = !selected 3
+        menu Font BGColor !tSelColor
+        ;pause
+        gosub s_reDraw !tabName . !i
+      else
+        menu Font BGColor !tNSelColor
+      str len !tText . !i
+      set !tabWidth . !i ( #STRRES * !tfontSize ) + 2
+      menu Font Name !tFont
+      menu Font Size !tfontSize
+      set !temp sTabs_ . !holderName , _ , !i
+      menu button !temp !runWidth !y !tabWidth . !i !tHeight !tText . !i
+      menu setprop !temp tooltip !tTip . !i
+      set !runWidth !runWidth + !tabWidth . !i
+    }
+  }
+return
+;-----------------------------------------------------------------
+; %1 listtype
+; %2 listname
+; %3 x
+; %4 y
+; %5 x1
+; %6 x2
+; %7 background color
+; %8 font color
+; %9 font to use
+; %10 fontsize
+; %11 fontStyle  it can be i for italic b for bold u for underline or s for strikeout
+; %12 select item #true/#false
+sub s_makeList
+  set !subDone #true
+  namespace push
+  namespace local smakelist . %2
+  namespace clear
+  for !i 1 10
+    set ! . !i % . !i
+  if %11 in b_i_u_s
+    set !11 %11
+  else
+    set !11 n/a
+  set !noDraw #false
+  if nodraw in !1
+    set !noDraw #true
+  if list in !1
+    set !1 list
+  if combo in !1
+    set !1 combo
+  if check in !1
+    set !1 check
+  set !index 0
+  if !noDraw = #false
+    gosub s_draw %2
+  namespace pop
+return
+
+; %1 listname
+sub s_draw
+  set !subDone #true
+  namespace push
+  namespace local smakelist . %1
+  menu font bgcolor !7
+  menu font color !8
+  menu font name !9
+  menu font size !10
+  if !11 <> n/a
+    menu font style !11
+  else
+    menu font style
+  menu !1 create %1 !3 !4 !5 !6
+  if !index > 0 2
+    for !i 1 !index
+      menu !1 add %1 !list . !i
+  namespace pop
+return
+; %1 listname
+sub s_hideList
+  set !subDone #true
+  namespace push
+  namespace local smakelist . %1
+  menu get %1
+  if #menures > 0
+    set !reselectItem #menures
+  menu delete %1
+  namespace pop
+return
+; %1 listname
+sub s_reDraw
+  set !subDone #true
+  namespace push
+  namespace local smakelist . %1
+  menu delete %1
+  gosub s_draw %1
+  if !reselectItem > 0 2
+    menu !1 select %1 !reselectItem
+    set !reselectItem 0
+  namespace pop
+return
+; %1 listname
+; %2 data/item name
+; #3 select? #true/#false
+; %4 - %8 tag storage information
+sub s_addItemToList
+;event sysmessage s_additemtolist #menubutton
+  set !subDone #true
+  namespace push
+  namespace local smakelist . %1
+  set !index !index + 1
+    set !list . !index %2
+  if %4 <> n/a
+    set !tag1 . !index %4
+  if %5 <> n/a
+    set !tag2 . !index %5
+  if %6 <> n/a
+    set !tag3 . !index %6
+  if %7 <> n/a
+    set !tag4 . !index %7
+  if %8 <> n/a
+    set !tag5 . !index %8
+  menu !1 add %1 %2
+  if %3 = #true
+    menu !1 select %1 !index
+  set #result !index
+  namespace pop
+return #result
+; %1 listname
+; %2 tab name
+; %3 item name
+; %4 - %8 tag storage information
+sub s_addItemToTabList
+  set !subDone #true
+  namespace push
+  namespace local smakelist . %1 , _ , %2
+  set !index !index + 1
+  set !list . !index %3
+  if %4 <> n/a
+    set !tag1 . !index %4
+  if %5 <> n/a
+    set !tag2 . !index %5
+  if %6 <> n/a
+    set !tag3 . !index %6
+  if %7 <> n/a
+    set !tag4 . !index %7
+  if %8 <> n/a
+    set !tag5 . !index %8
+  menu !1 add %1 , _ , %2 %3
+  ;event sysmessage !1 %1 %2 %3 %4 %5 %6 %7 %8
+  set #result !index
+  namespace pop
+return #result
+; %1 listname
+sub s_getListSize
+  set !subDone #true
+  namespace push
+  namespace local smakelist . %1
+  if !index > 0 3
+    set #result !index
+    namespace pop
+    return #result
+  namespace pop
+return #false
+; %1 listname
+sub s_deleteList
+  set !subDone #true
+  namespace push
+  namespace local smakelist . %1
+  if !index > 0 5
+    ;gosub s_deleteAllItems %1
+    gosub s_hideList %1
+    namespace clear
+    namespace pop
+    return #true
+  namespace pop
+return #false
+; %1 listname
+sub s_deleteAllItems
+  set !subDone #true
+  namespace push
+  namespace local smakelist . %1
+  if !index > 0 13
+    for !i 1 !index
+    {
+      set !list . !i n/a
+      set !tag1 . !i n/a
+      set !tag2 . !i n/a
+      set !tag3 . !i n/a
+      set !tag4 . !i n/a
+      set !tag5 . !i n/a
+    }
+    set !index 0
+    gosub s_reDraw %1
+    namespace pop
+    return #true
+  namespace pop
+return #false
+; %1 listname
+; %2 index of item to copy
+; %3 listname to copy to
+; %4 append items to new list?  #true/#false
+; %5 redraw list #true/#false
+sub s_copyItemByIndex
+  set !subDone #true
+  namespace push
+  namespace local smakelist . %1
+  set !l1 %1
+  set !l2 %3
+  set !indexItem %2
+  set !reDraw %5
+  if %4 = #false
+    gosub s_deleteAllItems !l2
+  if !index > 0 && %2 <= !index 8
+    gosub s_addItemToList !l2 !list . !indexItem #true !tag1 . !indexItem !tag2 . !indexItem !tag3 . !indexItem !tag4 . !indexItem !tag5 . !indexItem
+    gosub s_deleteItemByIndex !11 !indexItem #true
+    if !reDraw = #true 2
+      gosub s_reDraw !l2
+      gosub s_reDraw !11
+    namespace pop
+    return #true
+  namespace pop
+return #false
+sub s_copyItemByIndexInvis
+  set !subDone #true
+  namespace push
+  namespace local smakelist . %1
+  if !reselectItem = n/a || !reselectItem = 0 2
+    namespace pop
+    return #false
+  set !l1 %1
+  set !l2 %3
+  set !indexItem !reselectItem
+  set !reDraw %5
+  if %4 = #false
+    gosub s_deleteAllItems !l2
+  if !index > 0 && !reselectItem <= !index 7
+    gosub s_addItemToList !l2 !list . !indexItem #true !tag1 . !indexItem !tag2 . !indexItem !tag3 . !indexItem !tag4 . !indexItem !tag5 . !indexItem
+    ;gosub s_deleteItemByIndex !11 !indexItem #true
+    if !reDraw = #true 2
+      gosub s_reDraw !l2
+      gosub s_reDraw !11
+    namespace pop
+    return #true
+  namespace pop
+return #false
+; %1 listname
+; %2 listname to copy to
+; %3 append items to new list?  #true/#false
+; %4 redraw list #true/#false
+sub s_copySelectedItem
+  set !subDone #true
+  namespace push
+  namespace local smakelist . %1
+  set !l1 %1
+  set !l2 %2
+  set !reDraw %4
+  if %3 = #false
+    gosub s_deleteAllItems !l2
+  menu get !l1
+  if #menures > 0 && #menures <= !index 7
+    gosub s_addItemToList !l2 !list . #menures #true !tag1 . #menures !tag2 . #menures !tag3 . #menures !tag4 . #menures !tag5 . #menures
+    ;gosub s_deleteItemByIndex !l1 #menures #true
+    if !reDraw = #true 2
+      gosub s_reDraw !l2
+      gosub s_reDraw !l1
+    namespace pop
+    return #true
+  namespace pop
+return #false
+; %1 listname1
+; %2 listname2
+; %3 append items to new list?  #true/#false
+sub s_copyAll
+  set !subDone #true
+  namespace push
+  namespace local smakelist . %1
+  if !index > 0
+  {
+    set !l1 %1
+    set !l2 %2
+    set !reDraw #false
+    if %3 = #false 2
+      gosub s_deleteAllItems !l2
+      set !reDraw #true
+    for !i 1 !index
+      gosub s_addItemToList !l2 !list . !i #true !tag1 . !i !tag2 . !i !tag3 . !i !tag4 . !i !tag5 . !i
+    if !reDraw = #true
+      gosub s_reDraw !l2
+    namespace pop
+    return #true
+  }
+  namespace pop
+return #false
+; %1 listname
+; %2 index
+; %3 redraw #true/#false
+sub s_deleteItemByIndex
+  set !subDone #true
+  namespace push
+  namespace local smakelist . %1
+  if !index > 0 && %2 <= !index
+  {
+    for !i %2 !index
+    {
+      set !plusOne !i + 1
+      set !list . !i !list . !plusOne
+      set !tag1 . !i !tag1 . !plusOne
+      set !tag2 . !i !tag2 . !plusOne
+      set !tag3 . !i !tag3 . !plusOne
+      set !tag4 . !i !tag4 . !plusOne
+      set !tag5 . !i !tag5 . !plusOne
+    }
+    set !list . !plusOne n/a
+    set !tag1 . !plusOne n/a
+    set !tag2 . !plusOne n/a
+    set !tag3 . !plusOne n/a
+    set !tag4 . !plusOne n/a
+    set !tag5 . !plusOne n/a
+    set !index !index - 1
+    if %3 = #true
+      gosub s_reDraw %1
+    namespace pop
+    return #true
+  }
+  namespace pop
+return #false
+; %1 listname
+; %2 index
+; %3 redraw #true/#false
+; %4 select item #true/#false
+; %5 data 1 or n/a to skip
+; %6 data 2 or n/a to skip
+; %7 data 3 or n/a to skip
+; %8 data 4 or n/a to skip
+; %9 data 5 or n/a to skip
+; returns #true if successful, #false if not
+sub s_updateAllDataByIndex
+  set !subDone #true
+  namespace push
+  namespace local smakelist . %1
+  if !index > 0 && %2 <= !index
+  {
+    if %5 <> n/a
+      set !tag1 . %2 %5
+    if %6 <> n/a
+      set !tag2 . %2 %6
+    if %7 <> n/a
+      set !tag3 . %2 %7
+    if %8 <> n/a
+      set !tag4 . %2 %8
+    if %9 <> n/a
+      set !tag5 . %2 %9
+    if %3 = #true
+      gosub s_reDraw %1
+    if %4 = #true
+      menu !1 select %1 %2
+    namespace pop
+    return #true
+  }
+  namespace pop
+return #false
+; %1 listname
+; %2 index
+; %3 data index 1-5
+; %4 compare operator <, >, =
+; %5 listname
+; %6 index
+; %7 data index 1-5
+sub s_compareAnyDataByIndex
+  set !subDone #true
+  namespace push
+  namespace local smakelist . %1
+  if %2 > 0 && %2 <= !index && %6 > 0 && %6 <= !index 6
+    gosub s_getDataByIndex %1 %2 %3
+    set !result #result
+    gosub s_getDataByIndex %5 %2 %3
+    if !result %4 #result 2
+      namespace pop
+      return #true
+  namespace pop
+return #false
+
+; %1 listname
+; %2 name
+; %3 data index 1-5
+; %4 compare operator <, >, =
+; %5 listname
+; %6 name
+; %7 data index 1-5
+sub s_compareAnyDataByName
+  set !subDone #true
+  namespace push
+  namespace local smakelist . %1
+  for !i 1 !index
+  {
+    if !list . !i = %2
+    {
+      if %3 = 1
+        set !result !tag1 . !i
+      if %3 = 2
+        set !result !tag2 . !i
+      if %3 = 3
+        set !result !tag3 . !i
+      if %3 = 4
+        set !result !tag4 . !i
+      if %3 = 5
+        set !result !tag5 . !i
+      gosub secondScan %5 %6 %7
+      if #result <> #false 4
+        if !result %4 #result 2
+          namespace pop
+          return #true
+    }
+  }
+  namespace pop
+return #false
+sub secondScan
+  namespace push
+  namespace local smakelist . %5
+  for !i 1 !index
+  {
+    if !list . !i = %6
+    {
+      if %7 = 1
+        set #result !tag1 . !i
+      if %7 = 2
+        set #result !tag2 . !i
+      if %7 = 3
+        set #result !tag3 . !i
+      if %7 = 4
+        set #result !tag4 . !i
+      if %7 = 5
+        set #result !tag5 . !i
+      namespace pop
+      return #result
+    }
+  }
+  namespace pop
+return #false
+; %1 listname
+; %2 item
+; %3 select item #true/#false
+; %4 data 1 or n/a to skip
+; %5 data 2 or n/a to skip
+; %6 data 3 or n/a to skip
+; %7 data 4 or n/a to skip
+; %8 data 5 or n/a to skip
+; returns #true if successful, #false if not
+sub s_updateAllDataByName
+  set !subDone #true
+  namespace push
+  namespace local smakelist . %1
+  for !i 1 !index
+  {
+    if !list . !i = %2
+    {
+      if %4 <> n/a
+        set !tag1 . %2 %4
+      if %5 <> n/a
+        set !tag2 . %2 %5
+      if %6 <> n/a
+        set !tag3 . %2 %6
+      if %7 <> n/a
+        set !tag4 . %2 %7
+      if %8 <> n/a
+        set !tag5 . %2 %8
+      if %3 = #true
+        menu !1 select %1 !i
+      set #result #true
+      gosub s_reDraw %1
+      namespace pop
+      return #result
+    }
+  }
+  namespace pop
+  return #false
+
+; %1 listname
+; %2 item name
+; %3 select item #true/#false
+; %4 data #1-5
+; returns tag# if successful, #false if not
+sub s_getDataByName
+  set !subDone #true
+  namespace push
+  namespace local smakelist . %1
+  for !i 1 !index
+  {
+    ;event sysmessage !list . !i
+    if !list . !i = %2
+    {
+      if %4 = 1
+        set %s_tag !tag1 . !i
+      if %4 = 2
+        set %s_tag !tag2 . !i
+      if %4 = 3
+        set %s_tag !tag3 . !i
+      if %4 = 4
+        set %s_tag !tag4 . !i
+      if %4 = 5
+        set %s_tag !tag5 . !i
+      if %3 = #true
+        menu !1 select %1 !i
+      gosub s_reDraw %1
+      set #result %s_tag
+      namespace pop
+      return #result
+    }
+  }
+  namespace pop
+return #false
+; %1 listname
+; %2 index
+; %3 redraw item #true/#false
+; %4 select item #true/#false
+; %5 new item name
+; returns #true if successful, #false if not
+sub s_updateItemNameByIndex
+  set !subDone #true
+  namespace push
+  namespace local smakelist . %1
+  if !index > 0 && %2 <= !index
+  {
+    set !list . %2 %5
+    if %3 = #true
+      gosub s_reDraw %1
+    if %4 = #true
+      menu !1 select %1 %2
+    namespace pop
+    return #true
+  }
+  namespace pop
+return #false
+; %1 listname
+; %2 item
+; %3 select item #true/#false
+; %4 new item name
+; returns #true if successful, #false if not
+sub s_updateItemNameByName
+  set !subDone #true
+  namespace push
+  namespace local smakelist . %1
+  for !i 1 !index
+  {
+    if !list . !i = %2
+    {
+      set !list . !i %4
+      ; UPDATE item tags here for new list name!
+      if %3 = #true
+        menu !1 select %1 !i
+      gosub s_reDraw %1
+      namespace pop
+      return %4
+    }
+  }
+  namespace pop
+return #false
+; %1 listname
+; %2 item name
+; %3 delete all items found in list #true/#false
+sub s_deleteItemByName
+  set !subDone #true
+  namespace push
+  namespace local smakelist . %1
+  set !deleted !index
+  for !i 1 !index
+  {
+    if !list . !i = %2
+    {
+      for !o !i !index
+      {
+        set !plusOne !o + 1
+        set !list . !o !list . !plusOne
+        set !tag1 . !o !tag1 . !plusOne
+        set !tag2 . !o !tag2 . !plusOne
+        set !tag3 . !o !tag3 . !plusOne
+        set !tag4 . !o !tag4 . !plusOne
+        set !tag5 . !o !tag5 . !plusOne
+      }
+      set !list . !plusOne n/a
+      set !tag1 . !plusOne n/a
+      set !tag2 . !plusOne n/a
+      set !tag3 . !plusOne n/a
+      set !tag4 . !plusOne n/a
+      set !tag5 . !plusOne n/a
+      set !i !i - 1
+      set !index !index - 1
+      if %3 = #false
+        break
+    }
+  }
+  if !index < !deleted
+  {
+    gosub s_reDraw %1
+    set !deleted !index
+    namespace pop
+    return #true
+  }
+  set !deleted !index
+  namespace pop
+return #false
+; %1 listname
+; %2 data
+; %3 delete all matching items?
+sub s_deleteItemByAnyData
+  set !subDone #true
+  namespace push
+  namespace local smakelist . %1
+  set !reDraw #false
+  for !i 1 !index
+  {
+    if !tag1 . !i = %2 || !tag2 . !i = %2 || !tag3 . !i = %2 || !tag4 . !i = %2 || !tag5 . !i = %2
+    {
+      for !o !i !index
+      {
+        set !plusOne !o + 1
+        set !list . !i !list . !plusOne
+        set !tag1 . !o !tag1 . !plusOne
+        set !tag2 . !o !tag2 . !plusOne
+        set !tag3 . !o !tag3 . !plusOne
+        set !tag4 . !o !tag4 . !plusOne
+        set !tag5 . !o !tag5 . !plusOne
+      }
+      set !list . !plusOne n/a
+      set !tag1 . !plusOne n/a
+      set !tag2 . !plusOne n/a
+      set !tag3 . !plusOne n/a
+      set !tag4 . !plusOne n/a
+      set !tag5 . !plusOne n/a
+      set !i !i - 1
+      set !index !index - 1
+      set !reDraw #true
+      if %3 = #false
+        break
+    }
+  }
+  if !reDraw = #true
+  {
+    gosub s_reDraw %1
+    set !delete 0
+    namespace pop
+    return #true
+  }
+  namespace pop
+return #false
+; %1 listname
+; %2 item
+; %3 select in list? #true/#false
+; returns index of item in list or #false if no item found
+sub s_getIndexByItem
+  set !subDone #true
+  namespace push
+  namespace local smakelist . %1
+  for !i 1 !index
+  {
+    if !list . !i = %2
+    {
+      set #result !i
+      if %3 = #true
+        menu !1 select %1 #result
+      namespace pop
+      return #result
+    }
+  }
+  namespace pop
+return #false
+; %1 listname
+; %2 data
+; %3 select in list? #true/#false
+; returns index of item in list or #false if no item found
+sub s_getIndexByAnyData
+  set !subDone #true
+  namespace push
+  namespace local smakelist . %1
+  for !i 1 !index
+  {
+    if %2 = !tag1 . !i || %2 = !tag2 . !i || %2 = !tag3 . !i || %2 = !tag4 . !i || %2 = !tag5 . !i
+    {
+      set #result !i
+      if %3 = #true
+        menu !1 select %1 #result
+      namespace pop
+      return #result
+    }
+  }
+  namespace pop
+return #false
+; %1 listname
+; %2 select in list? #true/#false
+; %3 data to find index, n/a to skip
+; %4 data to find index, n/a to skip ONLY USE ONE OF THESE, REST N/A
+; %5 data to find index, n/a to skip
+; %6 data to find index, n/a to skip
+; %7 data to find index, n/a to skip
+; returns index of item in list or #false if no item found
+sub s_getIndexBySpecificData
+  set !subDone #true
+  namespace push
+  namespace local smakelist . %1
+  set !found #false
+  for !i 1 !index
+  {
+    if %2 = !tag1 . !i 2
+      set #result !i
+      set !found #true
+    if %2 = !tag2 . !i 2
+      set #result !i
+      set !found #true
+    if %2 = !tag3 . !i 2
+      set #result !i
+      set !found #true
+    if %2 = !tag4 . !i 2
+      set #result !i
+      set !found #true
+    if %2 = !tag5 . !i 2
+      set #result !i
+      set !found #true
+    if !found = #true 4
+      if %2 = #true
+        menu !1 select %1 #result
+      namespace pop
+      return #true
+  }
+  namespace pop
+return #false
+; %1 listname
+; %2 index
+; returns item name or #false for failure
+sub s_getItemByIndex
+  set !subDone #true
+  namespace push
+  namespace local smakelist . %1
+  if !index > 0 && %2 <= !index
+    set #result !list . %2
+  else
+    set #result #false
+  namespace pop
+return #result
+; %1 listname
+; %2 index
+; %3 tag number to get 1-5
+; returns indexed data 1-5 or #false for failure
+sub s_getDataByIndex
+  set !subDone #true
+  namespace push
+  namespace local smakelist . %1
+  if !index > 0 && %2 <= !index
+  {
+    if %3 = 1
+      set #result !tag1 . %2
+    if %3 = 2
+      set #result !tag2 . %2
+    if %3 = 3
+      set #result !tag3 . %2
+    if %3 = 4
+      set #result !tag4 . %2
+    if %3 = 5
+      set #result !tag5 . %2
+  }
+  else
+    set #result #false
+  namespace pop
+return #result
+; %1 listname
+; %2 hightlight selected?  #true/#false
+sub s_moveSelectedUp
+  set !subDone #true
+  namespace push
+  namespace local smakelist . %1
+  menu get %1
+  if #menures > 1 && #menures <= !index
+  {
+    set !prev #menures - 1
+    set !cur #menures
+    set !tempList !list . !prev
+    set !tempTag1 !tag1 . !prev
+    set !tempTag2 !tag2 . !prev
+    set !tempTag3 !tag3 . !prev
+    set !tempTag4 !tag4 . !prev
+    set !tempTag5 !tag5 . !prev
+    set !list . !prev !list . !cur
+    set !tag1 . !prev !tag1 . !cur
+    set !tag2 . !prev !tag2 . !cur
+    set !tag3 . !prev !tag3 . !cur
+    set !tag4 . !prev !tag4 . !cur
+    set !tag5 . !prev !tag5 . !cur
+    set !list . !cur !tempList
+    set !tag1 . !cur !tempTag1
+    set !tag2 . !cur !tempTag2
+    set !tag3 . !cur !tempTag3
+    set !tag4 . !cur !tempTag4
+    set !tag5 . !cur !tempTag5
+    gosub s_reDraw %1
+    if %2 = #true
+      menu !1 select %1 !prev
+    namespace pop
+    return #true
+  }
+  namespace pop
+return #false
+; %1 listname
+; %2 highlight?  #true/#false
+sub s_moveSelectedDown
+  set !subDone #true
+  namespace push
+  namespace local smakelist . %1
+  menu get %1
+  if #menures > 0 && #menures < !index
+  {
+    set !prev #menures
+    set !cur #menures + 1
+    set !tempList !list . !prev
+    set !tempTag1 !tag1 . !prev
+    set !tempTag2 !tag2 . !prev
+    set !tempTag3 !tag3 . !prev
+    set !tempTag4 !tag4 . !prev
+    set !tempTag5 !tag5 . !prev
+    set !list . !prev !list . !cur
+    set !tag1 . !prev !tag1 . !cur
+    set !tag2 . !prev !tag2 . !cur
+    set !tag3 . !prev !tag3 . !cur
+    set !tag4 . !prev !tag4 . !cur
+    set !tag5 . !prev !tag5 . !cur
+    set !list . !cur !tempList
+    set !tag1 . !cur !tempTag1
+    set !tag2 . !cur !tempTag2
+    set !tag3 . !cur !tempTag3
+    set !tag4 . !cur !tempTag4
+    set !tag5 . !cur !tempTag5
+    set !prev !prev + 1
+    gosub s_reDraw %1
+    if %2 = #true
+      menu !1 select %1 !prev
+    namespace pop
+    return #true
+  }
+  namespace pop
+return #false
+; %1 listname
+; %2 index to select
+sub s_selectItemByIndex
+  set !subDone #true
+  namespace push
+  namespace local smakelist . %1
+  if !index > 0 && %2 <= !index
+  {
+    menu !1 select %1 %2
+    set #result #true
+  }
+  else
+    set #result #false
+  namespace pop
+return #result
+; %1 listname
+; %2 data
+sub s_selectItemByData
+  set !subDone #true
+  namespace push
+  namespace local smakelist . %1
+  for !i 1 !index
+  {
+    if %2 = !tag1 . !i || %2 = !tag2 . !i || %2 = !tag3 . !i || %2 = !tag4 . !i || %2 = !tag5 . !i
+    {
+      menu !1 select %1 !i
+      namespace pop
+      return #true
+    }
+  }
+  namespace pop
+return #false
+; %1 listname
+; %2 index
+; %3 hightlight selected?  #true/#false
+sub s_moveIndexUp
+  set !subDone #true
+  namespace push
+  namespace local smakelist . %1
+  if %2 > 1 && %2 <= !index
+  {
+    set !prev %2 - 1
+    set !cur %2
+    set !tempList !list . !prev
+    set !tempTag1 !tag1 . !prev
+    set !tempTag2 !tag2 . !prev
+    set !tempTag3 !tag3 . !prev
+    set !tempTag4 !tag4 . !prev
+    set !tempTag5 !tag5 . !prev
+    set !list . !prev !list . !cur
+    set !tag1 . !prev !tag1 . !cur
+    set !tag2 . !prev !tag2 . !cur
+    set !tag3 . !prev !tag3 . !cur
+    set !tag4 . !prev !tag4 . !cur
+    set !tag5 . !prev !tag5 . !cur
+    set !list . !cur !tempList
+    set !tag1 . !cur !tempTag1
+    set !tag2 . !cur !tempTag2
+    set !tag3 . !cur !tempTag3
+    set !tag4 . !cur !tempTag4
+    set !tag5 . !cur !tempTag5
+    gosub s_reDraw %1
+    if %3 = #true
+      menu !1 select %1 !prev
+    namespace pop
+    return #true
+  }
+  namespace pop
+return #false
+; %1 listname
+; %2 data or item name
+; %3 hightlight selected?  #true/#false
+sub s_moveIndexUpByAny
+  set !subDone #true
+  namespace push
+  namespace local smakelist . %1
+  for !i 1 !index
+  {
+    if %2 notin !list . !i && %2 notin !tag1 . !i && %2 notin !tag2 . !i && %2 notin !tag3 . !i && %2 notin !tag4 . !i && !tag5 . !i notin %2
+      continue
+    set !prev %2 - 1
+    set !cur %2
+    set !tempList !list . !prev
+    set !tempTag1 !tag1 . !prev
+    set !tempTag2 !tag2 . !prev
+    set !tempTag3 !tag3 . !prev
+    set !tempTag4 !tag4 . !prev
+    set !tempTag5 !tag5 . !prev
+    set !list . !prev !list . !cur
+    set !tag1 . !prev !tag1 . !cur
+    set !tag2 . !prev !tag2 . !cur
+    set !tag3 . !prev !tag3 . !cur
+    set !tag4 . !prev !tag4 . !cur
+    set !tag5 . !prev !tag5 . !cur
+    set !list . !cur !tempList
+    set !tag1 . !cur !tempTag1
+    set !tag2 . !cur !tempTag2
+    set !tag3 . !cur !tempTag3
+    set !tag4 . !cur !tempTag4
+    set !tag5 . !cur !tempTag5
+    gosub s_reDraw %1
+    if %3 = #true
+      menu !1 select %1 !prev
+    namespace pop
+    return #true
+  }
+  namespace pop
+return #false
+; %1 listname
+; %2 index
+; %3 highlight?  #true/#false
+; returns #true if item moved, #false for failure
+sub s_moveIndexDown
+  set !subDone #true
+  namespace push
+  namespace local smakelist . %1
+  if %2 > 0 && %2 < !index
+  {
+    set !prev %3
+    set !cur %2 + 1
+    set !tempList !list . !prev
+    set !tempTag1 !tag1 . !prev
+    set !tempTag2 !tag2 . !prev
+    set !tempTag3 !tag3 . !prev
+    set !tempTag4 !tag4 . !prev
+    set !tempTag5 !tag5 . !prev
+    set !list . !prev !list . !cur
+    set !tag1 . !prev !tag1 . !cur
+    set !tag2 . !prev !tag2 . !cur
+    set !tag3 . !prev !tag3 . !cur
+    set !tag4 . !prev !tag4 . !cur
+    set !tag5 . !prev !tag5 . !cur
+    set !list . !cur !tempList
+    set !tag1 . !cur !tempTag1
+    set !tag2 . !cur !tempTag2
+    set !tag3 . !cur !tempTag3
+    set !tag4 . !cur !tempTag4
+    set !tag5 . !cur !tempTag5
+    set !prev !prev + 1
+    gosub s_reDraw %1
+    if %3 = #true
+      menu !1 select %1 !prev
+    namespace pop
+    return #true
+  }
+  namespace pop
+return #false
+; %1 listname
+; %2 data or item name
+; %3 highlight?  #true/#false
+; returns #true if item moved, #false for failure
+sub s_moveIndexDownByAny
+  set !subDone #true
+  namespace push
+  namespace local smakelist . %1
+  for !i 1 !index
+  {
+    if %2 notin !list . !i && %2 notin !tag1 . !i && %2 notin !tag2 . !i && %2 notin !tag3 . !i && %2 notin !tag4 . !i && !tag5 . !i notin %2
+      continue
+    set !prev %2
+    set !cur %2 + 1
+    set !tempList !list . !prev
+    set !tempTag1 !tag1 . !prev
+    set !tempTag2 !tag2 . !prev
+    set !tempTag3 !tag3 . !prev
+    set !tempTag4 !tag4 . !prev
+    set !tempTag5 !tag5 . !prev
+    set !list . !prev !list . !cur
+    set !tag1 . !prev !tag1 . !cur
+    set !tag2 . !prev !tag2 . !cur
+    set !tag3 . !prev !tag3 . !cur
+    set !tag4 . !prev !tag4 . !cur
+    set !tag5 . !prev !tag5 . !cur
+    set !list . !cur !tempList
+    set !tag1 . !cur !tempTag1
+    set !tag2 . !cur !tempTag2
+    set !tag3 . !cur !tempTag3
+    set !tag4 . !cur !tempTag4
+    set !tag5 . !cur !tempTag5
+    set !prev !prev + 1
+    gosub s_reDraw %1
+    if %3 = #true
+      menu !1 select %1 !prev
+    namespace pop
+    return #true
+  }
+  namespace pop
+return #false
+; %1 listname
+; returns selected item in list or #false for failure
+sub s_getSelectedItem
+  set !subDone #true
+  namespace push
+  namespace local smakelist . %1
+  menu get %1
+  event sysmessage %1
+  event sysmessage !list1
+  event sysmessage !list0
+  if #menures > 0 && #menures <= !index
+    set #result !list . #menures
+  else
+    set #result #false
+  namespace pop
+return #result
+
+; %1 listname
+sub s_getSelectedIndex
+  set !subDone #true
+  namespace push
+  namespace local smakelist . %1
+  menu get %1
+  set #result #menures
+  ;event sysmessage #menures
+  ;pause
+  namespace pop
+  return #result
+
+; %1 Listname
+; returns selected index of item
+sub s_getListSelected
+  set !subDone #true
+  namespace push
+  namespace local smakelist . %1
+  if !reselectItem <> 0 && !reselectItem <> n/a
+    set #result !reselectItem
+  else
+    set #result #false
+  namespace pop
+return #result
+; %1 listname
+; %2 data number 1-5
+; returns indexed data or #false for failure
+sub s_getSelectedData
+  set !subDone #true
+  namespace push
+  namespace local smakelist . %1
+  menu get %1
+  if #menures > 0 && #menures <= !index
+  {
+    if %2 = 1
+      set #result !tag1 . #menures
+    if %2 = 2
+      set #result !tag2 . #menures
+    if %2 = 3
+      set #result !tag3 . #menures
+    if %2 = 4
+      set #result !tag4 . #menures
+    if %2 = 5
+      set #result !tag5 . #menures
+  }
+  else
+    set #result #false
+  namespace pop
+return #result
+sub showEUOMenu1
+	menu Clear
+	menu Window Title EUOMenu1
+	menu Window Color BtnFace
+	menu Window Size 375 550
+	menu Font Transparent #true
+	menu Font Align Right
+	menu Show 421 270
+return
+
+;--------------------------------------------------------------------
+; Used internally
+; %1 - string to mung
+sub AddUnderscore
+  set !subDone #true
+  namespace push
+  namespace local AU
+  set !tempstring %1
+  AddUnderscore_loop1:
+    str pos !tempstring #SPC
+    if #STRRES <> 0
+    {
+      set !val #STRRES - 1
+      str left !tempstring !val
+      set !left #STRRES
+      set !val !val + 1
+      str del !tempstring 1 !val
+      set !tempstring !left , _ , #STRRES
+      goto AddUnderscore_loop1
+    }
+  set #RESULT !tempstring
+  if * in #result || ' in #result || [ in #result || ] in #result || - in #result || #dot in #result || : in #result 14
+    if * in #result
+      gosub addUnderscoreApostraphe #result *
+    if ' in #result
+      gosub addUnderscoreApostraphe #result '
+    if [ in #result
+      gosub addUnderscoreApostraphe #result [
+    if ] in #result
+      gosub addUnderscoreApostraphe #result ]
+    if - in #result
+      gosub addUnderscoreApostraphe #result -
+    if #dot in #result
+      gosub addUnderscoreApostraphe #result #dot
+    if : in #result
+      gosub addUnderscoreApostraphe #result :
+  namespace pop
+return #RESULT
+sub addUnderscoreApostraphe
+  set !tempstring %1
+  AddUnderscore_loop22:
+    str pos !tempstring %2
+    if #STRRES <> 0
+    {
+      set !val #STRRES - 1
+      str left !tempstring !val
+      set !left #STRRES
+      set !val !val + 1
+      str del !tempstring 1 !val
+      set !tempstring !left , _ , #STRRES
+      goto AddUnderscore_loop22
+    }
+  set #RESULT !tempstring
+return #result

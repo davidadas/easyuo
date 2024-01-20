@@ -1,0 +1,1865 @@
+
+findevent macro 31 0
+set %ver V1.7
+set %house_extra 1
+set %allofit no
+display variable '%' . sa is set to %sa if you get a lot of target issues try setting this to 20 or less. runuo
+
+set %sa 100
+;Make sure to have shovels made and visible in secure to pull from
+;This script is made for a reg suit, however regs work but will not be resupplied automatically
+;This script may be set to auto mine in caves or set your own positions outside (see below)
+;This script will mine 2 seperate areas in the same spot {{{NEW}}} 1.9
+;If the settings are set to 0 the second mining spot will be ingnored preset is :0:
+;This script Now uses CEO's healthwatch {{{New v1.15}}}
+;This script will med and hide at secure if options are set
+;This script will hide at each rune location if set {{{New V1.11}}}
+;The smelting part now works if you wish to set it, saves a ton of secure space
+;Put in a safety for thoes that have the occasional overweight problem, it will drop
+;1 regular ore at a time until you are no longer overweight{{{NewV1.10}}}
+;Auto walk to secure is dependant on the spot you stand when you start the script, you can manually change if you want a perm spot {{{NewV1.10}}}
+;Reworked the entire script and pulled out about 40 lines of usless code{{{NewV1.10}}}
+;If you mine rock put a pack in the upper right corner of the chest, you may have to reposition
+;secure and it will be dropped into the bag, if not it will drop into the secure.
+;Will mine from bank or house if set
+;If you have read this far good for you, put #false in the line below to remove begining menu
+set %script #true
+Tile init
+;���������������SETTING TO MODIFY AS NEEDED������������
+set %tinkershovels off           ;set to ON to use tinkering
+set %magery #true                ;set this to #true for Magery #false for Chiv
+set %hidefield #false            ;set this to #true if you wish to hide at each rune location #false if not
+set %color #true                  ;This will seperate colored rock in its own spot in chest if set to #true
+set %manaset #FALSE        ; set if you want to med up at secure
+set %hideme #false            ;set if you wish to hide at the secure(GOOD PRACTICE)
+set %smelt #true            ;set #TRUE FOR SMELTING
+set %s 3                     ;set this to the amount of shovels you want to pull from your secure
+set %banks 14    ;set this to 15 if using at the bank
+set %DigWait 20
+set %noproperty #false
+set %ingotcount #true
+;�������������House Variable Set-up����������������
+
+sub noproperty
+;*******Program only if non AOS **********
+;for non property the first setting is for your port home
+;book. all others are for ore books. you can add as
+;many as you like giving the rune book id and how
+;many runes in each book.
+if %noproperty = #true
+{
+set %_runebook0 xxxxxxx ;home book id
+set %houserune 10
+set %_runebook1 xxxxxxx
+set %first1 x
+set %_runebook2 xxxxxxx
+set %first2 x
+set %_runebook3 xxxxxxx
+set %first3 x
+set %usetwobooks x <---change the x to the amount of rune books you have not including the port home book.
+set %z %usetwobooks
+}
+return
+
+
+gosub ids
+gosub setup
+
+
+
+sub setup
+set %asd 30
+set %asa 10
+set %stop 0
+Menu Clear
+   Menu hide
+   Menu Window size 320 40
+   Menu Window Color $D9D0C8
+   Menu Font bgcolor $D9D0C8
+   Menu Font Color Black
+   menu window transparent 80
+Menu Font Style b
+Menu font size 10
+   Menu Font Name tahoma
+   Menu Window Title Jebbits Miner Rail
+Menu Clear
+   Menu hide
+   Menu Window size 350 330
+   Menu Window Color $D9D0C8
+   Menu Font bgcolor $D9D0C8
+   Menu Font Color Black
+   Menu Font Name tahoma
+   Menu Window Title Jebbits OTF Rail Miner
+   Menu Text txt 10 10 Initializing
+Menu Font Color red
+ Menu Text txt1 5 30 Ver %ver OSI/FS 4/06
+Menu Font Color black
+  menu show 0 0
+menu show 0 0
+   menu hideeuo
+wait 60
+menu delete txt1
+Menu Text txt 10 %asa Initializing.
+Menu Text txt1 10 %asd Opening Paperdoll
+exEvent popup #charid 1
+wait 20
+contpos 650 0
+Menu Font Color green
+Menu Text txt2 150 %asd Passed
+set %aassdd %asd + 50
+Menu Font Color black
+Menu Text txt2 200 %asd Charid
+Menu Font Color red
+Menu Text txt2 298 %asd #charid
+Menu Font Color black
+set %asd %asd + 17
+Menu Text txt 10 10 Initializing..
+Menu Text txt1 10 %asd Opening Status
+event macro 8 2
+      wait 20
+      contpos 200 200
+      wait 20
+     CLICK 596 358
+Menu Font Color green
+Menu Text txt2 150 %asd Passed
+Menu Font Color black
+Menu Text txt2 200 %asd Max Weight
+Menu Font Color red
+Menu Text txt2 290 %asd #MAXWEIGHT
+menu delete txt
+Menu Font Color black
+set %asd %asd + 17
+Menu Text txt 10 10 Initializing...
+Menu Text txt1 10 %asd Opening Backpack
+event macro 8 7
+	 wait 20
+      contpos 615 330
+      wait 10
+Menu Font Color green
+Menu Text txt2 150 %asd Passed
+Menu Font Color black
+Menu Text txt2 200 %asd Backpack Id
+Menu Font Color red
+Menu Text txt2 290 %asd #backpackid
+Menu Font Color black
+menu delete txt
+set %asd %asd + 17
+Menu Text txt 10 10 Initializing....
+Menu Text txt1 10 %asd Finding Shovel
+         finditem %shovelid c_ , #BACKPACKID
+wait 30
+        if #findid = x 3
+set %stop 2
+Menu Font Color red
+Menu Text txt2 150 %asd Failed
+if #findid <> x 2
+Menu Font Color green
+Menu Text txt2 150 %asd Passed
+Menu Font Color black
+menu delete txt
+set %asd %asd + 17
+Menu Text txt 10 10 Initializing.......
+Menu Text txt1 10 %asd Locating Secure
+wait 30
+Menu Font Color Green
+if %bank = #true || %banks = 15
+{
+Menu Text txt2 150 %asd Bank
+msg bank $
+wait 20
+set %secureid #contid
+}
+         else
+{
+Menu Text txt2 150 %asd House
+finditem jif_kif_iif_HIF_bud G_2
+        wait 10
+ set #LOBJECTID #findid
+	event macro 17 0
+set %secureid #findid
+wait 5
+}
+if #findid = x && %bank <> 15
+{
+display Unable to find Secure, please target Secure now to set
+set #targcurs 1
+forge_wa:
+if #targcurs = 1
+goto forge_wa
+wait 15
+set %secureid #Ltargetid
+set #LOBJECTID %secureid
+	event macro 17 0
+	wait 10
+Menu Font Color red
+Menu Text txt2 150 %asd Script May Fail
+Menu Text txt2 290 %asd %secureid
+}
+Menu Font Color black
+if #findid <> x
+{
+Menu Font Color green
+Menu Text txt2 150 %asd House
+Menu Font Color black
+Menu Text txt2 200 %asd Secure Id
+Menu Font Color red
+Menu Text txt2 290 %asd %secureid
+}
+Menu Font Color black
+if #findid = x && %bank = #true
+{
+Menu Font Color red
+Menu Text txt2 150 %asd Bank
+}
+Menu Font Color black
+      wait 20
+      menu delete txt
+set %asd %asd + 17
+Menu Text txt 10 10 Initializing........
+Menu Text txt1 10 %asd Locating Storage Box
+WAIT 10
+if %bank = #true || %banks = 15
+        finditem cud_hkf_hif c_
+else
+finditem cud_hkf c_ , %secureid
+        wait 25
+if #findid = x
+{
+display Unable to find Storage box, please target Storage box now to set
+set #targcurs 1
+forge_wai:
+if #targcurs = 1
+goto forge_wai
+wait 15
+set %orebagid #Ltargetid
+Menu Font Color red
+Menu Text txt2 150 %asd Script May Fail
+Menu Text txt2 290 %asd %orebagid
+}
+if #findid <> x
+{
+Menu Font Color green
+Menu Text txt2 150 %asd Passed
+}
+Menu Font Color black
+      wait 20
+      set #LOBJECTID #findid
+      set %orebagid #findid
+      wait 10
+      Menu Font Color black
+      if #findid <> x
+Menu Text txt2 200 %asd Ore Bag
+Menu Font Color red
+Menu Text txt2 290 %asd %orebagid
+set %asd %asd + 17
+if%tinkershovels = on
+{
+Menu Font Color black
+Menu Text txt1 10 %asd Locating ingot bag
+  finditem CKF_LKF C_ , %secureid
+  wait 15
+  set #lobjectid #findid
+  set %regstorebagid #findid
+  if #findid = x
+  {
+  Menu Font Color red
+  Menu Text txt2 150 %asd Failed
+  Menu Font Color black
+Menu Text txt2 200 %asd Ingot Bag
+}
+if #findid <> x
+{
+ Menu Font Color green
+  Menu Text txt2 150 %asd Passed
+  Menu Font Color black
+  Menu Text txt2 200 %asd Ingot Bag
+  Menu Font Color red
+Menu Text txt2 290 %asd %regstorebagid
+}
+
+   }
+   set %asd %asd + 17
+Menu Font Color black
+   menu delete txt
+Menu Text txt 10 10 Initializing.........
+Menu Text txt1 10 %asd Locating forge
+findItem JBG_KUJ_OUJ_SOJ_HVJ_CVJ_WUJ_ G_3
+wait 25
+if #findid = x && %smelt = #true
+{
+display Unable to find forge, please target forge now to set
+set #targcurs 1
+forge_wait:
+if #targcurs = 1
+goto forge_wait
+wait 15
+set %forge %forge , _ , #Ltargetid
+Menu Font Color red
+Menu Text txt2 150 %asd Script May Fail
+}
+if #findid <> x 2 && %smelt = #true 2
+Menu Font Color green
+Menu Text txt2 150 %asd Passed
+if #findid <> x && %smelt = #false 2
+Menu Font Color blue
+Menu Text txt2 150 %asd Disabled
+wait 50
+Menu Font Color black
+set %asd %asd + 17
+Menu Text txt 10 10 Initializing........
+Menu Text txt1 10 %asd Book Gump
+WAIT 10
+finditem ZBN c_ , #backpackid
+wait 20
+if #findid = x
+{
+Display msg Not finding any rune books. Make sure you name them in game with the Name Ore and the number of runes. Example: Ore 16
+halt
+}
+else
+{
+set %scnt #scnt + 5
+set #lobjectid #findid
+set %drag #contkind
+event macro 17 0
+}
+
+hang:
+wait 35
+if %drag = #contkind && %scnt > #scnt
+{
+goto hang
+}
+else
+{
+if #contkind = %drag
+set %smoke yes
+set %drag #contkind
+Menu Font Color black
+Menu Text txt2 200 %asd Gump Id
+Menu Font Color red
+Menu Text txt2 290 %asd %drag
+}
+click 345 281 r
+
+if %smoke = yes
+{
+set %stop 2
+Menu Font Color red
+Menu Text txt2 150 %asd Failed
+}
+if %smoke <> yes
+{
+Menu Font Color green
+Menu Text txt2 150 %asd Passed
+}
+Menu Font Color black
+set %asd %asd + 17
+Menu Text txt 10 10 Initializing........
+Menu Text txt1 10 %asd Setting Books
+WAIT 10
+if %noproperty = #true
+gosub noproperty
+else
+gosub booksetup
+if %_runebook0 = 0 || %_runebook1 = 0
+{
+set %stop 2
+Menu Font Color red
+Menu Text txt2 150 %asd Failed
+}
+else
+{
+Menu Font Color green
+Menu Text txt2 150 %asd Passed
+Menu Font Color black
+Menu Text txt2 200 %asd Ore Books
+Menu Font Color red
+Menu Text txt2 290 %asd %z
+}
+
+menu delete txt
+set %asd %asd + 17
+Menu Font Color green
+Menu Text txt 10 10 Initializing.........
+if %stop <> 2 2
+Menu Text txt1 10 %asd Done And Ready For Action
+wait 60
+if %stop = 2 3
+Menu Font Color red
+Menu Text txt1 5 %asd Please Fix Failed Tests And Restart
+halt
+set %asd %asd + 17
+Menu Font Color black
+Menu Text txt1 10 %asd Free Shard
+Menu Font Color Green
+if %sa = 20
+{
+Menu Text txt2 150 %asd Yes
+Menu Font Color Blue
+Menu Text txt3 200 %asd Z Depth Limited To %sa
+}
+else
+{
+Menu Font Color Green
+Menu Text txt2 150 %asd No
+Menu Font Color Blue
+Menu Text txt3 200 %asd Z Depth Maxed To %sa
+}
+wait 15
+set %asd %asd + 17
+Menu Font Color black
+Menu Text txt1 10 %asd Using Magery
+Menu Font Color green
+if %magery = #true
+{
+Menu Text txt2 150 %asd Enabled
+}
+else
+{
+Menu Font Color Red
+Menu Text txt2 150 %asd Disabled
+}
+wait 15
+set %asd %asd + 17
+Menu Font Color black
+Menu Text txt1 10 %asd Field Hiding
+Menu Font Color green
+if %hidefield = #true
+{
+Menu Text txt2 150 %asd Enabled
+}
+else
+{
+Menu Font Color Red
+Menu Text txt2 150 %asd Disabled
+}
+wait 15
+set %asd %asd + 17
+Menu Font Color black
+Menu Text txt1 10 %asd Smelting
+Menu Font Color green
+if %smelt = #true
+{
+Menu Text txt2 150 %asd Enabled
+}
+else
+{
+Menu Font Color Red
+Menu Text txt2 150 %asd Disabled
+}
+wait 15
+set %asd %asd + 17
+Menu Font Color black
+Menu Text txt1 10 %asd Bank
+Menu Font Color green
+if %banks = 15
+{
+Menu Text txt2 150 %asd Enabled
+}
+else
+{
+Menu Font Color Red
+Menu Text txt2 150 %asd Disabled
+}
+wait 15
+set %asd %asd + 17
+Menu Font Color black
+Menu Text txt1 10 %asd Ingot Counter
+if %ingotcount = #true
+{
+Menu Font Color green
+Menu Text txt2 150 %asd Enabled
+}
+else
+{
+Menu Font Color Red
+Menu Text txt2 150 %asd Disabled
+}
+wait 50
+menu hide
+CLICK 128 192 R
+hide easyuo
+msg $
+
+SET %cx #charposx
+SET %cy #charposy
+set %cz #charposz
+return
+
+sub ids
+;********DONT CHANGE ANYTHING PAST HERE*****************
+set %fullpars #true
+set %more 0
+set %www 50
+set %hold 1
+set %end 5
+set %ddd 390
+set %delay 1
+set %Totalmana #mana - 5
+set %shovels 5
+set %dropspot 0
+set %tinkerid JTL_ktl
+set %dragingots 100
+set %forge JBG_KUJ_OUJ_SOJ_HVJ_CVJ_WUJ
+set %shovelid WWF_qpf_twf_qpf
+set %alloreid DWJ_GWJ_EWJ_TVJ_enk_gxs_axs_tws_uws_vws_zws_ewh
+set %ingotid ENK
+set %graniteid BVI
+set %delay 30
+set %digspotx 290
+set %digspoty 285
+set %runebook 1
+set %runenum 1
+set %logweight 12
+set %weight #weight
+set %weighttotal 0
+set %targetfirst 0
+set %alreadymade1 0
+set %doublecheck 0
+set %counterstarted 0
+set %_runebook0 0
+set %_runebook1 0
+set %_runebook3 0
+set %_runebook2 0
+set %usetwobooks 0
+set %resul 0
+set %mark 0
+set %k 1
+set %z 0
+set %maz 1
+set %maxweight #maxweight - 25
+set %set 0
+set %log_all #true
+set %scnt 0
+set *511 pause
+if %magery = #true
+set %spot 345
+else
+set %spot 381
+return
+
+sub booksetup
+if %noproperty = #true
+goto godown
+     runebook1:
+finditem ZBN c_ , #backpackid
+if #findid = x && %z = 0
+set %stop 2
+if #findid = x
+goto over
+event property #findid
+IF ore in #property
+{
+set %z %z + 1
+set #lobjectid #findid
+set %_runebook , %z #lobjectid
+gosub rune
+set %first , %z %qqq
+}
+ignoreitem #findid
+goto runebook1
+over:
+ignoreitem reset
+
+homebook:
+finditem ZBN c_ , #backpackid
+       event property #findid
+        wait 10
+if #findid = x
+{
+	set %stop 2
+	goto godown
+}
+if home in #property
+{
+       set #lobjectid #findid
+       set %_runebook0 #lobjectid
+       gosub rune
+       set %houserune %rrr
+ignoreitem reset
+goto godown
+}
+       ignoreitem #findid
+goto homebook
+ godown:
+return
+
+sub rune
+   set %qqq 16
+up:
+   if %qqq notin #property 2
+      set %qqq %qqq - 1
+       goto up
+        set %rrr %qqq
+     return
+
+
+set %usetwobooks %z
+set %number %first1
+
+;****************MAIN MENU**********************
+
+;******PRE-SHOVEL CHECK***********
+loop1:
+menu hide
+finditem %shovelid c_ , #backpackid
+if #findkind <> 0
+gosub shovell
+
+;***********MAIN LOOP****************
+
+loop:
+gosub recall
+set %jindex #jindex
+gosub digger
+goto loop
+
+;******FIND SHOVEL SUBROUTINE***********
+sub findshovel
+finding:
+finditem %shovelid c_ , #backpackid
+wait 5
+return #findkind = -1
+;**********DIGGING SUBROUTINE***********
+sub digger
+goSUB SEARCHGROUND
+gosub 8x8_scanner 2 1 #CharPosX #CharPosY
+if %resul = 0
+move %FOUND_LOCATION_X_ . %k %FOUND_LOCATION_Y_ . %k 0 3s
+set %resul 1
+if #results = 0
+goto moveo
+set #ltargetkind 2
+for %ii 1 25
+{
+if %health = #true && #hits < #maxhits - 10
+gosub health
+if %hidefield = #true && H notin #charstatus
+gosub hide
+gosub findshovel
+if #result = -1
+{
+gosub port_home
+}
+if %resul = 0
+{
+if %initial <> cave_floor
+move %FOUND_LOCATION_X_ . %k %FOUND_LOCATION_Y_ . %k 0 3s
+}
+set %resul 1
+if #weight > %begin + 12
+set %maxweight #maxweight - 48
+else
+set %maxweight #maxweight - 24
+set %begin #weight
+IGNOREITEM RESET
+set #lobjectid #findid
+event macro 17 0
+target
+IGNOREITEM #FINDID
+if %initial = cave_floor
+{
+wait 10
+set #ltargety #CHARPOSY
+set #ltargetx #CHARPOSX
+set #ltargetz #CHARPOSZ
+set #LTARGETTILE #tiletype
+set #ltargetkind 3
+WAIT %DigWait
+  event macro 22 0
+goto moveo
+}
+set #ltargety %FOUND_LOCATION_Y_ . %k
+set #ltargetx %FOUND_LOCATION_X_ . %k
+set #ltargetz %FOUND_LOCATION_Z_ . %k
+set #LTARGETTILE #tiletype
+              set #ltargetkind 2
+event macro 22 0
+WAIT %DigWait
+moveo:
+gosub check
+}
+return
+
+;-----------------FIELD HIDING-------------------------
+
+sub hide
+if  H notin #charstatus
+   {
+    if %sss = n/a
+     set %sss 0
+      if #scnt < %sss + 10
+      goto notnow
+      event macro 13 21
+      set %sss #scnt
+    }
+}
+notnow:
+return
+
+;**************CHECK SUBROUTINE****************
+sub check
+set %jindex1 %jindex
+while %jindex < #jindex
+{
+set %jindex %jindex + 1
+SCANJOURNAL %Jindex
+if you_loosen in #journal
+      goto nxtr
+if cannot_hold in #journal
+set %maxweight #weight - 25
+if no_metal in #journal && %mark <> 1
+gosub loc2
+If no_metal in #journal && %mark = 1
+GOTO NEXTRUNE2
+}
+
+while %jindex1 < #jindex
+{
+set %jindex1 %jindex1 + 1
+   set %counter %counter + 1
+   scanjournal %jindex1
+if #weight > %maxweight || Your_backpack_is_full in #journal
+{
+if #weight > #maxweight
+gosub dragit
+      gosub port_home
+      gosub searchground
+      set %jindex1 #jindex
+      }
+IF can't_mine in #journal || cannot_see in #journal || far_away in #journal || can't_reach in #journal || target_cannot in #journal || %ltx = 0
+{
+DELETEJOURNAL
+if %FOUND_LOCATIONS > %k
+{
+set %resul 0
+set %k %k + 1
+goto nxtr
+}
+if  %MARK = 0
+         gosub loc2
+      nextrune2:
+set %k 1
+set %mark 0
+      set %runenum %runenum + 1
+      set %targetfirst 0
+      set %prospector 0
+      set %counterstarted 0
+         if %runenum >= %first . %maz + 1
+            {
+set %maz %maz + 1
+if ( %maz > %z && %z <> 1 ) || ( %z = 1 )
+set %maz 1
+set %number %first . %maz
+set %runenum 1
+}
+      gosub recall
+gosub 8x8_scanner 2 1 #CharPosX #CharPosY
+      }
+}
+set %jindex #jindex
+nxtr:
+set %jindex #jindex
+   return
+
+   sub port_home
+set %ii 1
+set %move 1
+set %noshov 0
+DELETEJOURNAL
+      set %runenum2 %runenum
+      set %runebook2 %maz
+      set %runenum %houserune
+set %maz 0
+set %house 1
+      gosub house
+      set %house 0
+      set %maz %runebook2
+      set %runenum %runenum2
+      set %counterstarted 0
+      gosub recall
+   return
+
+;***********HOUSE SUBROUTINE************
+sub house
+gosub recall
+wait 20
+;***********WALKING TO SECURE*************
+set %scnt #scnt
+movingtime:
+if #scnt - %scnt > 4
+     {
+      set %scnt #scnt
+      event pathfind %cx %cy %cz
+      wait 2s
+     }
+      move %cx %cy 0 1s
+if #charposx <> %cx ||  #charposy <> %cy
+      goto movingtime
+      set %x + 1
+      set %counter 0
+;***************************HIDING********************
+if %hideme
+      event macro 13 21
+      wait 5
+;****************FIND AND OPEN CHEST*************
+opensecure:
+;Find chest
+if %banks = 15 2
+msg Bank $
+goto skip
+FINDITEM %SECUREID
+IF #FINDKIND = -1
+{
+GOTO OPENSECURE:
+}
+skip:
+      ;Open chest
+      set #LOBJECTID %secureid
+      set #findmod 0_0
+      set #NEXTCPOSX 27
+      set #NEXTCPOSY 49
+      event macro 17 0
+WaitSecureToOpen:
+    finditem %orebagid
+if #findid <> %orebagid
+   goto WaitSecureToOpen
+INGOREITEM RESET
+;---------------------------------------------Ore routine-------------------------------------------------
+IF %SMELT
+gosub smelt
+ignoreitem reset
+if %ingotcount = #true
+gosub finditall
+ore:
+finditem %alloreid c_ , #backpackid
+     if #findkind = 1
+       {
+          IGNOREITEM #findid
+           goto ore
+             }
+
+            if #findkind = 0
+          {
+     goSUB moveItem #findid #backpackid %orebagid
+                    goto ore
+               }
+
+rock:
+set %w #weight
+finditem BVI_dwj_ c_ , #backpackid
+if #findkind <> 0
+goto mana
+if #findkind = 0 && %color = #true
+{
+   event drag #findid
+if #findCol = 0   ;regular
+
+
+click 168 167 p
+if #findCol = 2419   ;Dull Copper
+click 145 167 p
+if #findCol = 2406  ;Shadow
+click 122 167 p
+if #findCol = 2413  ;Copper
+click 102 167 p
+if #findCol = 2418   ;Bronze
+click 79 167 p
+if #findCol = 2213  ;Golden
+click 61 216 p
+if #findCol = 2425  ;Agapite
+click 81 216 p
+if #findCol = 2207  ;Verite
+click 105 216  p
+if #findCol = 2219   ;Valorite
+clcik 120 216 p
+goto rock
+   }
+if #findkind = 0
+{
+    event drag #findid
+     wait 20
+      click 151 167 p
+   }
+;if %w = #weight
+;{
+;event drag #findid
+;wait 20
+   ; click 197 115 p
+;}
+goto rock
+mana:
+gosub shovell
+IF %manaset = #false
+{
+
+          return
+}
+if #mana < %Totalmana
+{
+            event macro 13 46
+            wait 10s
+            goto mana
+}
+return
+;--------------------------------------GET SHOVEL---------------------------------------------------------
+sub shovell
+event macro 8 7
+	 wait 20
+      contpos 615 330
+finditem %shovelid c_ , #backpackid
+ignoreitem #findid
+finditem %shovelid c_ , #backpackid
+wait 10
+if #findid <> x
+{
+ignoreitem reset
+goto bakk
+}
+ignoreitem reset
+set %amount 0
+getmore:
+finditem %shovelid c_ , %secureid
+wait 1s
+if #findkind = -1 && %tinkershovels = off
+{
+          IGNOREITEM #findid
+          pause
+}
+if %tinkershovels = on
+gosub tinkshovel
+if #findkind = 0
+{
+      more:
+         goSUB moveItem #findid %secureid #backpackid
+     finditem %shovelid c_ , %secureid
+set %amount %amount + 1
+wait 5
+}
+if #findkind = -1
+   {
+    return
+     }
+      If %amount < %shovels
+     {
+   goto more
+}
+bakk:
+return
+
+;**********************RUNEBOOK SUBROUTINE**********************************
+sub Recall
+set %x 0
+set %sss = 0
+recallagain:
+	set %_runebooknum %_runebook . %maz
+	recallhouse:
+	set %_runenumber %runenum
+	set %_style 0
+	set %_time 10
+
+	set %_oldx #charposx
+	set %_oldy #charposy
+
+	set %_page 0
+	set %_side 0
+	set %_num %_runenumber / 2
+	set %_page %_runenumber + 1
+	set %_page %_page / 2
+	set %_num %_num * 2
+recallselectbook:
+recallopenagain:
+wait 5
+	set #LOBJECTID %_runebooknum
+	event macro 17 0
+	set #SCNT 0
+recallwaitforbook:
+	if #SCNT > 10
+		goto recallopenagain
+;Next line changes with patch
+;-----------------------------------------------------------------------------------------------------------------------------------------
+	if #CONTKIND <> %Drag
+		goto recallwaitforbook
+	deletejournal
+set %spot2 #contposy + 195
+if %magery = #true
+set %spot #contposy + 145
+else
+set %spot #contposy + 178
+
+	if %_num = %_runenumber
+		set %_side 1
+	set %_runex #contposx + 139
+   if %_side = 1
+      set %_runex #contposx + 299
+	set %_pagexmod %_page * 34
+	set %_pagex #contposx + 104
+	set %_pagex %_pagex + %_pagexmod
+	if %_page > 4
+		set %_pagex %_pagex + 31
+		set %back_space #jindex
+WAIT 5
+	click %_pagex %spot2
+	click %_pagex %spot2
+WAIT 15
+	click %_runex %spot
+	set #SCNT 0
+	scanjournal 1
+if too_encumbered in #journal
+gosub dragit
+recallwaitforrecall:
+while %back_space < #jindex
+{
+set %back_space %back_space + 1
+scanjournal %back_space
+	if something_is_blocking in #journal || that_location in #journal || no_charges in #journal
+	{
+	set %runenum %runenum + 1
+if ( %_runebook0 = %_runebook . %maz && %runenum >= %HOUSERUNE + %house_extra )
+{
+set %runenum %houserune
+goto recallhouse
+wait 25
+}
+if %_runebook0 <> %_runebook . %maz
+  goto done
+}
+}
+done:
+set %back_space #jindex
+	 if ( %runenum >= %first . %maz + 1 ) && ( %_runebook0 <> %_runebook . %maz )
+            {
+set %maz %maz + 1
+if %maz > %z
+set %maz 1
+set %number %first . %maz
+set %runenum 1
+}
+	if #SCNT > 10
+		goto recallagain
+	if for_this_spell in #journal 2
+		event macro 13 46
+		wait 30
+	if %_oldx = #charposx
+	{
+		if %_oldy = #charposy
+		{
+			goto recallwaitforrecall
+		}
+	}
+wait 30
+set %nomove 0
+set %resul 0
+	return
+
+;----------------------------------------SMELT-------------------------------------------
+sub smelt
+set %cycle 0
+ignoreitem reset
+findItem %forge g_3
+wait 10
+if #findid = x
+pause
+	set #lTargetID #findid
+	set #lTargetKind 1
+_smelt:
+if %cycle = 10
+goto boom
+set %cycle %cycle + 1
+scanjournal #jindex
+if no_idea in #journal
+ignoreitem #findid
+	findItem DWJ_EWJ_GWJ_tvj C_
+	wait
+	if #findKind = 0
+	{
+if #findtype = TVJ && #findstack = 1
+  {
+    ignoreitem #findid
+    goto _smelt
+}
+		set #lObjectID #findID
+		event Macro 17 0
+		wait 15
+		event Macro 22 0
+wait 23
+}
+		goto _smelt
+	}
+ignoreitem reset
+boom:
+return
+
+;----------------------------------------HEAL----------------------------------------
+sub health
+if #hits >= #maxhits - 10
+return
+set *511 resume
+loopit:
+wait 10
+if #hits < #maxhits - 10
+goto loopit
+set *511 pause
+return
+
+;------------------------OVERWEIGHT ORE DRAG-----------------------------
+sub dragit
+FINDdwj:
+if #weight <= #maxweight
+goto dragout
+finditem dwj c_  , #backpackid
+If #findcol <> 0 && #FINDID <> X
+  {
+    ignoreitem #findid
+     goto FINDdwj
+      }
+      if #findid = x && #weight > #maxweight
+      {
+      ignoreitem reset
+      finditem dwj c_  , #backpackid
+      }
+if #findkind = 0
+      {
+      gosub amount
+          wait 5
+          if #findstack < %logamount
+          Exevent drag #Findid #findstack
+          else
+            Exevent drag #Findid %logamount
+          wait 20
+          if #contsize = 168_74
+          {
+          set %contx #contposx + 20
+          set %conty #contposy + 20
+          click %contx %conty r
+          }
+
+cli:
+if #CLIXRES = 640
+       gosub drop 307 251
+else
+gosub drop 390 300
+     }
+if #findkind = -1 || #weight <= #maxweight
+goto dhe
+   GOTO FINDdwj
+dhe:
+return
+
+sub drop
+
+if %sq = #weight && #lliftedkind = 0 && #weight > #maxweight
+{
+          wait 20
+          Exevent Dropg #charposx #charposy #charposz
+
+if %add > 22 || #weight < #maxweight
+  goto over
+goto reclick
+over:
+return
+
+
+sub amount
+set %logamount #weight - #maxweight
+set %divide ( ( %logamount / 2 ) * 2 )
+if %divide = %logamount
+set %logamount ( ( %logamount / %logweight ) + 1 )
+else
+set %logamount ( ( ( %logamount + 1 ) / %logweight ) + 1 )
+amountend:
+return
+;-------------------------------Program loc below here-------------------------------
+;Directions:
+;Set the %digspotx equal to the x-cursor-coordinate of the digging spot.
+;Set the %digspoty equal to the y-cursor-coordinate of the digging spot.
+;The first set of 16 locations is for your main ore runebook.
+;The second set of 16 locations is for the optional ore runebook.
+sub loc
+SET %MARK 0
+set %x + 1
+
+;==================================
+; Script Name: 8x8-scanner (former Quantizer)
+; Author: Orngrimm
+; Version: 1.4
+; Client Tested with: 4.0.6a
+; EUO version tested with: 1.42.009D
+; Shard OSI / FS: OSI
+; Revision Date: 29.11.2004
+; Public Release: 27.6.2004
+; Global Variables Used: none
+; Thanks goes to: CyberPope for additional tileIDs, Deepgreen for the tile-plugin
+; Purpose: Searches for certain spots in range.
+; Only one in every 8x8-Grid is accepted and returned.
+;==================================
+sub 8x8_scanner
+; save vars, create namespace... & make hurry!
+nameSpace Push
+nameSpace Local #sysTime , #random
+set !old_lpc #LPC
+Linespercycle 500
+
+tile init
+set !layer %2
+set !range %1
+set !debug #FALSE
+set !mine_mountains 220_221_222_223_224_225_226_227_228_229_230_231_236_237_238_239_240_241_242_243_
+	+244_245_246_247_252_253_254_255_256_257_258_259_260_261_262_263_268_269_270_271_
+	+272_273_274_275_276_277_278_279_286_287_288_289_290_291_292_293_294_296_296_297_
+	+321_322_323_324_467_468_469_470_471_472_473_474_476_477_478_479_480_481_482_483_
+	+484_485_486_487_492_493_494_495_543_544_545_546_547_548_549_550_551_552_553_554_
+	+555_556_557_558_559_560_561_562_563_564_565_566_567_568_569_570_571_572_573_574_
+	+575_576_577_578_579_581_582_583_584_585_586_587_588_589_590_591_592_593_594_595_
+	+596_597_598_599_600_601_610_611_612_613_1010_1741_1742_1743_1744_1745_1746_1747_
+	+1748_1749_1750_1751_1752_1753_1754_1755_1756_1757_1771_1772_1773_1774_1775_1776_
+	+1777_1778_1779_1780_1781_1782_1783_1784_1785_1786_1787_1788_1789_1790_1801_1802_
+	+1803_1804_1805_1806_1807_1808_1809_1811_1812_1813_1814_1815_1816_1817_1818_1819_
+	+1820_1821_1822_1823_1824_1831_1832_1833_1834_1835_1836_1837_1838_1839_1840_1841_
+	+1842_1843_1844_1845_1846_1847_1848_1849_1850_1851_1852_1853_1854_1861_1862_1863_
+	+1864_1865_1866_1867_1868_1869_1870_1871_1872_1873_1874_1875_1876_1877_1878_1879_
+	+1880_1881_1882_1883_1884_1981_1982_1983_1984_1985_1986_1987_1988_1989_1990_1991_
+	+1992_1993_1994_1995_1996_1997_1998_1999_2000_2001_2002_2003_2004_2028_2029_2030_
+	+2031_2032_2033_2100_2101_2102_2103_2104_2105_1339_1340_1341_1342_1343_1344_1345_
+	+1346_1347_1348_1349_1350_1351_1352_1353_1354_1355_1356_1357_1358_1359_
+	
+set !mine_floor _2_430_556_557_558_559_2028_
+set !mine_Forrest_hills _240_241_242_243_
+set !chop_trees _3230_3274_3275_3276_3277_3280_3283_3286_3288_3290_3293
++_3296_3299_3302_3281_3291_3294_3278_3300_3289_3284_3297_3287_
+
+
+; --------------- SETUP ---------------------
+; What type of tiley do you want to search?
+set !search_for !mine_mountains
+; ------------ ENF SETUP --------------------
+
+set !centerX %3
+set !centerY %4
+
+; declare the return-value-name
+if %0 < 5
+	set %return found_location
+Else
+	set %return %5
+
+; Clear the positions and vars:
+set !Q_count 0
+set !merged $
+set !output_count 0
+set !search_for_in
+
+; calculate the quare
+set !direction2 !range
+set !direction1 !direction2 * -1
+Tile init
+tile get #charposx #charposy 2
+set %initial #tilename
+if Cave in %initial
+{
+set %found_locations 3
+goto scan_end
+}
+; Scan the square (able to reach)
+for !cnt_x !direction1 !direction2
+	{
+	for  !cnt_y !direction1 !direction2
+		{
+		set !X_tile_to_get !centerX + !cnt_x
+		set !Y_tile_to_get !centerY + !cnt_y
+		tile get !X_tile_to_get !Y_tile_to_get !layer
+		set !check_type _ , #TileType , _
+		if !check_type in !search_for
+			{
+			if %log_all = #FALSE
+				{
+				gosub quanticer !centerX !centerY
+				if ( #Result <> 0 ) && ( #Result notin !search_for_in )
+					{
+					set !search_for_in !search_for_in , #Result , _
+					set !merged !merged , !X_tile_to_get , _ , !Y_tile_to_get , $
+					set !output_count !output_count + 1
+					set % . %return , _X_ . !output_count !X_tile_to_get
+					set % . %return , _Y_ . !output_count !Y_tile_to_get
+                                                                                set % . %return , _Z_ . !output_count #tilez
+					set % . %return , _title_ . !output_count #TILETYPE
+					}
+				}
+			if %log_all = #TRUE && #Result <> 0 && !check_type in !search_for && #tilez < %sa
+				{
+				set !merged !merged , !X_tile_to_get , _ , !Y_tile_to_get , $
+				set !output_count !output_count + 1
+				set % . %return , _X_ . !output_count !X_tile_to_get
+				set % . %return , _Y_ . !output_count !Y_tile_to_get
+                                                                set % . %return , _Z_ . !output_count #tilez
+				set % . %return , _title_ . !output_count #TILETYPE
+				}
+			}
+		}
+	}
+
+if !debug
+{
+display yes found tiles in reach in grids: !search_for_in $$ Remember the grids:$
++(Tilted by 45 degrees to represent the UO-world)$
++________1$
++$
++____4______2$
++$
++7______5_______3$
++$
++___8_______6$
++$
++_______9$$
++Coordinates of the spots: !merged
+}
+set %found_locations !output_count
+; restore old LPC and namespace
+set #LPC !old_lpc
+nameSpace Clear
+nameSpace Pop
+scan_end:
+return %found_locations
+; ------------------------------------
+
+; ------------------------------------
+sub quanticer
+;* @param   %1  startX    req  centerposition X to start scan (normally #CharPosX)
+;* @param   %2  startY    req  centerposition Y to start scan (normally #CharPosY)
+
+; Get the borders of actual 8x8-grid
+
+set !actual_grid_Y_0 %2 - ( %2 % 8 )
+set !actual_grid_Y_8 %2 - ( %2 % 8 ) + 7
+set !actual_grid_X_0 %1 - ( %1 % 8 )
+set !actual_grid_X_8 %1 - ( %1 % 8 ) + 7
+
+if  ( !X_tile_to_get >= !actual_grid_X_0 ) && ( !X_tile_to_get <= !actual_grid_X_8 )
+	{
+	; actual 8x8
+	if  ( !Y_tile_to_get >= !actual_grid_Y_0 ) && ( !Y_tile_to_get <= !actual_grid_Y_8 )
+		return 5
+	; N 8x8
+	if  ( !Y_tile_to_get >= !actual_grid_Y_0 - 8 ) && ( !Y_tile_to_get <= !actual_grid_Y_8 - 8 )
+		return 2
+	; S 8x8
+	if  ( !Y_tile_to_get >= !actual_grid_Y_0 + 8 ) && ( !Y_tile_to_get <= !actual_grid_Y_8 + 8 )
+		return 8
+	}
+
+if ( !Y_tile_to_get >= !actual_grid_Y_0 ) && ( !Y_tile_to_get <= !actual_grid_Y_8 )
+	{
+	; W 8x8
+	if  ( !X_tile_to_get >= !actual_grid_X_0 - 8 ) && ( !X_tile_to_get <= !actual_grid_X_8 - 8 )
+		return 4
+	; E 8x8
+	if  ( !X_tile_to_get >= !actual_grid_X_0 + 8 ) && ( !X_tile_to_get <= !actual_grid_X_8 + 8 )
+		return 6
+	}
+
+if  ( !X_tile_to_get >= !actual_grid_X_0 - 8 ) && ( !X_tile_to_get <= !actual_grid_X_8 - 8 )
+	{
+	; NW 8x8
+	if  ( !Y_tile_to_get >= !actual_grid_Y_0 - 8 ) && ( !Y_tile_to_get <= !actual_grid_Y_8 - 8 )
+		return 1
+	; SW 8x8
+	if  ( !Y_tile_to_get >= !actual_grid_Y_0 + 8 + 8 ) && ( !Y_tile_to_get <= !actual_grid_Y_8 + 8 + 8 )
+		return 7
+	}
+
+if  ( !X_tile_to_get >= !actual_grid_X_0 + 8 ) && ( !X_tile_to_get <= !actual_grid_X_8 + 8 )
+	{
+	; NE 8x8
+	if  ( !Y_tile_to_get >= !actual_grid_Y_0 - 8 ) && ( !Y_tile_to_get <= !actual_grid_Y_8 - 8 )
+		return 3
+	; SE 8x8
+	if  ( !Y_tile_to_get >= !actual_grid_Y_0 + 8 ) && ( !Y_tile_to_get <= !actual_grid_Y_8 + 8 )
+		return 9
+	}
+return 0
+;-------------------------second dig-----------------------
+;This area is for setting up a second dig spot for each rune
+;If you leave zeros it will skip that dig spot
+sub loc2
+if ( %FOUND_LOCATIONS <= %k ) || ( %allofit = no )
+set %mark 1
+return
+
+SUB SEARCHGROUND
+FINDMORE:
+FINDITEM %alloreid g_2
+IF #FINDID = X
+goto fly
+IF #LLIFTEDKIND <> 1
+exEVENT DRAG #FINDID 5
+wait 15
+Exevent Dropc #backpackid
+wait 8
+scanjournal #jindex
+if #weight < %maxweight && cannot notin #journal
+GOTO FINDMORE
+fly:
+RETURN
+
+;==================================
+; Script Name: sub moveItem *ExEvent*
+; Author: Tecmo, Bad_Maniac
+; Version: 1.12
+; Client Tested with: 5.0.1a patch 21
+; EUO version tested with: 1.50 build 60
+; Shard OSI / FS: OSI and FS
+; Revision Date: 2005-Oct-07
+; Public Release: 2005-Aug-04
+; Copyright: Tecmo, Bad_Maniac
+; *********************************
+;      %1 req Item to move
+;      %2 req Move from location
+;      %3 req Move to location
+;      %4 opt Quantity
+;* @return      Returns the value True or False
+;* @Calling Example
+;           Inside script = gosub moveItem [Item to Move] [From location] [To location] [Quantity] (nothing in qty uses #findstack)
+;         Outside calling = call subMoveItem.txt [Item to Move] [From location] [To location] [Quantity] (nothing in qty uses #findstack)
+;==================================
+SUB moveItem
+{
+    IF %0 < 3 || %0 > 4
+        RETURN #FALSE
+    SET %_itemId %1
+    IF G_ NOTIN %2 && %2 <> C
+        SET %_itemLocation C_ , %2
+    ELSE
+        SET %_itemLocation %2
+    SET %_newItemLocation %3
+    IF %0 = 4
+        SET %_qty %4
+    ELSE
+        SET %_qty 0
+    IF %euover <> passed
+    {
+        GOSUB BmEuoVer
+        SET %euover passed
+    }
+    IF %_fShard <> #TRUE && %_fShard <> #FALSE
+        GOSUB CheckFreeShard _fShard
+    IF %_fShard
+    {
+        SET %actionwait 4
+        SET %dragdropwait 25 ; Increase this number if you recieve 'You must wait' messages
+    }
+    ELSE
+    {
+        SET %actionwait 9
+        SET %dragdropwait 1
+    }
+    REPEAT
+    {
+        SET %_XdropOffset ( #RANDOM % 2 ) - 1
+        SET %_YdropOffset ( #RANDOM % 2 ) - 1
+    }
+    UNTIL %_XdropOffset <> 0 || %_YdropOffset <> 0
+    SET %_XdropOffset #CHARPOSX + %_XdropOffset
+    SET %_YdropOffset #CHARPOSY + %_YdropOffset
+    moveLoop:
+    FINDITEM %_itemId %_itemLocation
+    IF #FINDKIND <> -1
+    {
+       SET %_litemID #FINDID
+       SET %qty %_qty
+       IF %qty = 0
+          SET %qty #FINDSTACK
+       GOSUB BMWaitAction %actionwait
+       EXEVENT drag #FINDID %qty
+       wait %dragdropwait
+       wait 5
+       SET %droptimeout #SYSTIME + 1000
+       dropwait:
+       IF %_newItemLocation = G
+            EXEVENT DROPG %_XdropOffset %_YdropOffset
+       IF %_newItemLocation <> G
+            EXEVENT dropc %_newItemLocation
+            set #lobjectid #backpackid
+            event macro 17 0
+            wait 15
+       FINDITEM %_litemID %_itemLocation
+       IF #FINDKIND <> -1 && #SYSTIME < %droptimeout
+          GOTO dropwait
+       GOSUB BMWaitAction
+       GOTO moveLoop
+    }
+    RETURN
+}
+;===============================
+; BMWaitAction
+; %1 time to wait in 10th of a second
+; If no arguments are passed, it sets
+; the timer to the current time
+;===============================
+SUB BMWaitAction
+	IF %0 < 1 || %1 = N/A || %bmwatimer = N/A
+	{
+		SET %bmwatimer #SCNT2
+		RETURN
+	}
+bmwa_wait:
+	IF ( %bmwatimer + %1 ) > #SCNT2
+		GOTO bmwa_wait
+RETURN
+;===============================
+;* @name sub BmEuoVer
+;* @author Bad_Maniac
+;* @ver 1.0 2005-Jul-29
+;* @purpose Verifies use of Euo 1.50 or higher
+SUB BmEuoVer
+	SET %euover #EUOVER
+	FOR %i 1 2
+	{
+		STR POS %euover _
+		IF #STRRES > 0
+		{
+			STR DEL %euover #STRRES 1
+			SET %euover #STRRES
+			SET %i 1
+		}
+	}
+ IF %euover < 15000
+ {
+     DISPLAY ok You must use EUO version 1.50 or$
+     +greater to use sub moveItem$
+     +The script has been halted!
+      halt
+ }
+RETURN
+;===========
+;**
+;* @name CheckFreeShard
+;* @ver 1.0 2Feb05
+;* @author  Roadkill
+;* @purpose  checks if you're on a known OSI shard or not
+;* @params %1 optional, variablename to return #true/#false in, #true if on a freeshard
+;* @returns #result and @%1 #true if on a freeshard, #false if on a known OSI shard.
+;* @example call rksubs.txt CheckFreeShard <@%1 varname, opt><@#result #true if #shard notin osi list
+;* @status
+sub CheckFreeShard
+  set !OSIshards pacific_sonoma_baja_legends_atlantic_chesapeake_catskills_lake , #spc , austin
+  +_napa , #spc , valley_lake , #spc , superior_great , #spc , lakes_siege , #spc , perilous_europa
+  +_drachenfels_oceania_wakoku_formosa_arirang_balhae_asuka_yamato_mugen_hokuto_misuho_izumo_sakura_
+return
+
+   ;==================================
+; Script Name: Ingot Counter ( Another Jebbit Miner Helpper Script )
+; Author: Jebbit
+; Version: 1.5
+; Client Tested with: 4.0.1b
+; EUO version tested with: V1.42.00 [Build AA]
+; Shard OSI / FS: OSI
+; Revision Date:7/12/05
+; Public Release: 12/16/2003
+; Purpose: Opens all surrounding chests within reach and totals up all available ingots. Adds special ingots to the list on the fly for free shards.
+;==================================
+sub finditall
+    mor:
+   if %men <> 1
+{
+menu clear
+     menu delete stat1
+menu delete stat3
+menu delete stat15
+      menu window size 130 %www
+      menu window color BLACK
+      menu font bgcolor BLACK
+menu window title Ingots
+menu show 3 390
+set %men 1
+}
+FINDITEM ENK C_
+IF #FINDID = X 2
+MENU HIDE
+     gOTO menu
+set %sss %sss + 1
+menu delete stat15
+ menu font color yellow
+ menu font style b
+menu text stat15 40 0 %SSS
+      set #lobjectid #findid
+       IGNOREITEM #LOBJECTID
+        EVENT PROPERTY #findid
+gosub pars
+WAIT 5
+if ingots in %d0
+  set %d2 %d1
+    if n/a in %d2
+      set %d2 Iron
+if %d2 notin %hold && %d2 <> n/a
+{
+	set %hold %hold , _ , %d2
+	set %www %www + 25
+	set %ddd %ddd - 25
+	set %as %as + 1
+	set %mor . %as %mor . %as + #findstack
+	set %more . %as %d2
+	set %d2 n/a
+	goto mor
+}
+set %ds 0
+chang:
+if %ds >= %as
+  goto mor
+    set %ds %ds + 1
+      set %results %more . %ds
+if %d2 in %results
+{
+	set %sas %as
+	set %as %ds
+	set %mor , %as %mor . %as + #findstack
+	set %as %sas
+	set %d2 n/a
+	goto mor
+}
+goto chang
+set %d2 n/a
+GOTO MOR
+return
+
+sub menus
+if %men <> 1
+menu clear
+menu:
+menu delete stat1
+menu delete stat3
+menu delete stat15
+      menu window size 130 %www
+      menu window color BLACK
+      menu font bgcolor BLACK
+menu window title Ingots
+menu font align center
+      menu font style
+  menu font color red
+  menu font size 11
+menu text stat15 20 0 Ingot Count
+    set %aa 0
+cnt:
+if %as <> n/a
+{
+set %aa %aa + 1
+if %aa > %as
+goto outt
+set %end %end + 25
+menu font size 11
+  menu font style b
+  menu font color red
+set %results %mor . %aa
+menu text stat3 70 %end %results
+menu font style
+  menu font color green
+  menu font size 11
+gosub chunck
+menu text stat 5 %end %gg , #STRRES
+goto cnt
+outt:
+set %end 5
+}
+     set #menubutton N/A
+  menu show 5 %ddd
+ignoreitem reset
+return
+;==================================
+; Script Name: Jebbits Pars Script
+; Author: Jebbit
+; Version: 1.1
+; Client Tested with: 4.0.1b
+; EUO version tested with: V1.42.00 [Build AA]
+; Shard OSI / FS: OSI
+; Revision Date:7/12/05
+; Public Release: 12/16/2003
+; Purpose: Break down and pars any item
+;==================================
+
+sub pars
+set %l 0
+set #lpc 500
+set %c 0
+set %d part
+set %path Assigned , $ ,
+set %string Augments , #spc , By , #spc , Number , - , $ ,
+SET %a #PROPERTY
+topp:
+STR POS %a $
+set %h #strres
+if %fullpars = #true
+    {
+      STR POS %a #spc
+       set %j #strres
+        if %h < %j || %j = 0 || ( %l = 0 && #strres = 1 )
+         STR POS %a $
+if %l = 0
+set %l 1
+}
+if #strres = 0
+    {
+set #lpc 100
+             return
+              }
+if #strres <> 1
+{
+SET %b #STRRES - 1
+   STR LEFT %a %b
+      SET %b %b + 1
+		set %d . %c #strres
+	         set %c %c + 1
+	    set %string %string , #spc , ( , %c , ) , #spc , #strres ,
+                set %path %path , #spc , % , %d , %c , - , #spc , #strres , #spc ,
+           SET %STRING %STRING , $ ,
+       SET %PATH %PATH , $ ,
+}
+    STR DEL %a 1 %b
+  set %a #strres
+goto topp
+return
+
+sub chunck
+set #strres %more . %aa
+str Left %more . %aa 1
+set %gg #strres
+str Del %more . %aa 1 1
+str lower #strres
+return
+
+sub tinkshovel
+SET %COUNTER 0
+  nextcpos 30 70
+  set #lobjectid %secureid
+  event macro 17 0
+  wait 20
+  nextcpos 30 310
+  set #lobjectid %regstorebagid
+  event macro 17 0
+  wait 20
+  set %orex #contposx + 80
+  set %orey #contposy + 80
+  ignoreitem reset
+  finditem ENK c_ , %regstorebagid
+  wait 20
+  if #findkind = -1
+    {
+    display ok NO INGOTS IN INGOT BOX
+    halt
+    }
+  set %ingotstodrag %dragingots
+  if #findstack < %ingotstodrag
+    set %ingotstodrag #findstack
+  event drag #findid
+  wait 20
+  msg %ingotstodrag
+  wait 20
+  msg $
+  wait 20
+  set #findmod 20_10
+  click 730 367
+  wait 20
+reopen:
+counttink:
+  finditem %tinkerid c_ , #backpackid
+  wait 30
+  set %numtinktools #findcnt
+  set %tinkinpack #findkind
+  finditem %tinkerid c_ , %regstorebagid
+  wait 30
+  set %numtinktools %numtinktools + #findcnt
+  if %numtinktools = 0
+    {
+    display ok No tinkers Tools Lefts
+    halt
+    }
+  if %tinkinpack = -1
+    {
+    event drag #findid
+    wait 15
+    msg $
+    wait 15
+    set #findmod 20_10
+    click 745 367
+    }
+  finditem %shovelid c_ , #backpackid
+  wait 20
+  set %findcount #findcnt
+findshov:
+  finditem %shovelid c_ , #backpackid
+  wait 20
+  if #findcnt < %shovels
+    {
+    finditem %tinkerid c_ , #backpackid
+    if #findkind = -1
+      goto reopen
+    wait 20
+    set #lobjectid #findid
+    event macro 17 0
+    wait 20
+    set %llk #contposx + 29
+    set %lkk #contposy + 126
+    click %llk %lkk
+    wait 20
+    set %llk #contposx + 385
+    set %lkk #contposy + 273
+    click %llk %lkk
+    wait 20
+    set %llk #contposx + 235
+    set %lkk #contposy + 71
+    click %llk %lkk
+    wait 20
+    }
+    set
+    DOING:
+finditem %shovelid c_ , #backpackid
+if #findcnt = %findcount
+goto findshov
+  wait 20
+  if #findcnt < %shovels
+  {
+  set %llk #contposx + 286
+    set %lkk #contposy + 449
+    click %llk %lkk
+    WAIT 20
+    GOTO DOING
+    }
+    WAIT 20
+   set %llk #contposx + 29
+    set %lkk #contposy + 452
+    click %llk %lkk
+    WAIT 15
+    IF #CONTSIZE = 530_437
+    click %llk %lkk
+  finditem %ingotid c_ , #backpackid
+  wait 20
+  if #findkind = 0
+    {
+    event drag #findid
+    wait 20
+    msg $
+    wait 20
+    finditem %regstorebagid
+    set #findmod 20_10
+    click #findx #findy p
+    wait 20
+    }
+puttinkerback:
+  finditem %tinkerid c_ , #backpackid
+  wait 20
+  if #findkind = 0
+    {
+    event drag #findid
+    wait 20
+    msg $
+    wait 20
+    finditem %regstorebagid
+    set #findmod 20_10
+    click #findx #findy
+    wait 20
+    goto puttinkerback
+    }
+return
+
+
+
+
