@@ -1,0 +1,800 @@
+;-------------------------------------------------------
+; WarLocke's Blacksmith Trainer
+; Maintained by AnonVet
+; Version 7.4
+; Thanks (in no particular order):
+;       El Said, Menace, Frost Merchant, Rain Dog, r00ted
+;       truuper, McSass, Krump, Splicer69, Delta, the.WZA
+;       wes32980, BASStard, Ceed, AnonVet
+; 7/23/03 updated
+;-------------------------------------------------------
+; NOTICE:
+;    As of 7/23/03, this script will not be supported.
+; Feel free to post suggestions and/or bugs, but at least
+; be aware that WarLocke is no longer maintaining this
+; script. It is now in the hands of AnonVet, who will not
+; be offering any user support. Updates will come as
+; they are deemed necessary. Thanks.
+;-------------------------------------------------------
+; USER CONFIGURATION
+; These options are also configurable via the menu system.
+; Set them here if you wish them to be default values.
+; --------------------------------
+ 
+; Your skill cap (100/105/110/115/120)
+set %skillmax 100
+ 
+; Extra waiting time to avoid lag (20 = 1 second)
+set %lagadjust 5
+ 
+; Do you want to hide when you start? #true or #false
+set %hideme #true
+ 
+; Do you want to use tinkering?
+; Script will draw tongs from secure if:
+;    1) Tinkering skill less than %tinkskill
+;    2) %usetink is set to #false
+set %usetink #true
+set %tinkskill 49
+ 
+; Number of items to make before smelting
+set %smeltcount 40
+ 
+;; PRO OPTIONS!
+;; -- Only mess with these if you can script.
+ 
+;; bank rail: write these scripts to do the following...
+;; rail_to: path from forge to bank, open bank
+;; rail_from: path from bank to forge
+;; start the script at your bank waypoint for container setup
+set %usebankrail #false
+set %bank_rail_to WLSM7_BANK_TO.EUO
+set %bank_rail_from WLSM7_BANK_FROM.EUO
+ 
+; --------------------------------
+; END OF USER CONFIGURATION
+; DO NOT EDIT BELOW THIS LINE
+ 
+;----- Open menu system -----
+_start:
+gosub MenuSystem
+;----- Begin main loop -----
+mainloop:
+        gosub tongcheck
+        gosub skillcheck
+        gosub ingotcheck
+        if #weight > %smeltat
+                gosub smeltall
+        finditem %currItem C_ , %cid_backpack
+        if #findcnt > %smeltcount
+                gosub smeltall
+        mainwait:
+        gosub tongcheck
+        gosub SysVarWait contkind %ck_craftmenu 50
+        if ! %return
+        {
+                set #lobjectid %currTongs
+                event macro 17
+                goto mainwait
+        }
+        click 333 464
+goto mainloop
+;----- End main loop -----
+ 
+sub ingotcheck
+        findagain:
+        finditem %it_ingots C_ , %cid_backpack
+        if #findkind = -1
+                goto skipto
+        if #findcol <> 0 2
+                ignoreitem #findid
+                goto findagain
+        if #findstack < 30
+        {
+                skipto:
+                wait %sleep
+                opensecure:
+                if %usebankrail
+                        call %bank_rail_to
+                set #lobjectid %secure
+                event macro 17
+                gosub SysVarWait contid %secure 50
+                if ! %return
+                        goto opensecure
+                contpos 0 0
+                ignoreitem #findid
+ 
+                ingotloop:
+                finditem %it_ingots C_ , %secure
+                if #findkind = -1
+                {
+                        gosub smeltall
+                        click 85 40 r
+                        click %craftclose_x %craftclose_y r
+                        display OK Ran out of ingots.$
+                                +Get more and push play.
+                        pause
+                        goto findagain
+                }
+                if #findkind <> -1
+                {
+                        if #findcol <> 0
+                        {
+                                ignoreitem #findid
+                                goto ingotloop
+                        }
+                        if #findcol = 0
+                        {
+                                event drag #findid
+                                wait %sleep
+                                if #findstack <= %ingotdrag
+                                        msg $
+                                if #findstack > %ingotdrag
+                                        msg %ingotdrag $
+                                wait %sleep
+                                set #findmod 139_217
+                                finditem %cid_backpack
+                                click #findx #findy p
+                                wait %sleep
+                                click 85 40 r
+                                if %usebankrail
+                                        call %bank_rail_from
+                                set #lobjectid %currTongs
+                                event macro 17
+                        }
+                }
+        }
+        ignoreitem reset
+return
+ 
+sub smeltall
+        set #ltargetkind 1
+        smeltloop:
+        finditem %currItem C_ , %cid_backpack
+        if #findkind <> -1
+        {
+        set #ltargetid #findid
+        gosub SysVarWait contkind %ck_craftmenu 50
+        click 77 404
+        target 5s
+        event macro 22 0
+        smeltwait:
+        gosub tongcheck
+        gosub SysVarWait contkind %ck_craftmenu 50
+        if ! %return
+        {
+                set #lobjectid %currTongs
+                event macro 17
+                goto smeltwait
+        }
+        goto smeltloop
+        }
+return
+ 
+sub tongcheck
+        finditem %currTongs
+        if #findkind = -1
+        {
+                tongloop:
+                finditem %it_tongs C_ , %cid_backpack
+                if #findkind = -1
+                {
+                        chooseskill tink real
+                        if ( ! %usetink ) || ( #skill < ( %tinkskill * 10 ) )
+                                gosub fetchtongs
+                        if ( %usetink ) && ( #skill >= ( %tinkskill * 10 ) )
+                                gosub maketongs
+                        goto tongloop
+                }
+                tc_useloop:
+                set #lobjectid #findid
+                set %currTongs #findid
+                event macro 17
+                if %ck_craftmenu = N/A
+                {
+                        wait %longsleep
+                        set %ck_craftmenu #contkind
+                }
+                gosub SysVarWait contkind %ck_craftmenu 50
+                if ! %return
+                        goto tc_useloop
+                if ! %metalset
+                {
+                        click 78 424
+                        wait %sleep
+                        click 280 120
+                        set %metalset #true
+                }
+        }
+return
+ 
+sub fetchtongs
+        _fetch_opensecure:
+        if %usebankrail
+                call %bank_rail_to
+        set #lobjectid %tongsecure
+        event macro 17
+        gosub SysVarWait contid %tongsecure 50
+        if ! %return
+                goto _fetch_opensecure
+        contpos 0 0
+        finditem %it_tongs C_ , %tongsecure
+        set %tongs_to_fetch #findcnt
+        if #findcnt > 5
+                set %tongs_to_fetch 5
+        if #findcnt < 1
+        {
+                click 85 40 r
+                display ok Ran out of tongs.$
+                        +Get more and push play.
+                pause
+                return
+        }
+        for %cnt 1 %tongs_to_fetch
+        {
+                wait %sleep    
+                finditem %it_tongs C_ , %tongsecure
+                event drag #findid
+                wait %sleep
+                set #findmod 139_217
+                finditem %cid_backpack
+                click #findx #findy p
+                set #findmod 0_0
+        }
+        click 85 40 r  
+        if %usebankrail
+                call %bank_rail_from
+return
+ 
+sub maketongs
+        gosub ingotcheck
+        makintongs:
+        finditem %it_tinkerkit C_ , %cid_backpack
+        if #findkind <> -1
+        {
+                mt_usekit:
+                set #lobjectid #findid
+                event macro 17
+                if %ck_craftmenu = N/A
+                {
+                        wait %longsleep
+                        set %ck_craftmenu #contkind
+                }
+                gosub SysVarWait contkind %ck_craftmenu 50
+                if ! %return
+                        goto mt_usekit
+                click 80 160
+                wait %longsleep
+                click 430 320
+                wait %longsleep
+                click 280 160
+                wait %longsleep
+                if #findcnt <= 1
+                {
+                        click 80 160
+                        wait %longsleep
+                        click 280 180
+                        wait %xlongsleep
+                }
+                innertongcheck:
+                finditem %it_tongs C_ , %cid_backpack
+                if #findkind = -1
+                        goto makintongs
+                click %craftclose_x %craftclose_y r
+                ignoreitem reset
+                gosub ingotcheck
+        }
+return
+ 
+sub Initialize
+       
+        initevents
+        setuotitle WarLocke's Smithy - Initializing...
+        set %gumpalign #clileft + #clixres
+        set %craftclose_x #clileft + ( #clixres / 2 )
+        set %craftclose_y #clitop + ( #cliyres / 2 ) - 60
+        set %chosen 0
+        set %currItem 0
+        set %currTongs 0
+        set %secure 0
+        set %ck_craftmenu N/A
+        set %it_tongs TBG_OBG
+        set %it_ingots ENK
+        set %it_tinkerkit JTL
+        set %skill_start N/A
+        set %time_start #scnt
+        set %sleep 20 + %lagadjust
+        set %longsleep %sleep * 2
+        set %xlongsleep %sleep * 3
+        gosub setupContainers
+        set %ingotdrag #str * 10
+        set %mw #maxweight
+        if #maxweight >= 420
+                set %mw 420
+        set %smeltat %mw - #str
+        hideloop:
+        if %hideme && ( H notin #charstatus )
+        {
+                setuotitle WarLocke's Smithy - Hiding...
+                event macro 13 21
+                wait 230
+                goto hideloop
+        }
+        gosub metalsetup
+        setuotitle WarLocke's Smithy - Initialization complete...
+        wait %sleep
+return
+ 
+sub setupContainers
+        setuotitle WarLocke's Smithy - Setting up containers...
+ 
+        setup_status:
+        event macro 8 2
+        wait %longsleep
+        contpos %gumpalign 0
+ 
+        setup_pdoll:
+        event macro 8 1
+        wait %longsleep
+        contpos %gumpalign 0
+ 
+        setup_pack:
+        event macro 8 7
+        gosub SysVarWait conttype ZJF 50
+        if ! %return
+                goto setup_pack
+        contpos %gumpalign 287
+        set %cid_backpack #contid
+       
+        if %usebankrail
+                msg #smc bank$
+       
+        display ok Please target your INGOT secure.
+        set #targcurs 1
+        target
+        s1_targetloop:
+        if #targcurs = 1
+                goto s1_targetloop
+        set %secure #ltargetid
+       
+        chooseskill tink
+        if ( ! %usetink ) || ( #skill <= ( %tinkskill * 10 ) )
+        {
+                display ok Please target your TONG secure.
+                        +$(this may be the same as your ingot secure)
+                set #targcurs 1
+                target
+                s2_targetloop:
+                if #targcurs = 1
+                        goto s2_targetloop
+                set %tongsecure #ltargetid
+        }
+               
+        if %usebankrail
+                call %bank_rail_from
+               
+        setuotitle WarLocke's Smithy - Container setup complete.
+return
+ 
+sub metalsetup
+        setuotitle WarLocke's Smithy - Setting up metal type...
+        finditem %it_tongs C_ , %cid_backpack
+        if #findkind <> -1
+        {
+                set %currTongs #findid
+                set #lobjectid #findid
+                metalwait:
+                event macro 17
+                wait %longsleep
+                set %ck_craftmenu #contkind
+                click 78 424
+                wait %sleep
+                click 280 120
+                set %metalset #true
+        }
+        if #findkind = -1 2
+                set %currTongs N/A
+                set %metalset #false
+return
+ 
+sub SysVarWait
+        if ( %0 < 2 ) || ( %0 > 3 )
+        {
+                display ok Invalid use of SysVarWait sub.
+                set %return #false
+                return
+        }
+        if %3
+                set %_SVtimeout #scnt2 + 100
+        else
+                set %_SVtimeout #scnt2 + %3
+        _waitSV:
+                if #scnt2 >= %_SVtimeout 2
+                        set %return #false
+                        goto _waitSVExit
+                if # . %1 <> %2
+                        goto _waitSV
+        set %return #true
+        _waitSVExit:
+        set %3 -1
+return
+ 
+sub skillcheck
+        chooseskill blac
+       
+        if %skill_start = N/A
+        {
+                set %skill_start #skill
+                set %start_major #skill / 10
+                set %start_minor #skill % 10
+                set %skStart %start_major , . . %start_minor
+        }
+        set %skill_major #skill / 10
+        set %skill_minor #skill % 10
+        set %delta_major ( #skill - %skill_start ) / 10
+        set %delta_minor ( #skill - %skill_start ) % 10
+        set %skCurrent %skill_major , . . %skill_minor
+        set %skDelta %delta_major , . . %delta_minor
+        set %deltaTime ( #scnt - %time_start ) / 60
+        if #skill >= ( %skillmax * 10 )
+        {
+                gosub smeltall
+                display OK You are at or past your defined skill maximum ( , %skillmax , ).$
+                        + If this is an error, check your skillmax setting.$
+                        + (At the beginning of the script, or in the config menu)
+                goto _start
+        }
+        set %oldchosen %chosen
+        set %chosen click_dag
+        set %makerng 0.0-44.0
+        if #skill > 440 2
+                set %chosen click_ma ;maces
+                set %makerng 44.1-48.1
+        if #skill > 480 2
+                set %chosen click_ct ;cutlasses
+                set %makerng 48.1-60.1
+        if #skill > 600 2
+                set %chosen click_kr ;krysses
+                set %makerng 60.1-68.1
+        if #skill > 680 2
+                set %chosen click_ss ;short spear
+                set %makerng 68.1-83.1
+        if #skill > 830 2
+                set %chosen click_pg ;plate gorget
+                set %makerng 83.1-94.1
+        if #skill > 940 2
+                set %chosen click_gl ;plate gloves
+                set %makerng 94.1-97.1
+        if #skill > 970 2
+                set %chosen click_pa ;plate arms
+                set %makerng 97.1-100.1
+        if #skill > 1000 2
+                set %chosen click_pg ;plate gorget
+                set %makerng 100.1-106.4
+        if #skill > 1063 2
+                set %chosen click_gl ;plate gloves
+                set %makerng 106.4-108.9
+        if #skill > 1088 2
+                set %chosen click_pa ;plate arms
+                set %makerng 108.9-116.3
+        if #skill > 1162 2
+                set %chosen click_pl ;plate legs
+                set %makerng 116.3-118.8
+        if #skill > 1187 2
+                set %chosen click_pt ;plate tunic
+                set %makerng 118.8-120.0
+        _skillchosen:
+        if %oldchosen <> %chosen
+        {
+                _skill_change:
+                gosub tongcheck
+                gosub ingotcheck
+                gosub smeltall
+                _sc_getcm:
+                gosub sysVarWait contkind %ck_craftmenu 50
+                if ! %return
+                {
+                        set #lobjectid %currTongs
+                        event macro 17
+                        goto _sc_getcm
+                }
+                gosub %chosen
+                wait %xlongsleep
+                finditem %currItem C_ , %cid_backpack
+                if #findkind
+                        goto _skill_change
+        }
+        setuotitle WarLocke's Smithy v7.4 - Skill: %skCurrent ( , %skStart + %skDelta , )
+                + / Time: %deltaTime minutes / Making: %makestr ( , %makerng , )
+return
+ 
+sub click_dag
+        set %currItem TSF
+        set %makestr DAGGERS
+        click 79 241
+        wait %longsleep
+        click 284 200
+return
+ 
+sub click_ma
+        set %currItem YSF
+        set %makestr MACES
+        click 78 300
+        wait %longsleep
+        click 280 140
+return
+ 
+sub click_ct
+        set %currItem JPH
+        set %makestr CUTLASSES
+        click 78 240
+        wait %longsleep
+        click 280 180
+return
+ 
+sub click_kr
+        set %currItem VRH
+        set %makestr KRYSSES
+        click 78 240
+        wait %longsleep
+        click 280 240
+return
+ 
+sub click_ss
+        set %currItem XRH
+        set %makestr SHORT , #spc , SPEARS
+        click 78 280
+        wait %longsleep
+        click 280 240
+return
+ 
+sub click_pg
+        set %currItem NSH
+        set %makestr PLATE , #spc , GORGETS
+        click 78 180
+        wait %longsleep
+        click 280 160
+return
+ 
+sub click_gl
+        set %currItem ISH
+        set %makestr PLATE , #spc , GLOVES
+        click 78 180
+        wait %longsleep
+        click 280 140
+return
+ 
+sub click_pa
+        set %currItem MSH
+        set %makestr PLATE , #spc , ARMS
+        click 78 180
+        wait %longsleep
+        click 280 120
+return
+ 
+sub click_pl
+        set %currItem LSH
+        set %makestr PLATE , #spc , LEGS
+        click 78 180
+        wait %longsleep
+        click 280 180
+return
+ 
+sub click_pt
+        set %currItem HSH
+        set %makestr PLATE , #spc , TUNICS
+        click 78 180
+        wait %longsleep
+        click 280 200
+return
+ 
+sub menusystem
+        _b_mainmenu:
+        set %currform main
+        menu hide
+        menu clear
+        menu window size 330 265
+        menu window title WarLocke's 0-120 Smithy v7.4
+        menu window color btnface
+        menu font name verdana
+        menu font align left
+        menu font size 9
+        menu font color black
+        menu font style b
+        menu text title 15 10 WarLocke's 0-120 Smithy Trainer
+        menu font style i
+        menu font size 7
+        menu text version 15 23 Version 7.4 // 7-23-2003
+        menu font size 9
+        menu font style u
+        menu text info 20 40 You will require the following:
+        menu font style
+        menu text info2 25 55  1) Secure container w/ ingots on top level.$
+                +2) An oval-shaped tinker kit + 50ish tinkering.$
+                + #spc , #spc OR a lot of tongs in your secure.$
+                +3) Mining skill. More mining = Better.$
+                +4) Less than 50 items in your backpack.
+        menu font style u
+        menu text info3 20 130 You should configure your client as follows:
+        menu font style
+        menu text info4 25 145 1) Grey menu turned off.$
+                +2) Context menus turned off.$
+                +3) Mouseover set to "Mouse."$
+                +4) Do NOT use UOAssist.
+        menu font style bi
+        menu text info5 15 205 So, with that said, are you ready?
+        menu font style
+        menu button btn_yes 25 230 90 25 Start
+        menu button btn_no 120 230 90 25 Halt
+        menu button btn_info 295 27 20 25 ?
+        menu button btn_config 235 27 60 25 Config
+        menu button btn_smelt 215 230 90 25 Smelt All
+        set #menubutton N/A
+        menu show
+        menu hideeuo
+        goto resloop
+ 
+        _b_info:
+        set %currform info
+        menu hide
+        menu clear
+        menu window size 370 210
+        menu window title WarLocke's 0-120 Smithy v7.4
+        menu window color btnface
+        menu font name verdana
+        menu font align left
+        menu font size 9
+        menu font color black
+        menu font style bu
+        menu text distrib 15 10 Copyright/Distribution:
+        menu font style
+        menu text distinfo 25 25 This script is © 2003 of WarLocke && AnonVet$
+                                +Distribute/Modify only with permission.$$
+                                +If you did not find this script at EasyUO.com,$
+                                +Please notify WarLocke at www.easyuo.com.
+        menu font style bu
+        menu text thanks 15 110 Special Thanks to:
+        menu font style
+        menu text creds 25 125 El Said, Menace, Frost Merchant, Krump$
+                              +Rain Dog, r00ted, truuper, McSass, BASStard$
+                              +Splicer69, Delta, the.WZA, wes32980, Ceed
+        menu button btn_back 145 170 100 25 Ok
+        set #menubutton N/A
+        menu show
+        menu hideeuo
+        goto resloop
+ 
+        _b_config:
+        set %currform config
+        menu hide
+        menu clear
+        menu window size 375 235
+        menu window title WarLocke's 0-120 Smithy v7.4
+        menu window color btnface
+        menu font name verdana
+        menu font align left
+        menu font size 9
+        menu font color black
+        menu font style bu
+        menu text txt_cfgtitle 15 10 Script Configuration:
+        menu font style
+        menu font align right
+        menu text txt_smeltmax 170 40 Item count to smelt at:
+        menu text txt_skmax 170 70 Current skill cap:
+        menu text txt_lagadj 170 100 Lag adjustment:
+        menu text txt_hideme 170 130 Hide at start:
+        menu text txt_tinker 170 160 Use tinkering:
+        menu font align left
+        menu font size 7
+        menu text txt_smltrec 260 40 (50 is good)
+        menu text txt_skrec 260 70 (100 to 120)
+        menu text txt_lagrec 260 100 (20 is 1 sec)
+        menu text txt_hiderec 260 130 (Recommend ON)
+        menu text txt_tinkrec 180 180 (Recommend YES and 49 skill)
+        menu font size 9
+        menu text txt_tinkerat 220 160 @ skill:
+        menu font bgcolor white
+        menu edit ed_smeltmax 180 35 75 %smeltcount
+        menu edit ed_skillmax 180 65 75 %skillmax
+        menu edit ed_ladadjust 180 95 75 %lagadjust
+        if %hideme
+                set %hidestate ON
+        else
+                set %hidestate OFF
+        if %usetink
+                set %tinkstate YES
+        else
+                set %tinkstate NO
+        menu button btn_hide 180 125 75 20 Hide: %hidestate
+        menu button btn_tink 180 155 35 20 %tinkstate
+        menu edit ed_tinkskill 270 155 45 %tinkskill
+        menu button btn_back 195 200 80 25 OK
+        menu button btn_cancel 285 200 80 25 Cancel
+        set #menubutton N/A
+        menu show
+        menu hideeuo
+        goto resloop
+ 
+        resloop:
+        if #menubutton <> N/A
+        {      
+                if #menubutton = btn_cancel
+                        goto _b_mainmenu
+                if #menubutton = btn_hide
+                {
+                        set %newstate ON
+                        if %hidestate = ON
+                                set %newstate OFF
+                        set %hidestate %newstate
+                        menu delete btn_hide
+                        menu button btn_hide 180 125 75 20 Hide: %hidestate
+                        set #menubutton N/A
+                        goto resloop
+                }
+                if #menubutton = btn_tink
+                {
+                        set %newstate YES
+                        if %tinkstate = YES
+                                set %newstate NO
+                        set %tinkstate %newstate
+                        menu delete btn_tink
+                        menu button btn_tink 180 155 35 20 %tinkstate
+                        set #menubutton N/A
+                        goto resloop
+                }
+                if #menubutton = btn_info
+                        goto _b_info
+                if #menubutton = btn_config
+                        goto _b_config
+                if ( %currform = config ) && ( #menubutton = closed || #menubutton = btn_back )
+                {
+                        menu get ed_smeltmax
+                        set %smeltcount #menures
+                        menu get ed_skillmax
+                        set %skillmax #menures
+                        menu get ed_lagadjust
+                        set %skillmax #menures
+                        menu get ed_tinkskill
+                        set %tinkskill #menures
+                        if %hidestate = ON
+                                set %hideme #true
+                        if %hidestate = OFF
+                                set %hideme #false
+                        if %tinkstate = YES
+                                set %usetink #true
+                        if %tinkstate = NO
+                                set %usetink #false
+                        goto _b_mainmenu
+                }
+                if ( #menubutton = btn_back ) || ( #menubutton = closed && %currform = info )
+                        goto _b_mainmenu
+                if #menubutton = btn_yes
+                {
+                        menu hide
+                        menu clear
+                        gosub Initialize
+                        return
+                }
+                if ( #menubutton = btn_no ) || ( #menubutton = closed && %currform = main )
+                {
+                        menu hide
+                        menu clear
+                        halt
+                }
+                if #menubutton = btn_smelt
+                {
+                        menu hide
+                        gosub initialize
+                        gosub tongcheck
+                        set %currItem TSF_YSF_JPH_VRH_XRH_NSH_ISH_MSH_LSH_HSH
+                        gosub smeltall
+                        wait %longsleep
+                        click 200 200 r
+                        set #menubutton N/A
+                        menu show
+                }
+        }
+        goto resloop
+        halt
+return
+ 

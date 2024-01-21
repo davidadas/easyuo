@@ -1,0 +1,1884 @@
+
+INITEVENTS
+set %screensetupwait 10
+set %resourcebag2 X
+ 
+menu clear
+menu window size 203 50
+menu text 1 10 5 Rambo's multitrainer version 1.1
+menu text 2 37 25 Starting in 3 seconds.
+menu show 300 130
+wait 3s
+menu hide
+ 
+HIDEMENU:
+set #menubutton x
+menu clear
+menu window size 200 100
+menu text 1 10 5 Do you want to be hidden while
+menu text 2 60 25 you macro?
+menu button yes 35 60 60 20 Yes
+menu button no 105 60 60 20 No
+menu show 300 130
+MENULOOP1:
+if #menubutton = yes
+        {
+        menu hide
+        goto hide
+        }
+if #menubutton = no
+        {
+        menu hide
+        goto setupscreen
+        }
+if #menubutton = closed
+        {
+        goto hidemenu
+        }
+goto menuloop1
+REHIDE:
+wait 12s
+menu hide
+HIDE:
+event macro 13 21
+wait 1s
+if #charstatus = H
+        {
+        menu clear
+        menu window size 180 30
+        menu text 1 7 5 You have hidden, moving on.
+        menu show 315 100
+        wait 2s
+        menu hide
+        goto setupscreen
+        }
+if #charstatus <> H    
+        {
+        menu clear
+        menu window size 280 30
+        menu text 1 7 5 You failed to hide, trying again in 12 seconds.
+        menu show 270 100
+        goto rehide
+        }
+SETUPSCREEN:
+; Opens Paperdoll
+event macro 8 1
+wait %screensetupwait
+contpos 760 0
+wait %screensetupwait
+; Opens Backpack
+event macro 8 7
+wait %screensetupwait
+set %backpack #contid
+contpos 570 390
+wait %screensetupwait
+; Opens Status Bar Big
+event macro 8 2
+wait %screensetupwait
+contpos 764 546
+wait %screensetupwait
+ 
+;==SET=RESOURCE=BAGS===========================================================================
+ 
+SETRESOURCEBAGS:
+set #lobjectid X
+wait 10
+set #menubutton x
+menu clear
+menu window size 200 50
+menu text 1 13 5 Open the container that holds
+menu text 2 45 25 all of your supplies.
+menu show 300 130
+set #nextcposx 570
+set #nextcposy 184
+SETBAGALOOP:
+if #lobjectid <> X
+        {
+        menu hide
+        set %bag1xcoord #cursorx
+        set %bag1ycoord #cursory
+        wait 10
+        set %resourcebag1 #lobjectid
+        wait 10
+        goto bagoneset
+        }
+goto setbagaloop
+BAGONESET:
+wait 10
+click 688 264 r
+wait 5
+BAGBMENU:
+set #menubutton x
+menu clear
+menu window size 270 100
+menu text 1 13 5 You have set your first resource container.
+menu text 2 13 25 Do you have a second resource container?
+menu button yes 70 60 60 20 Yes
+menu button no 140 60 60 20 No
+menu show 300 200
+MENULOOP2:
+if #menubutton = yes
+        {
+        menu hide
+        goto setbagb
+        }
+if #menubutton = no
+        {
+        menu hide
+        goto nosecondcontainer
+        }
+if #menubutton = closed
+        {
+        goto bagbmenu
+        }
+goto menuloop2
+SETBAGB:
+set #lobjectid X
+wait 10
+set #menubutton x
+menu clear
+menu window size 200 50
+menu text 1 13 5 Open the container that holds
+menu text 2 45 25 all of your supplies.
+menu show 300 130
+set #nextcposx 570
+set #nextcposy 184
+SETBAGBLOOP:
+if #lobjectid <> X
+        {
+        menu hide
+        wait 10
+        set %resourcebag2 #lobjectid
+        wait 10
+        goto yessecondcontainer
+        }
+goto setbagbloop
+NOSECONDCONTAINER:
+wait 5
+set #menubutton x
+menu clear
+menu window size 300 100
+menu text 1 8 5 You have chosen not to have a second container.
+menu text 2 33 25 You may have to check back real soon!
+menu button ok 120 60 60 20 OK
+menu show 300 130
+MENULOOP3:
+if #menubutton <> x
+        {
+        goto settrashcan
+        }
+goto menuloop3
+YESSECONDCONTAINER:
+wait 5
+click 688 264 r
+wait 5
+set #menubutton x
+menu clear
+menu window size 230 60
+menu text 1 10 5 You have set your second container.
+menu button ok 85 30 60 20 OK
+menu show 300 130
+MENULOOP4:
+if #menubutton <> x
+        {
+        menu hide
+        goto settrashcan
+        }
+goto menuloop4
+SETTRASHCAN:
+set #lobjectid X
+wait 10
+set #menubutton x
+menu clear
+menu window size 200 30
+menu text 1 25 5 Open your trash can now.
+menu show 300 130
+set #nextcposx 70
+set #nextcposy 450
+TRASHCANLOOP:
+if #lobjectid <> X
+        {
+        menu hide
+        wait 10
+        set %trashcan #lobjectid
+        wait 10
+        goto postrashcan
+        }
+goto trashcanloop
+POSTRASHCAN:
+wait 5
+click 138 510 r
+wait 5
+set #menubutton x
+menu clear
+menu window size 180 60
+menu text 1 10 5 You have set your trashcan.
+menu button ok 60 30 60 20 OK
+menu show 300 130
+MENULOOP5:
+if #menubutton <> x
+        {
+        menu hide
+        goto overallsettings
+        }
+goto menuloop5
+ 
+;==OVERALL=VARIABLE=SETTINGS============================================================================
+ 
+OVERALLSETTINGS:
+set %mxwt #maxweight - 20
+set %skillclickwait 1s
+set %needbones 0
+set %makelasttoggle 0
+set %notenough 0
+set #ltargetkind 1
+ 
+;==SKILL=CHOICE=MENU============================================================================
+ 
+SKILLCHOICEMENU:
+set #menubutton x
+menu clear
+menu window size 460 80
+menu text 1 125 5 Which skill do you want to work on?
+menu button blacksmithy 10 40 80 20 Blacksmithy
+menu button bowcraft 100 40 80 20 Bowcraft
+menu button tinkering 190 40 80 20 Tinkering
+menu button tailoring 280 40 80 20 Tailoring
+menu button carpentry 370 40 80 20 Carpentry
+menu show 180 60
+MENULOOP6:
+if #menubutton = blacksmithy
+        {
+        menu hide
+        goto blacksmithysetup
+        }
+if #menubutton = bowcraft
+        {
+        menu hide
+        goto bowcraftsetup
+        }
+if #menubutton = tinkering
+        {
+        menu hide
+        goto tinkeringsetup
+        }
+if #menubutton = tailoring
+        {
+        menu hide
+        goto tailoringsetup
+        }
+if #menubutton = carpentry
+        {
+        menu hide
+        goto carpentrysetup
+        }
+if #menubutton = closed
+        {
+        goto skillchoicemenu
+        }
+goto menuloop6
+ 
+BLACKSMITHYSETUP:
+wait 1s
+set %maker TBG_OBG
+set %skillcheck blac
+set %resource ENK
+set %smelt 1
+set %creations HSH_LSH_MSH_ISH_NSH_MTF_XRH_ZOH_ATF_JTF_XLH
+set %grabhigh 1000
+set %grablow 50
+goto mainsubcontrol
+ 
+BOWCRAFTSETUP:
+key back
+wait 1s
+set %maker UFG
+set %skillcheck bowc
+set %resource TLK
+set %smelt 0
+set %creations LMH_JSF_WOH_QPO_PPO
+set %grabhigh 100
+set %grablow 20
+goto mainsubcontrol
+ 
+TINKERINGSETUP:
+key back
+wait 1s
+set %maker GTL_JTL
+set %skillcheck tink
+set %resource ENK
+set %smelt 0
+set %creations NWH_RCG_BDJ_AGG_RQF_BIG
+set %grabhigh 1000
+set %grablow 50
+goto mainsubcontrol
+ 
+TAILORINGSETUP:
+key back
+wait 1s
+set %maker HAG
+set %skillcheck tail
+set %resource JJG_MJG
+set %bones GUF
+set %smelt 2
+set %creations LLH_PPH_XVL_DWL_VQL_DCI_FWL_RTI
+set %smelter KAG
+set %grabhigh 100
+set %grablow 20
+chooseskill %skillcheck
+if #skill > 1189
+        {
+        set %smelt 0
+        set %needbones 1
+        set %creations PPH
+        }
+if #skill < 954
+        {
+        set %resource CUI_BUI
+        }
+goto mainsubcontrol
+ 
+CARPENTRYSETUP:
+key back
+wait 1s
+set %maker ZFG_BGB_CGG_IGG_WFG_KGG_DGG_BIG_AIG_ZHG_CIG_AGG_EGG
+set %skillcheck carp
+set %resource TLK
+set %smelt 2
+set %creations KKF_WMF_UMF_OIK_ZPF_QMH
+set %smelter FSF_LPH_ZRF_LSF_UOH_NSF_BSF_RMH
+set %grabhigh 100
+set %grablow 20
+chooseskill %skillcheck
+if #skill > 735
+        {
+        set %smelt 0
+        }
+goto mainsubcontrol
+ 
+;==MAIN=SUB=CONTROL================================================================================
+ 
+MAINSUBCONTROL:
+gosub antigm
+gosub findmaker
+gosub findresource
+gosub usetool
+gosub scanbagforcreations
+gosub skillcheck
+goto mainsubcontrol
+ 
+;==ANTI=GM=ATTEMPT=============================================================================
+ 
+sub ANTIGM
+set %gmscan 0
+ANTIGM:
+set %gmscan %gmscan + 1
+scanjournal %gmscan
+if GM in #journal
+        {
+        msg im laggin$
+        wait 5s
+        msg bad$
+        wait 3s
+        msg connecton been $
+        wait 4s
+        msg goin out$
+        wait 10s
+        event macro 20 0
+        click 544 401 r
+        click 544 401
+        wait 1s
+        halt
+        }      
+if GM notin #journal
+        {
+        if %gmscan > 9
+                {
+                return
+                }
+        if %gmscan < 10
+                {
+                goto antigm
+                }
+        }
+ 
+;==FIND=MAKER=SUB===============================================================================
+ 
+sub FINDMAKER
+FINDMAKER:
+if %smelt = 2
+        {
+        finditem %smelter
+        if #findbagid = %backpack
+                {
+                set %smeltingtool #findid
+                goto findmaker2
+                }
+        if #findkind = 1
+                {
+                ignoreitem #findid
+                goto findmaker
+                }
+        set #nextcposx 570
+        set #nextcposy 184
+        set #lobjectid %resourcebag1
+        wait 1s
+        event macro 17 0
+        wait 1s
+        finditem %smelter
+        if #findbagid = %resourcebag1
+                {
+                set %smeltingtool #findid
+                event drag #findid
+                wait 10
+                click 906 224 p
+                wait 10
+                click 668 225 r
+                wait 10
+                goto findmaker2
+                }
+        click 668 225 r
+        wait 5
+        if %resourcebag2 = X
+                {
+                gosub notenoughresources
+                goto findmaker
+                }
+        set #nextcposx 570
+        set #nextcposy 184
+        set #lobjectid %resourcebag2
+        wait 1s
+        event macro 17 0
+        wait 1s
+        finditem %smelter
+        if #findbagid = %resourcebag2
+                {
+                set %smeltingtool #findid
+                event drag #findid
+                wait 10
+                click 906 224 p
+                wait 10
+                click 668 225 r
+                wait 10
+                goto findmaker2
+                }
+        wait 10
+        click 668 225 r
+        gosub notenoughresources
+        goto findmaker
+        }
+ 
+FINDMAKER2:
+finditem %maker
+if #findbagid = %backpack
+        {
+        set %tool #findid
+        return
+        }
+if #findkind = 1
+        {
+        ignoreitem #findid
+        goto findmaker
+        }
+set #nextcposx 570
+set #nextcposy 184
+set #lobjectid %resourcebag1
+wait 1s
+event macro 17 0
+wait 1s
+finditem %maker
+if #findbagid = %resourcebag1
+        {
+        set %tool #findid
+        event drag #findid
+        wait 10
+        click 906 224 p
+        wait 10
+        click 668 225 r
+        wait 10
+        return
+        }
+click 668 225 r
+wait 5
+if %resourcebag2 = X
+        {
+        gosub notenoughresources
+        goto findmaker2
+        }
+set #nextcposx 570
+set #nextcposy 184
+set #lobjectid %resourcebag2
+wait 1s
+event macro 17 0
+wait 1s
+finditem %maker
+if #findbagid = %resourcebag2
+        {
+        set %tool #findid
+        event drag #findid
+        wait 10
+        click 906 224 p
+        wait 10
+        click 668 225 r
+        wait 10
+        return
+        }
+wait 10
+click 668 225 r
+gosub notenoughresources
+goto findmaker2
+ 
+;==FIND=RESOURCE=SUB===============================================================================
+ 
+sub FINDRESOURCE
+FINDRESOURCE:
+if %needbones = 1
+        {
+        finditem %bones
+        if #findbagid = %backpack
+                {
+                if #findstack >= 10
+                        {
+                        set %bonesfound #findid
+                        goto findnextresource
+                        }
+                if #findstack < 10
+                        {
+                        ignoreitem #findid
+                        goto findresource
+                        }
+                }      
+        if #findkind = 1
+                {
+                ignoreitem #findid
+                goto findresource
+                }
+        set #nextcposx 570
+        set #nextcposy 184
+        set #lobjectid %resourcebag1
+        wait 1s
+        event macro 17 0
+        wait 1s
+        finditem %bones
+        if #findbagid = %resourcebag1
+                {
+                if #findstack >= 100
+                        {
+                        event drag #findid
+                        wait 10
+                        msg 100 $
+                        wait 10
+                        click 906 224 p
+                        wait 10
+                        click 668 225 r
+                        wait 10
+                        ignoreitem reset
+                        set %bonesfound #findid
+                        goto findnextresource
+                        }
+                if #findstack < 100
+                        {
+                        event drag #findid
+                        wait 10
+                        msg $
+                        wait 10
+                        click 906 224 p
+                        wait 10
+                        click 668 225 r
+                        wait 10
+                        ignoreitem reset
+                        set %bonesfound #findid
+                        goto findnextresource
+                        }
+                }
+        click 668 225 r
+        wait 5
+        if %resourcebag2 = X
+                {
+                gosub notenoughresources
+                goto findresource
+                }
+        set #nextcposx 570
+        set #nextcposy 184
+        set #lobjectid %resourcebag2
+        wait 1s
+        event macro 17 0
+        wait 1s
+        finditem %bones
+        if #findbagid = %resourcebag2
+                {
+                if #findstack >= 100
+                        {
+                        event drag #findid
+                        wait 10
+                        msg 100 $
+                        wait 10
+                        click 906 224 p
+                        wait 10
+                        click 668 225 r
+                        wait 10
+                        ignoreitem reset
+                        set %bonesfound #findid
+                        goto findnextresource
+                        }
+                if #findstack < 100
+                        {
+                        event drag #findid
+                        wait 10
+                        msg $
+                        wait 10
+                        click 906 224 p
+                        wait 10
+                        click 668 225 r
+                        wait 10
+                        ignoreitem reset
+                        set %bonesfound #findid
+                        goto findnextresource
+                        }
+                }
+        wait 10
+        click 668 225 r
+        gosub notenoughresources
+        goto findresource
+        }
+ 
+FINDNEXTRESOURCE:
+finditem %resource
+if #findbagid = %backpack
+        {
+        if #findstack >= %grablow
+                {
+                set %resourcefound #findid
+                return
+                }
+        if #findstack < %grablow
+                {
+                ignoreitem #findid
+                goto findresource
+                }
+        }
+if #findkind = 1
+        {
+        ignoreitem #findid
+        goto findresource
+        }
+set #nextcposx 570
+set #nextcposy 184
+set #lobjectid %resourcebag1
+wait 1s
+event macro 17 0
+wait 1s
+finditem %resource
+if #findbagid = %resourcebag1
+        {
+        if #findstack >= %grabhigh
+                {
+                event drag #findid
+                wait 10
+                msg %grabhigh $
+                wait 10
+                click 906 224 p
+                wait 10
+                click 668 225 r
+                wait 10
+                ignoreitem reset
+                set %resourcefound #findid
+                return
+                }
+        if #findstack < %grabhigh
+                {
+                event drag #findid
+                wait 10
+                msg $
+                wait 10
+                click 906 224 p
+                wait 10
+                click 668 225 r
+                wait 10
+                ignoreitem reset
+                set %resourcefound #findid
+                return
+                }
+        }
+click 668 225 r
+wait 5
+if %resourcebag2 = X
+        {
+        gosub notenoughresources
+        goto findnextresource
+        }
+set #nextcposx 570
+set #nextcposy 184
+set #lobjectid %resourcebag2
+wait 1s
+event macro 17 0
+wait 1s
+finditem %resource
+if #findbagid = %resourcebag2
+        {
+        if #findstack >= %grabhigh
+                {
+                event drag #findid
+                wait 10
+                msg %grabhigh $
+                wait 10
+                click 906 224 p
+                wait 10
+                click 668 225 r
+                wait 10
+                ignoreitem reset
+                set %resourcefound #findid
+                return
+                }
+        if #findstack < %grabhigh
+                {
+                event drag #findid
+                wait 10
+                msg $
+                wait 10
+                click 906 224 p
+                wait 10
+                click 668 225 r
+                wait 10
+                ignoreitem reset
+                set %resourcefound #findid
+                return
+                }
+        }
+wait 10
+click 668 225 r
+gosub notenoughresources
+goto findnextresource
+ 
+;==USE=TOOL=SUB================================================================================
+ 
+sub USETOOL
+USETOOL:
+if #contid = N/A
+        {
+        return
+        }
+wait 1s
+RELOADTOOL:
+set #lobjectid %tool
+event macro 17 0
+wait 1s
+set #scnt 0
+CONTLOOP:
+if #scnt > 3
+        {
+        gosub findmaker
+        goto reloadtool
+        }
+if #contid = N/A
+        {
+        return
+        }
+finditem %maker
+if #findbagid = %backpack
+        {
+        goto contloop
+        }
+gosub findmaker
+goto usetool
+ 
+;==SCAN=BAG=FOR=CREATIONS=SUB===================================================================
+ 
+sub SCANBAGFORCREATIONS
+SCANBAGFORCREATIONS:
+if %smelt = 0
+        {
+        if #contkind = EYSC
+                {
+                menu clear
+                menu window size 430 30
+                menu text 1 10 5 You have failed to throw an item away probably due to lag.  Trying again.
+                menu show 260 130
+                wait 1s
+                menu hide
+                goto throwawayagain
+                }
+        }
+finditem %creations
+if #findbagid = %backpack
+        {
+        if %smelt = 0
+                {
+                if #findtype = NWH
+                        {
+                        if #findstack > 19
+                                {
+                                if #contid = N/A
+                                        {
+                                        click %bag1xcoord %bag1ycoord r
+                                        }                      
+                                wait 1s
+                                event drag #findid
+                                wait 10
+                                msg $
+                                wait 5
+                                click %bag1xcoord %bag1ycoord p
+                                wait 10        
+                                gosub usetool
+                                goto scanbagforcreations                       
+                                }
+                        ignoreitem #findid
+                        goto scanbagforcreations
+                        }
+                THROWAWAYAGAIN:
+                set #nextcposx 70
+                set #nextcposy 450
+                set #lobjectid %trashcan
+                wait 10
+                event macro 17 0
+                wait 1s
+                if #contid <> %trashcan
+                        {
+                        goto throwawayagain
+                        }
+                event drag #findid
+                wait 5
+                click 138 510 p
+                wait 5
+                if #contkind = EYSC
+                        {
+                        menu clear
+                        menu window size 430 30
+                        menu text 1 10 5 You have failed to throw an item away probably due to lag.  Trying again.
+                        menu show 260 130
+                        wait 1s
+                        menu hide
+                        goto throwawayagain
+                        }
+                click 138 510 r
+                wait 5
+                scanjournal 1
+                if cannot_hold_more in #journal
+                        {
+                        menu clear
+                        menu window size 280 30
+                        menu text 1 10 5 Waiting 3 minutes for the trash can to empty.
+                        menu show 300 130
+                        wait 180s
+                        menu hide
+                        }
+                goto scanbagforcreations
+                }
+        if %smelt = 1
+                {
+                set #ltargetid #findid
+                click 80 403
+                target
+                wait 5
+                event macro 22 0
+                wait 10
+                goto scanbagforcreations
+                }
+        if %smelt = 2
+                {
+                set #lobjectid %smeltingtool
+                set #ltargetid #findid
+                event macro 17 0
+                target
+                wait 5
+                event macro 22 0
+                wait 10
+                finditem ZLF
+                if #findstack > 99
+                        {
+                        if #contid = N/A
+                                {
+                                click %bag1xcoord %bag1ycoord r
+                                }                      
+                        wait 1s
+                        event drag #findid
+                        wait 10
+                        msg $
+                        wait 5
+                        click %bag1xcoord %bag1ycoord p
+                        wait 10        
+                        gosub usetool
+                        goto scanbagforcreations
+                        }
+                goto scanbagforcreations
+                }
+        if %smelt = 3
+                {
+                if %mxwt
+ 
+                set #nextcposx 70
+                set #nextcposy 450
+                set #lobjectid %trashcan
+                wait 1s
+                event macro 17 0
+                wait 1s
+                event drag #findid             
+                wait 10
+                click 138 510 p
+                wait 10
+                click 138 510 r
+                wait 10
+                goto scanbagforcreations
+                }
+        }
+if #findkind = -1
+        {
+        ignoreitem reset
+        return
+        }
+if #findkind = 1
+        {
+        ignoreitem #findid
+        goto scanbagforcreations
+        }
+if #finddist = N/A
+        {
+        ignoreitem #findid
+        goto scanbagforcreations
+        }
+ignoreitem reset
+return
+ 
+;==SKILL=CHECK=SUB==============================================================================
+ 
+sub SKILLCHECK
+chooseskill %skillcheck
+if %skillcheck = blac
+        {
+        if #skill = 1200
+                {
+                menu clear
+                menu window size 310 30
+                menu text 1 10 5 Congratulations!  You are a Legendary Blacksmith!
+                menu show 300 130
+                wait 3s
+                menu hide
+                goto logoff
+                }
+        if #skill > 970
+                {
+                if %makelasttoggle = 11
+                        {
+                        set #scnt 0
+                        SMITHYSKILLLOOP11:
+                        if #contid = N/A
+                                {
+                                click 334 464
+                                return
+                                }      
+                        if #scnt > 5
+                                {
+                                return
+                                }
+                        if #contid <> N/A
+                                {
+                                goto smithyskillloop11
+                                }
+                        }
+                set %makelasttoggle 11
+                click 78 180
+                wait %skillclickwait
+                click 280 200
+                wait %skillclickwait
+                return
+                }
+        if #skill > 940
+                {
+                if %makelasttoggle = 10
+                        {
+                        set #scnt 0
+                        SMITHYSKILLLOOP10:
+                        if #contid = N/A
+                                {
+                                click 334 464
+                                return
+                                }      
+                        if #scnt > 5
+                                {
+                                return
+                                }
+                        if #contid <> N/A
+                                {
+                                goto smithyskillloop10
+                                }
+                        }
+                set %makelasttoggle 10
+                click 78 180
+                wait %skillclickwait
+                click 280 180
+                wait %skillclickwait
+                return
+                }
+        if #skill > 890
+                {
+                if %makelasttoggle = 9
+                        {
+                        set #scnt 0
+                        SMITHYSKILLLOOP9:
+                        if #contid = N/A
+                                {
+                                click 334 464
+                                return
+                                }      
+                        if #scnt > 5
+                                {
+                                return
+                                }
+                        if #contid <> N/A
+                                {
+                                goto smithyskillloop9
+                                }
+                        }
+                set %makelasttoggle 9
+                click 78 180
+                wait %skillclickwait
+                click 280 120
+                wait %skillclickwait
+                return
+                }
+        if #skill > 800
+                {
+                if %makelasttoggle = 8
+                        {
+                        set #scnt 0
+                        SMITHYSKILLLOOP8:
+                        if #contid = N/A
+                                {
+                                click 334 464
+                                return
+                                }      
+                        if #scnt > 5
+                                {
+                                return
+                                }
+                        if #contid <> N/A
+                                {
+                                goto smithyskillloop8
+                                }
+                        }
+                set %makelasttoggle 8
+                click 78 180
+                wait %skillclickwait
+                click 280 140
+                wait %skillclickwait
+                return
+                }
+        if #skill > 750
+                {
+                if %makelasttoggle = 7
+                        {
+                        set #scnt 0
+                        SMITHYSKILLLOOP7:
+                        if #contid = N/A
+                                {
+                                click 334 464
+                                return
+                                }      
+                        if #scnt > 5
+                                {
+                                return
+                                }
+                        if #contid <> N/A
+                                {
+                                goto smithyskillloop7
+                                }
+                        }
+                set %makelasttoggle 7
+                click 78 180
+                wait %skillclickwait
+                click 280 160
+                wait %skillclickwait
+                return
+                }
+        if #skill > 680
+                {
+                if %makelasttoggle = 6
+                        {
+                        set #scnt 0
+                        SMITHYSKILLLOOP6:
+                        if #contid = N/A
+                                {
+                                click 334 464
+                                return
+                                }      
+                        if #scnt > 5
+                                {
+                                return
+                                }
+                        if #contid <> N/A
+                                {
+                                goto smithyskillloop6
+                                }
+                        }
+                set %makelasttoggle 6
+                click 77 280
+                wait %skillclickwait
+                click 280 280
+                wait %skillclickwait
+                return
+                }
+        if #skill > 650
+                {
+                if %makelasttoggle = 5
+                        {
+                        set #scnt 0
+                        SMITHYSKILLLOOP5:
+                        if #contid = N/A
+                                {
+                                click 334 464
+                                return
+                                }      
+                        if #scnt > 5
+                                {
+                                return
+                                }
+                        if #contid <> N/A
+                                {
+                                goto smithyskillloop5
+                                }
+                        }
+                set %makelasttoggle 5
+                click 77 280
+                wait %skillclickwait
+                click 280 240
+                wait %skillclickwait
+                return
+                }
+        if #skill > 600
+                {
+                if %makelasttoggle = 4
+                        {
+                        set #scnt 0
+                        SMITHYSKILLLOOP4:
+                        if #contid = N/A
+                                {
+                                click 334 464
+                                return
+                                }      
+                        if #scnt > 5
+                                {
+                                return
+                                }
+                        if #contid <> N/A
+                                {
+                                goto smithyskillloop4
+                                }
+                        }
+                set %makelasttoggle 4
+                click 77 160
+                wait %skillclickwait
+                click 280 160
+                wait %skillclickwait
+                return
+                }
+        if #skill > 550
+                {
+                if %makelasttoggle = 3
+                        {
+                        set #scnt 0
+                        SMITHYSKILLLOOP3:
+                        if #contid = N/A
+                                {
+                                click 334 464
+                                return
+                                }      
+                        if #scnt > 5
+                                {
+                                return
+                                }
+                        if #contid <> N/A
+                                {
+                                goto smithyskillloop3
+                                }
+                        }
+                set %makelasttoggle 3
+                click 79 240
+                wait %skillclickwait
+                click 280 140
+                wait %skillclickwait
+                return
+                }
+        if #skill > 500
+                {
+                if %makelasttoggle = 2
+                        {
+                        set #scnt 0
+                        SMITHYSKILLLOOP2:
+                        if #contid = N/A
+                                {
+                                click 334 464
+                                return
+                                }      
+                        if #scnt > 5
+                                {
+                                return
+                                }
+                        if #contid <> N/A
+                                {
+                                goto smithyskillloop2
+                                }
+                        }
+                set %makelasttoggle 2
+                click 79 240
+                wait %skillclickwait
+                click 280 260
+                wait %skillclickwait
+                return
+                }
+        if #skill > 300
+                {
+                if %makelasttoggle = 1
+                        {
+                        set #scnt 0
+                        SMITHYSKILLLOOP1:
+                        if #contid = N/A
+                                {
+                                click 334 464
+                                return
+                                }      
+                        if #scnt > 5
+                                {
+                                return
+                                }
+                        if #contid <> N/A
+                                {
+                                goto smithyskillloop1
+                                }
+                        }
+                set %makelasttoggle 1
+                click 79 141
+                wait %skillclickwait
+                click 283 161
+                wait %skillclickwait
+                return
+                }
+        if #skill < 300
+                {
+                wait %skillclickwait
+                menu clear
+                menu window size 290 50
+                menu text 1 10 5 Run to town and buy the skill up to at least 30,
+                menu text 2 10 25 and then come back and use this trainer.
+                menu show 300 130
+                halt
+                }
+        }
+if %skillcheck = bowc
+        {
+        if #skill = 1000
+                {
+                menu clear
+                menu window size 320 30
+                menu text 1 10 5 Congratulations!  You are a Grandmaster Bowcrafter!
+                menu show 300 130
+                wait 3s
+                menu hide
+                goto logoff
+                }
+        if #skill > 899
+                {
+                click 78 180
+                wait %skillclickwait
+                click 284 199
+                wait %skillclickwait
+                return
+                }
+        if #skill > 799
+                {
+                click 78 180
+                wait %skillclickwait
+                click 284 159
+                wait %skillclickwait
+                return
+                }
+        if #skill > 699
+                {
+                click 78 180
+                wait %skillclickwait
+                click 284 179
+                wait %skillclickwait
+                return
+                }
+        if #skill > 599
+                {
+                click 78 180
+                wait %skillclickwait
+                click 284 139
+                wait %skillclickwait
+                return
+                }
+        if #skill > 299
+                {
+                click 78 180
+                wait %skillclickwait
+                click 284 122
+                wait %skillclickwait
+                return
+                }
+        if #skill < 300
+                {
+                wait %skillclickwait
+                menu clear
+                menu window size 290 50
+                menu text 1 10 5 Run to town and buy the skill up to at least 30,
+                menu text 2 10 25 and then come back and use this trainer.
+                menu show 300 130
+                halt
+                }
+        }
+if %skillcheck = tink
+        {
+        if #skill = 1000
+                {
+                menu clear
+                menu window size 305 30
+                menu text 1 10 5 Congratulations!  You are a Grandmaster Tinkerer!
+                menu show 300 130
+                wait 3s
+                menu hide
+                goto logoff
+                }
+        if #skill > 849
+                {
+                click 80 222
+                wait %skillclickwait
+                click 283 261
+                wait %skillclickwait
+                return
+                }
+        if #skill > 699
+                {
+                click 79 161
+                wait %skillclickwait
+                click 433 323
+                wait %skillclickwait
+                click 280 260
+                wait %skillclickwait
+                return
+                }
+        if #skill > 549
+                {
+                click 79 161
+                wait %skillclickwait
+                click 283 161
+                wait %skillclickwait
+                return
+                }      
+        if #skill > 449
+                {
+                click 79 161
+                wait %skillclickwait
+                click 285 141
+                wait %skillclickwait
+                return
+                }      
+        if #skill > 149
+                {
+                click 80 182
+                wait %skillclickwait
+                click 284 123
+                wait %skillclickwait
+                return
+                }
+        if #skill < 150
+                {
+                wait %skillclickwait
+                menu clear
+                menu window size 290 50
+                menu text 1 10 5 Run to town and buy the skill up to at least 15,
+                menu text 2 10 25 and then come back and use this trainer.
+                menu show 300 130
+                halt
+                }
+        }
+if %skillcheck = tail
+        {
+        if #skill = 1200
+                {
+                menu clear
+                menu window size 275 30
+                menu text 1 10 5 Congratulations!  You are a Legendary Tailor!
+                menu show 300 130
+                wait 3s
+                menu hide
+                goto logoff
+                }
+        if #skill > 1189
+                {
+                if %needbones = 0
+                        {
+                        set %smelt 0
+                        set %needbones 1
+                        set %creations PPH
+                        }
+                if %makelasttoggle = 8
+                        {
+                        set #scnt 0
+                        TAILORINGSKILLLOOP8:
+                        if #contid = N/A
+                                {
+                                click 334 464
+                                return
+                                }      
+                        if #scnt > 5
+                                {
+                                return
+                                }
+                        if #contid <> N/A
+                                {
+                                goto tailoringskillloop8
+                                }
+                        }
+                set %makelasttoggle 8
+                click 80 321
+                wait %skillclickwait
+                click 284 199
+                wait %skillclickwait
+                return
+                }
+        if #skill > 953
+                {
+                if %resource = CUI
+                        {
+                        set %resource JJG_MJG
+                        }
+                if %makelasttoggle = 7
+                        {
+                        set #scnt 0
+                        TAILORINGSKILLLOOP7:
+                        if #contid = N/A
+                                {
+                                click 334 464
+                                return
+                                }      
+                        if #scnt > 5
+                                {
+                                return
+                                }
+                        if #contid <> N/A
+                                {
+                                goto tailoringskillloop7
+                                }
+                        }
+                set %makelasttoggle 7
+                click 80 282
+                wait %skillclickwait
+                click 284 198
+                wait %skillclickwait
+                return
+                }
+        if #skill > 745
+                {
+                if #targcurs = 1
+                        {
+                        set #ltargetid %resourcefound
+                        event macro 22 0
+                        }
+                if %makelasttoggle = 6
+                        {
+                        set #scnt 0
+                        TAILORINGSKILLLOOP6:
+                        if #contid = N/A
+                                {
+                                click 334 464
+                                return
+                                }      
+                        if #scnt > 5
+                                {
+                                return
+                                }
+                        if #contid <> N/A
+                                {
+                                goto tailoringskillloop6
+                                }
+                        }
+                set %makelasttoggle 6
+                click 80 224
+                wait %skillclickwait
+                click 284 181
+                wait %skillclickwait
+                return
+                }
+        if #skill > 538
+                {
+                if #targcurs = 1
+                        {
+                        set #ltargetid %resourcefound
+                        event macro 22 0
+                        }
+                if %makelasttoggle = 5
+                        {
+                        set #scnt 0
+                        TAILORINGSKILLLOOP5:
+                        if #contid = N/A
+                                {
+                                click 334 464
+                                return
+                                }      
+                        if #scnt > 5
+                                {
+                                return
+                                }
+                        if #contid <> N/A
+                                {
+                                goto tailoringskillloop5
+                                }
+                        }
+                set %makelasttoggle 5
+                click 80 182
+                wait %skillclickwait
+                click 284 282
+                wait %skillclickwait
+                return
+                }
+        if #skill > 413
+                {
+                if #targcurs = 1
+                        {
+                        set #ltargetid %resourcefound
+                        event macro 22 0
+                        }
+                if %makelasttoggle = 4
+                        {
+                        set #scnt 0
+                        TAILORINGSKILLLOOP4:
+                        if #contid = N/A
+                                {
+                                click 334 464
+                                return
+                                }      
+                        if #scnt > 5
+                                {
+                                return
+                                }
+                        if #contid <> N/A
+                                {
+                                goto tailoringskillloop4
+                                }
+                        }
+                set %makelasttoggle 4
+                click 80 182
+                wait %skillclickwait
+                click 284 261
+                wait %skillclickwait
+                return
+                }
+        if #skill > 329
+                {
+                if #targcurs = 1
+                        {
+                        set #ltargetid %resourcefound
+                        event macro 22 0
+                        }
+                if %makelasttoggle = 3
+                        {
+                        set #scnt 0
+                        TAILORINGSKILLLOOP3:
+                        if #contid = N/A
+                                {
+                                click 334 464
+                                return
+                                }      
+                        if #scnt > 5
+                                {
+                                return
+                                }
+                        if #contid <> N/A
+                                {
+                                goto tailoringskillloop3
+                                }
+                        }
+                set %makelasttoggle 3
+                click 80 182
+                wait %skillclickwait
+                click 284 241
+                wait %skillclickwait
+                return
+                }
+        if #skill > 122
+                {
+                if #targcurs = 1
+                        {
+                        set #ltargetid %resourcefound
+                        event macro 22 0
+                        }
+                if %makelasttoggle = 2
+                        {
+                        set #scnt 0
+                        TAILORINGSKILLLOOP2:
+                        if #contid = N/A
+                                {
+                                click 334 464
+                                return
+                                }      
+                        if #scnt > 5
+                                {
+                                return
+                                }
+                        if #contid <> N/A
+                                {
+                                goto tailoringskillloop2
+                                }
+                        }
+                set %makelasttoggle 2
+                click 80 182
+                wait %skillclickwait
+                click 284 222
+                wait %skillclickwait
+                return
+                }
+        if #skill < 123
+                {
+                if #targcurs = 1
+                        {
+                        set #ltargetid %resourcefound
+                        event macro 22 0
+                        }
+                if %makelasttoggle = 1
+                        {
+                        set #scnt 0
+                        TAILORINGSKILLLOOP1:
+                        if #contid = N/A
+                                {
+                                click 334 464
+                                return
+                                }      
+                        if #scnt > 5
+                                {
+                                return
+                                }
+                        if #contid <> N/A
+                                {
+                                goto tailoringskillloop1
+                                }
+                        }
+                set %makelasttoggle 1
+                click 80 182
+                wait %skillclickwait
+                click 284 122
+                wait %skillclickwait
+                return
+                }
+        }
+if %skillcheck = carp
+        {
+        if #skill = 1000
+                {
+                menu clear
+                menu window size 320 30
+                menu text 1 10 5 Congratulations!  You are a Grandmaster Carpenter!
+                menu show 300 130
+                wait 3s
+                menu hide
+                goto logoff
+                }
+        if #skill > 799
+                {
+                if %makelasttoggle = 6
+                        {
+                        set #scnt 0
+                        CARPSKILLLOOP6:
+                        if #contid = N/A
+                                {
+                                click 334 464
+                                return
+                                }      
+                        if #scnt > 5
+                                {
+                                return
+                                }
+                        if #contid <> N/A
+                                {
+                                goto carpskillloop6
+                                }
+                        }
+                set %makelasttoggle 6
+                set %smelt 0
+                click 80 201
+                wait %skillclickwait
+                click 284 160
+                wait %skillclickwait
+                return
+                }
+        if #skill > 735
+                {
+                if %makelasttoggle = 5
+                        {
+                        set #scnt 0
+                        CARPSKILLLOOP5:
+                        if #contid = N/A
+                                {
+                                click 334 464
+                                return
+                                }      
+                        if #scnt > 5
+                                {
+                                return
+                                }
+                        if #contid <> N/A
+                                {
+                                goto carpskillloop5
+                                }
+                        }
+                set %makelasttoggle 5
+                set %smelt 0
+                click 80 201
+                wait %skillclickwait
+                click 284 140
+                wait %skillclickwait
+                return
+                }
+        if #skill > 525
+                {
+                if %makelasttoggle = 4
+                        {
+                        set #scnt 0
+                        CARPSKILLLOOP4:
+                        if #contid = N/A
+                                {
+                                click 334 464
+                                return
+                                }      
+                        if #scnt > 5
+                                {
+                                return
+                                }
+                        if #contid <> N/A
+                                {
+                                goto carpskillloop4
+                                }
+                        }
+                set %makelasttoggle 4
+                click 80 201
+                wait %skillclickwait
+                click 284 180
+                wait %skillclickwait
+                return
+                }
+        if #skill > 479
+                {
+                if %makelasttoggle = 3
+                        {
+                        set #scnt 0
+                        CARPSKILLLOOP3:
+                        if #contid = N/A
+                                {
+                                click 334 464
+                                return
+                                }      
+                        if #scnt > 5
+                                {
+                                return
+                                }
+                        if #contid <> N/A
+                                {
+                                goto carpskillloop3
+                                }
+                        }
+                set %makelasttoggle 3
+                click 80 182
+                wait %skillclickwait
+                click 284 181
+                wait %skillclickwait
+                return
+                }
+        if #skill > 329
+                {
+                if %makelasttoggle = 2
+                        {
+                        set #scnt 0
+                        CARPSKILLLOOP2:
+                        if #contid = N/A
+                                {
+                                click 334 464
+                                return
+                                }      
+                        if #scnt > 5
+                                {
+                                return
+                                }
+                        if #contid <> N/A
+                                {
+                                goto carpskillloop2
+                                }
+                        }
+                set %makelasttoggle 2
+                click 80 182
+                wait %skillclickwait
+                click 284 161
+                wait %skillclickwait
+                return
+                }
+        if #skill > 119
+                {
+                if %makelasttoggle = 1
+                        {
+                        set #scnt 0
+                        CARPSKILLLOOP1:
+                        if #contid = N/A
+                                {
+                                click 334 464
+                                return
+                                }      
+                        if #scnt > 5
+                                {
+                                return
+                                }
+                        if #contid <> N/A
+                                {
+                                goto carpskillloop1
+                                }
+                        }
+                set %makelasttoggle 1
+                click 80 182
+                wait %skillclickwait
+                click 284 141
+                wait %skillclickwait
+                return
+                }      
+        if #skill < 120
+                {
+                wait %skillclickwait
+                menu clear
+                menu window size 290 50
+                menu text 1 10 5 Run to town and buy the skill up to at least 12,
+                menu text 2 10 25 and then come back and use this trainer.
+                menu show 300 130
+                halt
+                }
+        }
+ 
+;==NOT=ENOUGH=RESOURCES=AND=LOGOFF=SECTION========================================================
+ 
+sub NOTENOUGHRESOURCES
+if %notenough = 0
+        {
+        set %notenough 1
+        set #menubutton x
+        menu clear
+        menu window size 300 70
+        menu text 1 10 5 Not enough supplies were found in your resource
+        menu text 2 10 25 pack(s).  This might not be true.  Rechecking in
+        menu text 3 10 45 3 seconds.
+        menu show 270 100
+        wait 3s
+        menu hide
+        return
+        }
+if %notenough = 1
+        {
+        set #menubutton x
+        menu clear
+        menu window size 325 50
+        menu text 1 10 5 Theres not enough supplies in your resource pack(s).
+        menu text 2 60 25 You will be logged off in 1 minute.
+        menu show 270 100
+        wait 60s
+        menu hide
+        LOGOFF:
+        event macro 20 0
+        click 544 401 r
+        click 544 401
+        halt
+        }
+ 

@@ -1,0 +1,2792 @@
+;====================================================== 
+; Script Name: JEBBITS Do All For The Hard Core Miner 
+; Author: Jebbit 
+; Version: 1.4 
+; Client Tested with: 4.0.0q 
+; EUO version tested with: 1.4 (005b) 
+; Shard OSI / FS: 
+; Revision Date: 
+; Public Release:11-30-03 
+; Purpose:Commodity deed filler/organizer/counter/smithbod filler/Runemaker 
+;Deed bag transfer/Mining script set up helpper 
+;====================================================== 
+;Mega thanks to «§»Dalcon«§» for allowing me to incorperate his modifyed bod filler into this script. 
+initevents
+key p alt
+set %delay 20
+set %bank n/a
+set %mark 0
+
+Event macro 8 1
+      wait 1s
+      contpos 650 0
+      event macro 8 7
+      wait 1s
+set %backpackid #contid
+
+event macro 8 2
+     wait %pause1
+      contpos 200 200
+     wait 1S
+     CLICK 596 358
+
+event macro 8 7
+    wait 20
+      contpos 615 330
+      wait 10
+
+restart:
+menu clear
+set #menubutton N/A
+    menu Clear
+	menu Window Title Jebbits Multi Tool
+	menu Window Color InfoBk
+	menu Window Size 490 330
+	menu Font Transparent #true
+	menu Font Align Right
+	menu Font Name MS Sans Serif
+	menu Font Size 12
+	menu Font Style b
+	menu Font Color Green
+	menu Font Transparent #false
+	menu Font Align Left
+	menu Font BGColor InfoBk
+	menu Text EUOLabel1 124 0 Jebbits Multi Tool For Miners
+	menu Font Size 8
+	menu Font Style
+	menu Font Color Background
+	menu Text EUOLabel2 80 28 This tool is for filling commodity deeds. Used from bank ensure you have a chest full of
+	menu Text EUOLabel3 76 44 ingots you need. Make sure deed bag is a PACK and in your back pack
+	menu Text EUOLabel4 76 68 Nice pack or bag organizer, this will seperate all ore color commodity dees into their
+	menu Text EUOLabel5 76 84 own spot and give a final count of how many of each deed.
+	menu Text EUOLabel6 72 112 Same as above but for counting only
+	menu Text EUOLabel7 76 160 Need to transfer deeds from one container to another use this handy tool.
+	menu Text EUOLabel8 76 208 Where would a good vendor miner be with out plenty of marked runes to pass out
+	menu Text EUOLabel9 76 224 This will mark runes inside or outside the house while moveing to mark several locations
+	menu Text EUOLabel10 76 252 Making your own script or need some basic info from the game, this tool will give you
+	menu Text EUOLabel11 76 268 most of the basic information on a front end menu for easy access.
+	menu Text EUOLabel10 76 294 Dalcons awesome bod filler. Does not work with SE however, is clearly one of the best
+	menu Text EUOLabel11 76 310 bod fillers around. Have a secure with ingots and tools, bods in your back pack.
+menu Font Color WindowText
+	menu Font BGColor BtnFace
+	menu Button filldeeds 0 24 75 25 Fill Deeds
+	menu Button organize 0 68 75 25 Organize
+	menu Button Count -4 112 75 25 Count Deeds
+	menu Button Transfer 0 160 75 25 Transfer Deeds
+	menu Button Mark 0 208 75 25 Mark Runes
+	menu Button menu 0 252 75 25 Script Tool
+	menu Button fillbods 0 295 75 25 Bods
+	menu Show 150 130
+
+round:
+if #menubutton = count 3
+    set %mark 1
+     KEY P ALT
+     GOSUB SETUP2
+if #menubutton = mark 2
+     KEY P ALT
+     GOSUB MARKRUNES
+if #menubutton = transfer 3
+     set %mark 4
+     KEY P ALT
+     goSUB IDD
+if #menubutton = fillbods 2
+     KEY P ALT
+     gosub bodfiller
+if #menubutton = filldeeds 2
+     KEY P ALT
+     goTO START
+if #menubutton = organize 3
+     set %mark 2
+     KEY P ALT
+     gosub setup2
+if #menubutton = menu 2
+     KEY P ALT
+     goSUB mining
+if %mark <> 0
+set %mark 0
+     goto round
+
+start:
+GOSUB SETUP
+GOSUB SETUP2
+STARTT:
+gosub ingot
+gosub deed
+gosub combine
+gosub bagit
+goto startT
+
+
+SUB setup
+menu hide
+menu clear
+      menu button n/a
+      menu window size 240 85
+      menu window color BLACK
+      menu font bgcolor BLACK
+menu window title Bod counter
+     menu font align center
+     menu font style
+   menu font color red
+   menu font size 11
+menu edit amount 95 5 50 100
+     menu font style
+   menu font color red
+   menu font size 11
+menu text msg 15 35 Enter amount of ingots per deed
+     menu font color red
+   menu font size 9
+menu button enter 95 55 50 25 OK
+menu show 555 0
+
+looppp:
+if #menubutton <> enter
+goto looppp
+menu hide
+MENU GET amount
+wait 5
+set %amount #menures
+RETURN
+
+SUB SETUP2
+menu hide
+if %mark = 1
+goto ID
+if %mark = 2
+goto id
+key p alt
+msg bank $
+WAIT 20
+SET %BANK #CONTID
+display msg Click ok and open and close your pack with ingots. This must be in the bank...you have 5 seconds.
+     wait 5s
+     set %bankPACK #lobjectid
+     wait 20
+ID:
+if %mark = 1 || %mark = 2 3
+display msg Click ok then open and close the pack you have your bods to count in. You have 5 seconds.
+     wait 5s
+     goto setpack
+display msg Click ok and open and close the pack you wish to put filled deeds into. This must be in your main pack...you have 5 seconds
+     wait 5s
+setpack:
+      SET %DEEDPACK #lobjectid
+if %mark = 0
+     gosub continue
+if %mark = 2
+    gosub ORGANIZE
+if %mark = 1
+    gosub countonly
+RETURN
+
+sub continue
+
+     WAIT 20
+msg bank $
+wait 10
+set #LOBJECTID %bank
+      WAIT 10
+      CONTPOS 32 48
+FINDITEM %BANKPACK C_ , %bank
+wait 10
+     set #LOBJECTID %bankpack
+      set #findmod 0_0
+      set #NEXTCPOSX 10
+      set #NEXTCPOSY 300
+      event macro 17 0
+wait 10
+contpos 10 300
+wait 20
+return
+
+sub ingot
+menu hide
+ingot:
+finditem enk c_ , %BANKPACK
+if #FINDSTACK < %AMOUNT || #FINDID = X
+{
+     display yesno Out of ingots would you like to organize your filled deeds now?
+if #dispres = yes
+     gosub organize
+if #dispres = no
+     halt
+}
+     event drag #findID
+     wait 10
+     msg %amount $
+     WAIT 20
+     CLICK 141 123 P
+     WAIT 30
+     finditem enk c_ , %BANK
+IF #FINDID = X
+     GOTO INGOT
+SET %ORE #FINDID
+return
+
+sub deed
+menu hide
+DEED:
+; find an unused commodity deed 
+     findItem EWH C_ , %backpackID
+if #findKind = -1
+     findItem EWH C_ , %BANKPACK
+if #findcol <> 71 && #findid <> x
+{
+ignoreitem #findid
+goto deed
+}
+      if #findKind = -1
+       {
+      DISPLAY YESNO Out of deeds would you like to organize your filled deeds now?
+       if #dispres = yes
+     gosub organize
+    if #dispres = no
+  halt
+}
+     WAIT 20
+     set %deed #findID
+     event drag %deed
+     wait 20
+     click 106 129 P
+     WAIT 20
+     finditem EWH c_ , %BANK
+IF #FINDID = X
+     GOTO DEED
+     return
+
+
+sub combine
+COMBINE:
+        findItem %DEED C_ , %BANK
+     set #lOBJECTID #findID
+     event Macro 17
+     WAIT 30
+     SET #LTARGETID %ORE
+SET #LTARGETKIND 1
+     event Macro 22
+     wait 30
+     FINDITEM %ore c_ , %BANK
+     WAIT 10
+IF #FINDID <> X
+     GOTO COMBINE
+return
+
+sub bagit
+bagit:
+if #findKind = 0
+{
+   event drag %deed
+    wait 20
+      finditem %DEEDPACK
+        set #findmod 20_10
+           click #findx #findy
+            WAIT 20
+              FINDITEM %DEED C_ , %BANK
+IF #FINDID <> X
+goto bagit
+return
+
+sub organize
+MENU HIDE
+set %i 0
+set %d 0
+set %s 0
+set %c 0
+set %b 0
+set %g 0
+set %a 0
+set %ve 0
+set %va 0
+MOVEDAMIT:
+     set #LOBJECTID %deedpack
+event macro 17 0
+wait 35
+SET #NEXTCPOSX 600
+SET #NEXTCPOSY 323
+set #lobjectid #findid
+wait 10
+contpos #NEXTCPOSX #NEXTCPOSY
+     WAIT 20
+FINDITEM %DEEDPACK
+IF #contposx <> 600 && #contposy <> 323
+GOTO MOVEDAMIT
+     IGNOREITEM #LOBJECTID
+MORE:
+set %wsw %sss
+SET %SSS %D + %S + %C + %B + %G + %A + %VE + %VA + %I
+menu clear
+      menu window size 150 50
+      menu window color BLACK
+      menu font bgcolor BLACK
+menu window title Bod counter
+menu font align center
+      menu font style
+   menu font color red
+   menu font size 8
+menu text stat 20 0 PLEASE WAIT... %SSS
+menu show 640 296
+     FINDITEM EWH C_ , %DEEDPACK
+IF #FINDID = X
+     gosub menu
+if #findcol <> 71
+goto more
+      set #lobjectid #findid
+       IGNOREITEM #LOBJECTID
+        EVENT PROPERTY #findid
+       EVENT DRAG #LOBJECTID
+WAIT %delay
+if DULL IN #PROPERTY 3  ;Dull Copper 
+     click 652 380 p
+     set %d %d + 1
+GOTO MORE
+if SHADOW IN #PROPERTY 3  ;Shadow 
+     click 702 386 p
+     set %s %s + 1
+GOTO MORE
+if COPPER IN #PROPERTY 3  ;Copper 
+     click 732 360 p
+     set %c %c + 1
+GOTO MORE
+if BRONZE IN #PROPERTY 3   ;Bronze 
+     click 770 371 p
+     set %b %b + 1
+GOTO MORE
+if GOLD IN #PROPERTY 3  ;Golden 
+     click 656 466 p
+     set %g %g + 1
+GOTO MORE
+if AGAPITE IN #PROPERTY 3  ;Agapite 
+     click 702 470 p
+     set %a %a + 1
+GOTO MORE
+if VERITE IN #PROPERTY 3  ;Verite 
+     click 735 471  p
+     set %ve %ve + 1
+GOTO MORE
+if VALORITE IN #PROPERTY 3   ;Valorite 
+     click 777 469 p
+     set %va %va + 1
+GOTO MORE
+if iron IN #PROPERTY 3   ;regular 
+     click 650 430 p
+     set %i %i + 1
+GOTO MORE
+if unfilled IN #PROPERTY 2   ;none 
+     click 718 436 p
+goto more
+ if #findid = x
+return
+click 718 436 p
+goto more
+return
+
+sub menu
+menu clear
+      menu window size 100 243
+      menu window color BLACK
+      menu font bgcolor BLACK
+menu window title Bod counter
+menu font align center
+      menu font style
+   menu font color red
+   menu font size 11
+menu text stat 0 0 Total Deeds
+menu font style
+   menu font color yellow
+   menu font size 11
+menu text stat 85 0 %sss
+      menu font align center
+      menu font style
+   menu font color green
+   menu font size 11
+menu text stat 5 25 Iron
+   menu font size 11
+   menu font style
+   menu font color green
+menu text stat 5 50  Dull
+   menu font style
+   menu font color green
+   menu font size 11
+menu text stat 5 75 Shadow
+   menu font style
+   menu font color green
+   menu font size 11
+menu text stat 5 100 Copper
+   menu font style
+   menu font color green
+   menu font size 11
+menu text stat 5 125 Bronze
+   menu font style
+   menu font color green
+   menu font size 11
+menu text stat 5 150 Gold
+   menu font style
+   menu font color green
+   menu font size 11
+menu text stat 5 175 Agapite
+   menu font style
+   menu font color green
+   menu font size 11
+menu text stat 5 200 Vetite
+menu font style
+   menu font color green
+   menu font size 11
+menu text stat 5 225 Valorite
+menu font align center
+      menu font style B
+   menu font color RED
+   menu font size 11
+menu text stat 70 25 %i
+   menu font size 11
+   menu font style B
+   menu font color RED
+menu text stat 70 50 %d
+   menu font style B
+   menu font color RED
+   menu font size 11
+menu text stat 70 75 %s
+   menu font style B
+   menu font color RED
+   menu font size 11
+menu text stat 70 100 %c
+   menu font style B
+   menu font color RED
+   menu font size 11
+menu text stat 70 125 %b
+   menu font style B
+   menu font color RED
+   menu font size 11
+menu text stat 70 150 %g
+   menu font style B
+   menu font color RED
+   menu font size 11
+menu text stat 70 175 %a
+   menu font style B
+   menu font color RED
+   menu font size 11
+menu text stat 70 200 %ve
+menu font style B
+   menu font color RED
+   menu font size 11
+menu text stat 70 225 %va
+set #menubutton N/A
+   menu show
+halt
+return
+
+sub COUNTONLY
+menu hide
+set #LOBJECTID %deedpack
+event macro 17 0
+wait 35
+SET #NEXTCPOSX 600
+SET #NEXTCPOSY 323
+set #lobjectid #findid
+contpos #NEXTCPOSX #NEXTCPOSY
+mor:
+SET %SSS %D + %S + %C + %B + %G + %A + %VE + %VA + %I
+menu clear
+      menu window size 150 50
+      menu window color BLACK
+      menu font bgcolor BLACK
+menu window title Bod counter
+menu font align center
+      menu font style
+   menu font color red
+   menu font size 8
+menu text stat 20 0 PLEASE WAIT... %SSS
+menu show 640 296
+FINDITEM EWH C_ , %DEEDPACK
+IF #FINDID = X 2
+MENU HIDE
+     gosub menu
+      set #lobjectid #findid
+       IGNOREITEM #LOBJECTID
+        EVENT PROPERTY #findid
+WAIT 5
+if DULL IN #PROPERTY 2  ;Dull Copper 
+     set %d %d + 1
+     GOTO MOR
+if SHADOW IN #PROPERTY 2  ;Shadow 
+     set %s %s + 1
+     GOTO MOR
+if COPPER IN #PROPERTY 2  ;Copper 
+     set %c %c + 1
+     GOTO MOR
+if BRONZE IN #PROPERTY 2   ;Bronze 
+     set %b %b + 1
+     GOTO MOR
+if GOLD IN #PROPERTY 2  ;Golden 
+     set %g %g + 1
+     GOTO MOR
+if AGAPITE IN #PROPERTY 2  ;Agapite 
+     set %a %a + 1
+     GOTO MOR
+if VERITE IN #PROPERTY 2  ;Verite 
+     set %ve %ve + 1
+     GOTO MOR
+if VALORITE IN #PROPERTY 2   ;Valorite 
+     set %va %va + 1
+     GOTO MOR
+if dull notIN #PROPERTY && shadow notIN #PROPERTY && copper notIN #PROPERTY &&
++ bronze notIN #PROPERTY && gold notIN #PROPERTY && agapite notIN #PROPERTY &&
++ verite notIN #PROPERTY && valorite notIN #PROPERTY 3   ;regular  
+     set %i %i + 1
+GOTO MOR
+return
+
+SUB IDD
+menu hide
+display msg Click ok and open your pack the item to move. You have 5 seconds
+     wait 5s
+     set %bankPACK #lobjectid
+display msg Click ok and target the item you want to transfer.
+     set #targcurs 1
+set #ltargetid NULL
+bagloop:
+if #ltargetid = NULL
+goto bagloop
+WAIT 5
+FINDITEM #LTARGETID
+WAIT 10
+set %item #findtype
+display msg Click ok and target the pack you wish to transfer into.
+     set #targcurs 1
+set #ltargetid NULL
+bagloopP:
+if #ltargetid = NULL
+   goto bagloopP
+     SET %DEEDPACK #ltargetid
+     FINDITEM %bankPACK C_ , %BACKPACKID
+     wait 20
+      set #LOBJECTID %bankPACK
+      set #findmod 0_0
+      set #NEXTCPOSX 50
+      set #NEXTCPOSY 50
+      event macro 17 0
+     wait 20
+loopit:
+      finditem %item c_ , %bankPACK
+     ignoreitem #findid
+IF #FINDID = X 4
+     DISPLAY YESNO Do you wish to organize your deeds now?
+if #dispres = yes 2
+     set %mark 2
+     gosub setup2
+if #dispres = no
+      halt
+if #findKind = 0
+{
+   event drag #findid
+if #findstack > 0
+{
+wait 5
+msg $
+wait 5
+}
+    wait 10
+      finditem %DEEDPACK
+        set #findmod 20_10
+           click #findx #findy
+            WAIT 5
+goto loopit
+return
+
+SUB MARKRUNES
+set #menubutton n/a
+menu HIDE
+menu clear
+display yesno Are you marking runes inside a house?
+if #dispres = yes 2
+SET %NAME #false       ;<-- set to #true only if outside house 
+goto movedown
+menu button n/a
+menu window size 355 85
+      menu window color BLACK
+      menu font bgcolor BLACK
+menu window title Rune Marker
+menu font align center
+      menu font style
+   menu font color red
+   menu font size 8
+menu edit message 5 5 340 enter_what_you_want_to_say
+menu font style
+   menu font color red
+   menu font size 10
+menu text msg 10 35 Enter what you want your rune to say above then hit OK
+menu font color red
+   menu font size 9
+menu button enter 0 60 355 25 OK
+menu show
+here:
+if #menubutton <> enter
+goto here
+menu hide
+MENU GET message
+wait 5
+set %amoun #menures
+KEY P ALT
+SET %NAME #true       ;<-- set to #true only if outside house 
+movedown:
+set %rune qwl
+loopp:
+if #mana < 20
+gosub med
+finditem %rune C_
+  If #Findkind <> 0 2
+DISPLAY MSG YOU HAVE NO MORE RUNES
+    halt
+  event macro 15 44
+  target 5s
+SCANJOURNAL
+IF YOU_DO_NOT_HAVE IN #JOURNAL 2
+DISPLAY MSG YOU DONT HAVE THIS SPELL
+HALT
+SET #FINDMOD 21_6
+set %markx #findx
+set %marky #findy
+click %markx %marky
+wait 20
+  event macro 22 0
+  wait 2s
+if %name = #TRUE
+gosub name
+  ignoreitem #findid
+goto loopp
+
+SUB NAME
+click %markx %marky d
+wait 20
+msg %amoun $
+wait 20
+return
+
+sub med
+if #mana < 100
+{
+event macro 13 46
+wait 10s
+gosub med
+}
+return
+
+;========================================================= 
+
+SUB mining
+set %y 0
+set %mark 1
+set %CT 0
+menu Clear
+set #menubutton n/a
+      menu window size 210 140
+      menu window color dblue
+      menu font bgcolor dblue
+menu window title Dig Locator
+menu font align center
+      menu font style b
+    menu font color green
+    menu font size 11
+menu text stat 25 5 Your Dig location is at
+menu font align center
+      menu font style b
+    menu font color green
+    menu font size 11
+menu text stat 5 22 Digspotx
+menu font align center
+      menu font style b
+    menu font color green
+    menu font size 11
+menu text stat 110 22 Digspoty
+menu font style
+   menu font color green
+   menu font size 12
+menu text stat 37 60 Your current position
+menu font style
+   menu font color green
+   menu font size 12
+menu text stat 5 143 Drag any health bar for
+menu font style
+   menu font color green
+   menu font size 12
+menu text stat 5 162 Animal/Monster ID
+menu font style
+    menu font color blue
+    menu font size 12
+menu text stat 3 195 Target an Item
+menu font style
+    menu font color blue
+    menu font size 12
+menu text stat 5 180 Findmod adjustment
+menu font style
+    menu font color green
+    menu font size 12
+menu text stat 5 215 ID number of
+       menu font style
+    menu font color green
+    menu font size 12
+menu text stat 5 230 Targeted Item
+        menu font style
+    menu font color blue
+    menu font size 12
+menu text stat 5 248 Item Type
+menu font style
+    menu font color green
+    menu font size 11
+menu text stat 5 268 Ore/Rock/Iron/Cloth
+menu font style
+    menu font color green
+    menu font size 12
+menu text stat 5 283 Color Id
+menu font size 9
+      menu text property 150 270 Properties
+menu font style
+    menu font color yellow
+    menu font size 12
+menu text stat 50 310 Item Properties
+top:
+if %cx <> #charposx || %cy <> #charposy 3
+     set %CX #charposx
+     set %CY #charposy
+     set %y %y + 1
+
+menu font align center
+      menu font style b
+menu font color BLACK
+menu text stat 75 23 | | | | | | | |
+    menu font color yellow
+    menu font size 10
+menu text stat 75 23 %s
+menu font align center
+      menu font style b
+menu font color BLACK
+menu text stat 178 23 | | | | | | | |
+    menu font color yellow
+    menu font size 10
+menu text stat 178 23 %t
+      menu font style
+    menu font color red
+    menu font size 12
+menu text stat 56 40 For Dig Spot %y
+
+    menu show 585 0
+
+wait:
+if %CT <> #conttype && #conttype <> zjf && #conttype <> N/A 9
+set %CT #conttype
+str left %CT 2
+set %CT #strres
+set #conttype #strres
+menu font size 10
+menu font color black
+menu text stat 135 163 | | | |
+menu font color yellow
+menu text stat 135 163 %ct
+if #menubutton = property && %mark < 3 4
+menu window size 210 570
+set %mark 3
+key p alt
+set #menubutton n/a
+if #menubutton = property && %mark = 3 4
+menu window size 210 305
+set %mark 2
+key p alt
+set #menubutton n/a
+if #menubutton = open && %mark = 1 4
+menu window size 210 305
+set %mark 2
+key p alt
+set #menubutton n/a
+if #menubutton = open && %mark = 2 4
+menu window size 210 140
+set %mark 1
+key p alt
+set #menubutton n/a
+if %px <> #charposx || %py <> #charposy 7
+     set %px #charposx
+     set %py #charposy
+      menu font style
+   menu font color yellow
+   menu font size 12
+     clear menu text
+     menu text stat 47 80 x = %px y = %py
+if %xxx <> #cursorx || %yyy <> #cursory 7
+set %xxx #cursorx
+set %yyy #cursory
+     menu font style
+   menu font color green
+   menu font size 12
+      menu text stat 27 100 findx = %xxx findy = %yyy
+      menu button Open 0 120 210 20 Click here for targeted ID's
+      menu button property 170 285 20 20 v
+     if #targcurs <> 1
+     goto wait
+     gosub set
+     goto top
+
+sub set
+waithere:
+if #targcurs = 1
+     goto waithere
+menu font color BLACK
+    menu font size 10
+menu text stat 30 330 #property
+finditem #ltargetid
+event property #ltargetid
+menu font color green
+    menu font size 10
+menu text stat 30 330 #property
+WAIT 5
+      set %color #findcol
+     set %target #ltargetid
+     set %object #findtype
+     set %s #cursorx
+     set %t #cursory
+set #FindMod  0_0
+Finditem #LtargetID
+set %xmd %s - #FindX
+set %ymd %t - #FindY
+      menu font style
+      menu font color BLACK
+menu text stat 115 196 | | | | | | | | | | | |
+    menu font color yellow
+    menu font size 12
+menu text stat 115 196 %xmd _ %ymd
+menu font style
+menu font color black
+menu text stat 115 230 | | | | | | | | | | |
+    menu font color yellow
+    menu font size 9
+menu text stat 115 231 %target
+menu font style
+menu font color black
+menu text stat 115 249 | | | | | | |
+    menu font color yellow
+    menu font size 10
+menu text stat 115 249 %object
+menu font color BLACK
+        menu text stat 80 283 | | | | | | | | | | | |
+    menu font color yellow
+    menu font size 11
+menu text stat 115 284 %color
+
+return
+;============================================================== 
+sub bodfiller
+menu hide
+KEK P ALT
+set %delay 40
+set %timeOut 40
+set %retries 3
+set %skipColor X
+set %skipClass X
+set %useExist 0
+set %tinker 2
+set %tinkerQty 3
+set %smithTools FBG_TBG_OBG_TLH
+set %tinkerTools GTL_JTL
+set %stackable_items ENK ; Ingots 
+; initialize smith item type 
+; ringmail 
+set %bsItem BMH_XLH_IMH_WLH_
+; chainmail 
+set %bsItem DPH_APH_ZOH_ , %bsItem
+; platemail 
+set %bsItem MSH_ISH_NSH_LSH_HSH_MSK_ , %bsItem
+; helm 
+set %bsItem ASH_ESH_GSH_CSH_OSH_ , %bsItem
+; shield 
+set %bsItem FIK_GIK_CIK_NIK_AIK_MIK_HLK_CLK_ , %bsItem
+; blade 
+set %bsItem FUO_ATF_NPO_JPH_TSF_NMH_VRH_JTF_SOH_BPH_ , %bsItem
+; axe 
+set %bsItem LSF_BSF_NSF_ZRF_RMH_LPH_UOH_ , %bsItem
+; pole 
+set %bsItem HSF_ZTO_BUO_XTH_OPO_CUO_XRH_GUO_MTF_RRH_ , %bsItem
+; mace 
+set %bsItem VTH_YSF_BUH_AUO_TRH_ZTH_ , %bsItem
+
+; initialize timeout settings 
+set %timeOutRaw %timeOut * 20
+set %outerTimeOut %timeOut * %retries
+
+; check tinkering skill 
+if %tinker = 2
+{
+set %tinker 0
+chooseSkill tink real
+if #skill >= 350
+set %tinker 1
+}
+
+; initialize gump layout 
+gosub initInterface
+set %bag %BACKPACKID
+wait %delay
+
+Display OK Click ok. Then TARGET the chest with your ingots in it.
+set #targcurs 1
+set #ltargetid NULL
+ingotbagloopP:
+if #ltargetid = NULL
+   goto ingotbagloopP
+set %Ingot_Secure #ltargetid
+set %secureX #cursorx
+set %secureY #cursory
+
+Display OK Click ok. Then TARGET the bag to put your completed deeds in.
+set #targcurs 1
+set #ltargetid NULL
+bagloopPP:
+if #ltargetid = NULL
+   goto bagloopPP
+set %Donebag #ltargetid
+set %bagX #cursorx
+set %bagY #cursory
+
+; initialize built item list 
+initItem:
+findItem %bsItem
+if #findKind = -1
+goto doneInitItem
+if #findBagID = %bag
+{
+if %useExist = 0
+ignoreItem #findID 1
+if %useExist = 1
+ignoreItem #findID 2
+}
+if #findBagID <> %bag
+ignoreItem #findID 1
+goto initItem
+doneInitItem:
+
+; initialize statistics 
+set %deedCompleted 0
+set %deedTotal 0
+set %deedShortage X
+
+findDeed:
+findItem EYM
+if #findKind = -1
+{
+Display OK Completed: %deedCompleted / %deedTotal
+if %deedShortage <> X
+Display OK Short of ingots: %deedShortage
+goto terminate
+}
+
+set %deed #findID
+if #findBagID <> %bag
+goto nextDeed
+
+set %deedTotal %deedTotal +
+set %deedType X
+set %deedTypeOk -1
+
+; drag deed to top left corner of backpack 
+gosub drag %deed 845 345
+
+loop:
+set #property N/A
+; get deed descriptions 
+scanJournal 1
+deleteJournal
+set %oTimeOut #scnt + %outerTimeout
+getDeedDesc:
+event property %deed
+gosub PropertyParse
+set %i 1
+set %iTimeOut #scnt + %timeOut
+scanDeedDesc:
+if #scnt > %oTimeOut
+goto nextDeed
+if LARGE in %Prop3
+{
+gosub drag %deed 845 435
+goto nextDeed
+}
+if SMALL in %Prop3
+goto doneDeedDesc
+set %i %i +
+goto scanDeedDesc
+doneDeedDesc:
+
+; get outstanding qty 
+gosub getDeedQty #journal
+if %deedQty = 0
+goto doneDeed
+
+; obtain item type 
+if %deedType = X
+{
+gosub initDeedInfo #Property
+if %idiOK = -1
+{
+;event sysMessage Skip deed 
+goto nextDeed
+}
+if %idiOK = 0
+{
+Display OK Failed: Unknown deed type
+goto nextDeed
+}
+}
+
+; initialize "make last" 
+if %deedTypeOk < 0
+{
+initBSMenu:
+gosub buildItem %smithTools 0 %deedColorItem 0
+gosub buildItem %smithTools %deedClass %deedItem 0
+if %biOK = 0
+{
+gosub initInterface
+wait %delay
+goto initBSMenu
+}
+if %biOK = -1
+{
+gosub buildTools
+if %btOK = 0
+{
+Display OK Failed: Out of tools
+goto terminate
+}
+goto initBSMenu
+}
+set %deedTypeOk 0
+goto doneBuild
+}
+
+; only build 1 item a time until a successful combine 
+if %deedTypeOk = 0
+set %deedQty 1
+
+; build item loop 
+set %q 1
+buildDeed:
+; check ingots availablity 
+gosub checkIngot %deedColor %deedIngotQty
+if %ciOK = 0
+{
+Display OK Failed: Out of ingots
+if %deedShortage = X
+set %deedShortage %deedColorText
+if %deedColorText notin %deedShortage
+{
+set %deedShortage / , %deedShortage
+set %deedShortage %deedColorText , %deedShortage
+}
+
+if %q = 1
+goto nextDeed
+goto doneBuild
+}
+
+; build item 
+gosub buildItem %smithTools -1 0 0
+if %biOK = 0
+{
+gosub initInterface
+goto buildDeed
+}
+if %biOK = -1
+{
+gosub buildTools
+if %btOK = 0
+{
+Display OK Failed: Out of tools
+goto terminate
+}
+goto buildDeed
+}
+
+; check for overweight 
+set %maxWeight #str * 7
+set %maxWeight %maxWeight / 2
+set %maxWeight %maxWeight + 30
+if #weight >= %maxWeight
+goto doneBuild
+
+set %q %q +
+if %q <= %deedQty
+goto buildDeed
+
+doneBuild:
+; close blacksmith menu 
+gosub buildItem %smithTools -3 0 1
+
+; check if the correct item built 
+set %builtItem X
+checkItem:
+findItem %bsItem
+if #findKind = -1
+goto doneCheckItem
+if #findBagID = %bag
+{
+if #findType <> %deedType
+set %deedTypeOK -2
+set %builtItem _ , %builtItem
+set %builtItem #findID , %builtItem
+ignoreItem #findID 2
+}
+if #findBagID <> %bag
+ignoreItem #findID 1
+goto checkItem
+doneCheckItem:
+
+ignoreItem reset 2
+
+combineItem:
+; find item to combine 
+findItem %deedType
+if #findKind = -1
+{
+set %combineResult 1
+goto doneCombine
+}
+if #findBagID <> %bag
+{
+ignoreItem #findID 1
+goto combineItem
+}
+set %lastItem #findID
+
+; clear up system message 
+;event sysMessage _ 
+
+; cancel target cursor 
+if #targCurs = 1
+{
+key esc
+wait 10
+}
+
+openDeedInit:
+set %oTimeOut #scnt + %outerTimeOut
+openDeed:
+if #scnt > %oTimeOut
+goto openDeedDone
+; check for existing deed menu 
+gosub checkGump N/A N/A
+if %cgOK = 1
+goto openDeedDone
+; open deed 
+set #lObjectID %deed
+event macro 17 0
+gosub waitGump N/A N/A 1
+if %wgOK = 1
+goto openDeedDone
+if %wgOK = -1
+{
+; clear up system message 
+;event sysMessage _ 
+wait %delay
+}
+goto openDeed
+openDeedDone:
+
+; click combine button 
+click 165 %deedYCombine
+target %timeOutRaw
+
+if #targCurs <> 1
+{
+gosub initInterface
+wait %delay
+goto openDeedInit
+}
+
+; target item 
+set #lTargetKind 1
+set #lTargetID %lastItem
+event macro 22 0
+wait 2
+
+; check for combine result 
+set %iTimeOut #scnt + %timeOut
+checkCombine:
+if #scnt > %iTimeOut
+goto combineItem
+if HAS_BEEN_COMBINED in #sysMsg
+{
+if %deedTypeOK <> -2
+set %deedTypeOK 1
+; wait for deed menu to reappear 
+gosub waitGump N/A N/A 1
+goto combineItem
+}
+if THE_MAXIMUM_AMOUNT in #sysMsg
+{
+set %combineResult 0
+goto doneCombine
+}
+if FROM_THE_REQUESTED_ORE in #sysMsg
+{
+ignoreItem %lastItem 1
+goto combineItem
+}
+if NOT_IN_THE_REQUEST in #sysMsg
+{
+ignoreItem %lastItem 2
+set %combineResult -1
+goto doneCombine
+}
+if MUST_BE_EXCEPTIONAL in #sysMsg
+{
+ignoreItem %lastItem 2
+goto combineItem
+}
+goto checkCombine
+
+doneCombine:
+; close deed gump 
+gosub checkGump N/A N/A
+if %cgOK = 1
+{
+click 165 %deedYClose
+gosub waitGump N/A N/A 0
+}
+
+ignoreItem reset 2
+set %lastItem X
+
+smeltExcess:
+; find item to smelt 
+findItem %bsItem
+if #findKind = -1
+goto doneSmelt
+if #findBagID <> %bag
+{
+ignoreItem #findID 1
+goto smeltExcess
+}
+if #findID notin %builtItem
+{
+ignoreItem #findID 2
+goto smeltExcess
+}
+set %lastItem #findID
+; smelt item 
+gosub buildItem %smithTools -2 %lastItem 0
+if %biOK = 0
+{
+gosub initInterface
+wait %delay
+goto smeltExcess
+}
+if %biOK = -1
+{
+gosub buildTools
+if %btOK = 0
+{
+Display OK Failed: Out of tools
+goto terminate
+}
+goto smeltExcess
+}
+if %biOK = 1
+{
+ignoreItem %lastItem 2
+goto smeltExcess
+}
+goto smeltExcess
+
+doneSmelt:
+; close smith menu 
+if %lastItem <> X
+gosub buildItem %smithTools -3 0 1
+
+if %combineResult = 0
+goto doneDeed
+if %combineResult = -1
+{
+if %deedClass2 = -1
+goto nextDeed
+
+; switch to alternate type 
+set %deedTypeOk -1
+set %deedClass %deedClass2
+set %deedClass2 -1
+set %deedItem %deedItem2
+gosub getDeedItemInfo
+}
+
+goto loop
+
+doneDeed:
+; drag completed deed to bottom left 
+;gosub drag %deed 10 150 
+event drag %deed
+wait 20 10
+click %bagX %bagY p
+wait 20 10
+set %deedCompleted %deedCompleted +
+
+nextDeed:
+ignoreItem %deed 1
+
+moveingot:
+; Move ingots back to secure 
+finditem ENK C_ , %bag
+if #findkind = -1
+   goto ingotdone
+event drag #findid
+wait 1s
+msg $
+wait 1s
+click %secureX %secureY p
+wait 1s
+goto moveingot
+
+ingotdone:
+goto findDeed
+
+terminate:
+halt
+
+; *********************************************************** 
+
+sub drag
+set %dID %1
+set %dTargetX %2
+set %dTargetY %3
+
+event drag %dID
+set %diTimeOut #scnt + %timeOut
+dWaitLifted:
+if #lLiftedID <> %dID
+{
+if #scnt <= %diTimeOut
+goto dWaitLifted
+}
+
+click 668 221 p
+set %diTimeOut #scnt + %timeOut
+dWaitDropped:
+findItem %dID
+if #findBagID <> %bag
+{
+if #scnt <= %diTimeOut
+goto dWaitDropped
+}
+wait %delay
+
+return
+
+; *********************************************************** 
+
+sub waitGump
+set %wgID %1
+set %wgType %2
+set %wgOnOff %3
+
+set %wgOK 0
+
+set %wgTimeOut #scnt + %timeOut
+wgLoop:
+gosub checkGump %wgID %wgType
+if %cgOK = %wgOnOff
+{
+set %wgOK 1
+goto wgDone
+}
+if YOU_MUST_WAIT in #sysMsg
+{
+set %wgOK -1
+goto wgDone
+}
+if #scnt <= %wgTimeOut
+goto wgLoop
+
+wgDone:
+return
+
+; *********************************************************** 
+
+sub checkGump
+set %cgID %1
+set %cgType %2
+
+set %cgOK 1
+
+if %cgID <> X
+{
+if #contID <> %cgID
+set %cgOK 0
+}
+if %cgType <> X
+{
+if #contType <> %cgType
+set %cgOK 0
+}
+
+return
+
+; *********************************************************** 
+
+sub initInterface
+return
+
+; *********************************************************** 
+
+sub checkIngot
+set %ciColor %1
+set %ciQty %2
+
+set %ciOK 0
+set %i 1
+
+ciSearch:
+findItem ENK %i
+if #findKind = -1
+goto ciDone
+if #findBagID <> %bag
+ignoreItem #findID 1
+if #findBagID = %bag
+{
+if #findCol = %ciColor
+{
+if #findStack >= %ciQty
+{
+set %ciOK 1
+goto ciDone
+}
+}
+set %i %i +
+}
+goto ciSearch
+
+ciDone:
+
+if %ciOK = 0
+{
+   gosub getresource %ingot_Secure ENK %bag 139_217 250 %deedColor
+   set %ciOK 1
+}
+
+return
+
+; *********************************************************** 
+
+sub buildItem
+set %biTools %1
+set %biClass %2
+set %biItem %3
+set %biCloseMenu %4
+
+set %biOK 1
+
+if %biClass = -3
+goto biClose
+
+set %bioTimeOut #scnt + %outerTimeOut
+biLoop:
+if #scnt > %bioTimeOut
+{
+set %biOK 0
+goto biDone
+}
+
+; check for existing craftsman menu 
+gosub checkGump N/A N/A
+if %cgOK = 1
+goto biUseToolsDone
+
+biFindTools:
+findItem %biTools
+if #findKind = -1
+{
+set %biOK -1
+goto biDone
+}
+if #findBagID <> %bag
+{
+ignoreItem #findID 1
+goto biFindTools
+}
+
+; use tools 
+set #lObjectID #findID
+event macro 17 0
+; wait for craftsman menu 
+gosub waitGump N/A N/A 1
+if %wgOK = -1
+{
+; clear up system message 
+;event sysMessage _ 
+wait %delay
+goto biLoop
+}
+if %wgOK = 0
+goto biLoop
+
+biUseToolsDone:
+
+; select craftsman menu 
+if %biClass = -2
+{
+; recycle item 
+click 75 405
+target %timeOutRaw
+if #targCurs <> 1
+goto biLoop
+set #lTargetKind 1
+set #lTargetID %biItem
+event macro 22 0
+wait 2
+}
+if %biClass = -1
+{
+; make last 
+click 335 465
+gosub waitGump N/A N/A 0
+if %wgOK <> 1
+goto biLoop
+}
+if %biClass = 0
+{
+; choose ingots type 
+click 80 425
+wait 10
+set %biY %biItem - 1
+set %biY %biY * 20
+set %biY %biY + 120
+click 285 %biY
+gosub waitGump N/A N/A 0
+if %wgOK <> 1
+goto biLoop
+}
+if %biClass > 0
+{
+; choose item class 
+set %biY %biClass - 1
+set %biY %biY * 20
+set %biY %biY + 140
+click 80 %biY
+gosub waitGump N/A N/A 0
+gosub waitGump N/A N/A 1
+
+biChoosePage:
+if %biItem > 10
+{
+set %biItem %biItem - 10
+; next page 
+click 435 320
+wait 10
+goto biChoosePage
+}
+
+; choose item 
+set %biY %biItem - 1
+set %biY %biY * 20
+set %biY %biY + 120
+click 285 %biY
+
+gosub waitGump N/A N/A 0
+if %wgOK <> 1
+goto biLoop
+}
+
+biClose:
+if %biCloseMenu = 1
+{
+set %biiTimeOut #scnt + %timeOut
+biCloseLoop:
+if #scnt > %biiTimeOut
+{
+set %biOK 0
+goto biDoneClose
+}
+if WORN_OUT in #sysMsg
+goto biDoneClose
+; wait for craftsman menu 
+gosub checkGump N/A N/A
+if %cgOK = 0
+goto biCloseLoop
+; close craftsman menu 
+click 75 460
+gosub waitGump N/A N/A 0
+biDoneClose:
+}
+
+biDone:
+return
+
+; *********************************************************** 
+
+sub buildTools
+set %btOK 0
+if %tinker = 0
+goto btDone
+gosub getresource %ingot_Secure ENK %bag 139_217 250 0
+if %tinker = 1
+{
+; check tinker tools qty 
+btCountInit:
+set %btQty 0
+set %i 1
+btCount:
+findItem %tinkerTools %i
+if #findKind = -1
+goto btDoneCount
+if #findBagID <> %bag
+ignoreItem #findID 1
+if #findBagID = %bag
+{
+set %btQty %btQty +
+set %i %i +
+}
+goto btCount
+btDoneCount:
+
+; check if out of tinker tools 
+if %btQty = 0
+goto btDone
+
+; build tinker tools 
+if %btQty < %tinkerQty
+{
+gosub checkIngot 0 2
+if %ciOK = 0
+goto btDone
+gosub buildItem %tinkerTools 0 1 0
+gosub buildItem %tinkerTools 2 4 1
+if %biOK = 0
+{
+gosub initInterface
+wait %delay
+}
+goto btCountInit
+}
+
+; build tongs 
+gosub checkIngot 0 1
+if %ciOK = 0
+goto btDone
+gosub buildItem %tinkerTools 0 1 0
+gosub buildItem %tinkerTools 2 13 1
+if %biOK = 0
+{
+gosub initInterface
+wait %delay
+goto btCountTools
+}
+set %btOK 1
+}
+
+btDone:
+return
+
+; *********************************************************** 
+
+sub initDeedInfo
+set %idiDesc %1
+set %idiOK 1
+
+; get deed ingots color 
+gosub getDeedColor %idiDesc
+if %deedColor = -1
+{
+set %idiOK 0
+goto idiDone
+}
+
+; get deed item type 
+gosub getDeedItem %idiDesc
+if %deedClass = -1
+{
+gosub promptUser %idiDesc
+if %deedClass = -1
+{
+set %idiOK 0
+goto idiDone
+}
+}
+gosub getDeedItemInfo
+
+; check whether to skip deed 
+if %deedColorItem in %skipColor
+{
+set %idiOK -1
+goto idiDone
+}
+if %deedClass in %skipClass
+{
+set %idiOK -1
+goto idiDone
+}
+
+; determine combine button location 
+set %deedYCombine 180
+
+if ( %deedColor = 0 ) && ( EXCEPTIONAL in %Prop5 )
+{
+set %deedYCombine 230
+goto idiDone
+}
+
+if ( %deedColor <> 0 ) && ( EXCEPTIONAL notin %Prop5 )
+{
+set %deedYCombine 230
+goto idiDone
+}
+
+if ( %deedColor <> 0 ) && ( EXCEPTIONAL in %Prop5 )
+{
+set %deedYCombine 255
+goto idiDone
+}
+
+idiDone:
+set %deedYClose %deedYCombine + 25
+return
+
+; *********************************************************** 
+
+sub promptUser
+Display OK Not used anymore
+halt
+return
+
+; *********************************************************** 
+
+sub getDeedQty
+
+gosub Amount
+set %gdqDesc %convert
+; requested qty 
+set %gdqMaxQty 0
+if /10) in %gdqDesc
+set %gdqMaxQty 10
+if /15) in %gdqDesc
+set %gdqMaxQty 15
+if /20) in %gdqDesc
+set %gdqMaxQty 20
+; filled qty 
+set %gdqFillQty 0
+if (0/ in %gdqDesc
+set %gdqFillQty 0
+if (1/ in %gdqDesc
+set %gdqFillQty 1
+if (2/ in %gdqDesc
+set %gdqFillQty 2
+if (3/ in %gdqDesc
+set %gdqFillQty 3
+if (4/ in %gdqDesc
+set %gdqFillQty 4
+if (5/ in %gdqDesc
+set %gdqFillQty 5
+if (6/ in %gdqDesc
+set %gdqFillQty 6
+if (7/ in %gdqDesc
+set %gdqFillQty 7
+if (8/ in %gdqDesc
+set %gdqFillQty 8
+if (9/ in %gdqDesc
+set %gdqFillQty 9
+if (10/ in %gdqDesc
+set %gdqFillQty 10
+if (11/ in %gdqDesc
+set %gdqFillQty 11
+if (12/ in %gdqDesc
+set %gdqFillQty 12
+if (13/ in %gdqDesc
+set %gdqFillQty 13
+if (14/ in %gdqDesc
+set %gdqFillQty 14
+if (15/ in %gdqDesc
+set %gdqFillQty 15
+if (16/ in %gdqDesc
+set %gdqFillQty 16
+if (17/ in %gdqDesc
+set %gdqFillQty 17
+if (18/ in %gdqDesc
+set %gdqFillQty 18
+if (19/ in %gdqDesc
+set %gdqFillQty 19
+if (20/ in %gdqDesc
+set %gdqFillQty 20
+; outstanding qty 
+set %deedQty %gdqMaxQty - %gdqFillQty
+return
+
+; *********************************************************** 
+
+sub getDeedColor
+set %gdcDesc %Prop4
+set %deedColor -1
+
+if VALORITE in %gdcDesc
+{
+set %deedColorText valorite
+set %deedColor 2219
+set %deedColorItem 9
+return
+}
+if VERITE in %gdcDesc
+{
+set %deedColorText verite
+set %deedColor 2207
+set %deedColorItem 8
+return
+}
+if AGAPITE in %gdcDesc
+{
+set %deedColorText agapite
+set %deedColor 2425
+set %deedColorItem 7
+return
+}
+if GOLD in %gdcDesc
+{
+set %deedColorText gold
+set %deedColor 2213
+set %deedColorItem 6
+return
+}
+if BRONZE in %gdcDesc
+{
+set %deedColorText bronze
+set %deedColor 2418
+set %deedColorItem 5
+return
+}
+if DULL in %gdcDesc
+{
+set %deedColorText dullCopper
+set %deedColor 2419
+set %deedColorItem 2
+return
+}
+if COPPER in %gdcDesc
+{
+set %deedColorText copper
+set %deedColor 2413
+set %deedColorItem 4
+return
+}
+if SHADOW in %gdcDesc
+{
+set %deedColorText shadow
+set %deedColor 2406
+set %deedColorItem 3
+return
+}
+if IRON in %gdcDesc
+{
+set %deedColorText iron
+set %deedColor 0
+set %deedColorItem 1
+return
+}
+
+; *********************************************************** 
+
+sub getDeedItemInfo
+set %deedType X
+set %deedIngotQty 999
+
+;====================================================================== 
+; deedClass 1 
+
+if %deedClass = 1
+{
+; ringmail glove 
+if %deedItem = 1
+{
+set %deedType BMH
+set %deedIngotQty 10
+}
+; ringmail legging 
+if %deedItem = 2
+{
+set %deedType IMH
+set %deedIngotQty 16
+}
+; ringmail sleeve 
+if %deedItem = 3
+{
+set %deedType XLH
+set %deedIngotQty 14
+}
+; ringmail tunic 
+if %deedItem = 4
+{
+set %deedType WLH
+set %deedIngotQty 18
+}
+}
+;====================================================================== 
+; deedClass 2 
+
+if %deedClass = 2
+{
+; chainmail coif 
+if %deedItem = 1
+{
+set %deedType DPH
+set %deedIngotQty 10
+}
+; chainmail legging 
+if %deedItem = 2
+{
+set %deedType APH
+set %deedIngotQty 18
+}
+; chainmail tunic 
+if %deedItem = 3
+{
+set %deedType ZOH
+set %deedIngotQty 20
+}
+}
+;====================================================================== 
+; deedClass 3 
+
+if %deedClass = 3
+{
+; platemail arm 
+if %deedItem = 1
+{
+set %deedType MSH
+set %deedIngotQty 18
+}
+; platemail glove 
+if %deedItem = 2
+{
+set %deedType ISH
+set %deedIngotQty 12
+}
+; platemail gorget 
+
+if %deedItem = 3
+{
+set %deedType NSH
+set %deedIngotQty 10
+}
+; platemail leg 
+if %deedItem = 4
+{
+set %deedType LSH
+set %deedIngotQty 20
+}
+; platemail tunics 
+if %deedItem = 5
+{
+set %deedType HSH
+set %deedIngotQty 25
+}
+; female plate 
+if %deedItem = 6
+{
+set %deedType MSK
+set %deedIngotQty 20
+}
+}
+;====================================================================== 
+; deedClass 4 
+
+if %deedClass = 4
+{
+; bascinet 
+if %deedItem = 1
+{
+set %deedType ASH
+set %deedIngotQty 15
+}
+; close helm 
+if %deedItem = 2
+{
+set %deedType ESH
+set %deedIngotQty 15
+}
+; helmet 
+if %deedItem = 3
+{
+set %deedType GSH
+set %deedIngotQty 15
+}
+; norse helm 
+if %deedItem = 4
+{
+set %deedType CSH
+set %deedIngotQty 15
+}
+; plate helm 
+if %deedItem = 5
+{
+set %deedType OSH
+set %deedIngotQty 15
+}
+}
+;====================================================================== 
+; deedClass 5 
+
+if %deedClass = 5
+{
+; buckler 
+if %deedItem = 1
+{
+set %deedType FIK
+set %deedIngotQty 10
+}
+; bronze shield 
+if %deedItem = 2
+{
+set %deedType GIK
+set %deedIngotQty 12
+}
+; heater shield 
+if %deedItem = 3
+{
+set %deedType CIK
+set %deedIngotQty 18
+}
+; metal shield 
+if %deedItem = 4
+{
+set %deedType NIK
+set %deedIngotQty 14
+}
+; metal kite shield 
+if %deedItem = 5
+{
+set %deedType AIK
+set %deedIngotQty 16
+}
+; tear kite shield 
+if %deedItem = 6
+{
+set %deedType MIK
+set %deedIngotQty 8
+}
+; chaos shield 
+if %deedItem = 7
+{
+set %deedType HLK
+set %deedIngotQty 16
+}
+; order shield 
+if %deedItem = 8
+{
+set %deedType CLK
+set %deedIngotQty 16
+}
+}
+;====================================================================== 
+; deedClass 6 
+
+if %deedClass = 6
+{
+; bone harvester 
+if %deedItem = 1
+{
+set %deedType FUO
+set %deedIngotQty 10
+}
+; broadsword 
+if %deedItem = 2
+{
+set %deedType ATF
+set %deedIngotQty 10
+}
+; crescent blade 
+if %deedItem = 3
+{
+set %deedType NPO
+set %deedIngotQty 14
+}
+; cutlass 
+if %deedItem = 4
+{
+set %deedType JPH
+set %deedIngotQty 8
+}
+; dagger 
+if %deedItem = 5
+{
+set %deedType TSF
+set %deedIngotQty 3
+}
+; katana 
+if %deedItem = 6
+{
+set %deedType NMH
+set %deedIngotQty 8
+}
+; kryss 
+if %deedItem = 7
+{
+set %deedType VRH
+set %deedIngotQty 8
+}
+; longsword 
+if %deedItem = 8
+{
+set %deedType JTF
+set %deedIngotQty 12
+}
+; scimitar 
+if %deedItem = 9
+{
+set %deedType SOH
+set %deedIngotQty 10
+}
+; viking sword 
+if %deedItem = 10
+{
+set %deedType BPH
+set %deedIngotQty 14
+}
+}
+;====================================================================== 
+; deedClass 7 
+
+if %deedClass = 7
+{
+; axe 
+if %deedItem = 1
+{
+set %deedType LSF
+set %deedIngotQty 14
+}
+; battle axe 
+if %deedItem = 2
+{
+set %deedType BSF
+set %deedIngotQty 14
+}
+; double axe 
+if %deedItem = 3
+{
+set %deedType NSF
+set %deedIngotQty 12
+}
+; executioner's axe 
+if %deedItem = 4
+{
+set %deedType ZRF
+set %deedIngotQty 14
+}
+; large battle axe 
+if %deedItem = 5
+{
+set %deedType RMH
+set %deedIngotQty 12
+}
+; two handed axe 
+if %deedItem = 6
+{
+set %deedType LPH
+set %deedIngotQty 16
+}
+; war axe 
+if %deedItem = 7
+{
+set %deedType UOH
+set %deedIngotQty 16
+}
+}
+;====================================================================== 
+if %deedClass = 8
+{
+; bardiche 
+if %deedItem = 1
+{
+set %deedType HSF
+set %deedIngotQty 18
+}
+; Bladed Staff 
+if %deedItem = 2
+{
+set %deedType ZTO
+set %deedIngotQty 12
+}
+; Double Bladed Staff 
+if %deedItem = 3
+{
+set %deedType BUO
+set %deedIngotQty 16
+}
+; halberd 
+if %deedItem = 4
+{
+set %deedType XTH
+set %deedIngotQty 20
+}
+; lance 
+if %deedItem = 5
+{
+set %deedType OPO
+set %deedIngotQty 20
+}
+; pike 
+if %deedItem = 6
+{
+set %deedType CUO
+set %deedIngotQty 12
+}
+; short spear 
+if %deedItem = 7
+{
+set %deedType XRH
+set %deedIngotQty 6
+}
+; scythe 
+if %deedItem = 8
+{
+set %deedType GUO
+set %deedIngotQty 14
+}
+; spear 
+if %deedItem = 9
+{
+set %deedType MTF
+set %deedIngotQty 12
+}
+; war fork 
+if %deedItem = 10
+{
+set %deedType RRH
+set %deedIngotQty 12
+}
+}
+;====================================================================== 
+; deedClass 9 
+if %deedClass = 9
+{
+; hammer pick 
+if %deedItem = 1
+{
+set %deedType VTH
+set %deedIngotQty 16
+}
+; mace 
+if %deedItem = 2
+{
+set %deedType YSF
+set %deedIngotQty 6
+}
+; maul 
+if %deedItem = 3
+{
+set %deedType BUH
+set %deedIngotQty 10
+}
+; scepter 
+if %deedItem = 4
+{
+set %deedType AUO
+set %deedIngotQty 10
+}
+; war mace 
+if %deedItem = 5
+{
+set %deedType TRH
+set %deedIngotQty 14
+}
+; war hammer 
+if %deedItem = 6
+{
+set %deedType ZTH
+set %deedIngotQty 16
+}
+}
+
+return
+
+; *********************************************************** 
+
+sub getDeedItem
+set %gdiDesc %Prop7
+set %deedClass -1
+set %deedClass2 -1
+
+if RINGMAIL , #SPC , GLOVE in %gdiDesc
+{
+set %deedClass 1
+set %deedItem 1
+}
+if RINGMAIL , #SPC , LEGGING in %gdiDesc
+{
+set %deedClass 1
+set %deedItem 2
+}
+if RINGMAIL , #SPC , SLEEVE in %gdiDesc
+{
+set %deedClass 1
+set %deedItem 3
+}
+if RINGMAIL , #SPC , TUNIC in %gdiDesc
+{
+set %deedClass 1
+set %deedItem 4
+}
+if COIF in %gdiDesc
+{
+set %deedClass 2
+set %deedItem 1
+}
+if CHAINMAIL , #SPC , LEGGING in %gdiDesc
+{
+set %deedClass 2
+set %deedItem 2
+}
+if CHAINMAIL , #SPC , TUNIC in %gdiDesc
+{
+set %deedClass 2
+set %deedItem 3
+}
+if PLATEMAIL , #SPC , ARM in %gdiDesc
+{
+set %deedClass 3
+set %deedItem 1
+}
+if PLATEMAIL , #SPC , GLOVE in %gdiDesc
+{
+set %deedClass 3
+set %deedItem 2
+}
+if PLATEMAIL , #SPC , GORGET in %gdiDesc
+{
+set %deedClass 3
+set %deedItem 3
+}
+if PLATEMAIL , #SPC , LEG in %gdiDesc
+{
+set %deedClass 3
+set %deedItem 4
+}
+if PLATEMAIL , #SPC , TUNIC in %gdiDesc
+{
+set %deedClass 3
+set %deedItem 5
+}
+if FEMALE , #SPC , PLATE in %gdiDesc
+{
+set %deedClass 3
+set %deedItem 6
+}
+if HELMET in %gdiDesc
+{
+set %deedClass 4
+set %deedItem 3
+}
+if BASCINET in %gdiDesc
+{
+set %deedClass 4
+set %deedItem 1
+}
+if CLOSE , #SPC , HELM in %gdiDesc
+{
+set %deedClass 4
+set %deedItem 2
+}
+if NORSE , #SPC , HELM in %gdiDesc
+{
+set %deedClass 4
+set %deedItem 4
+}
+if PLATE , #SPC , HELM in %gdiDesc
+{
+set %deedClass 4
+set %deedItem 5
+}
+if BUCKLER in %gdiDesc
+{
+set %deedClass 5
+set %deedItem 1
+}
+if BRONZE , #SPC , SHIELD in %gdiDesc
+{
+set %deedClass 5
+set %deedItem 2
+}
+if HEATER in %gdiDesc
+{
+set %deedClass 5
+set %deedItem 3
+}
+if METAL , #SPC , SHIELD in %gdiDesc
+{
+set %deedClass 5
+set %deedItem 4
+}
+if METAL , #SPC , KITE in %gdiDesc
+{
+set %deedClass 5
+set %deedItem 5
+}
+if TEAR , #SPC , KITE in %gdiDesc
+{
+set %deedClass 5
+set %deedItem 6
+}
+if CHAOS in %gdiDesc
+{
+set %deedClass 5
+set %deedItem 7
+}
+if ORDER in %gdiDesc
+{
+set %deedClass 5
+set %deedItem 8
+}
+if BONE , #SPC , HARVESTER in %gdiDesc
+{
+set %deedClass 6
+set %deedItem 1
+}
+if BROADSWORD in %gdiDesc
+{
+set %deedClass 6
+set %deedItem 2
+}
+if CRESCENT , #SPC , BLADE in %gdiDesc
+{
+set %deedClass 6
+set %deedItem 3
+}
+if CUTLASS in %gdiDesc
+{
+set %deedClass 6
+set %deedItem 4
+}
+if DAGGER in %gdiDesc
+{
+set %deedClass 6
+set %deedItem 5
+}
+if KATANA in %gdiDesc
+{
+set %deedClass 6
+set %deedItem 6
+}
+if KRYSS in %gdiDesc
+{
+set %deedClass 6
+set %deedItem 7
+}
+if LONGSWORD in %gdiDesc
+{
+set %deedClass 6
+set %deedItem 8
+}
+if SCIMITAR in %gdiDesc
+{
+set %deedClass 6
+set %deedItem 9
+}
+if VIKING , #SPC , SWORD in %gdiDesc
+{
+set %deedClass 6
+set %deedItem 10
+}
+;====================================================================== 
+; deedClass 7 
+
+if AXE in %gdiDesc
+{
+set %deedClass 7
+set %deedItem 1
+}
+if BATTLE , #SPC , AXE in %gdiDesc
+{
+set %deedClass 7
+set %deedItem 2
+}
+if DOUBLE , #SPC , AXE in %gdiDesc
+{
+set %deedClass 7
+set %deedItem 3
+}
+if EXECUTIONER in %gdiDesc
+{
+set %deedClass 7
+set %deedItem 4
+}
+if LARGE , #SPC , BATTLE , #SPC , AXE in %gdiDesc
+{
+set %deedClass 7
+set %deedItem 5
+}
+if TWO , #SPC , HANDED , #SPC , AXE in %gdiDesc
+{
+set %deedClass 7
+set %deedItem 6
+}
+if WAR , #SPC , AXE in %gdiDesc
+{
+set %deedClass 7
+set %deedItem 7
+}
+
+
+;====================================================================== 
+; deedClass 8 
+if BARDICHE in %gdiDesc
+{
+set %deedClass 8
+set %deedItem 1
+}
+if BLADED , #SPC , STAFF in %gdiDesc
+{
+set %deedClass 8
+set %deedItem 2
+}
+if DOUBLE , #SPC , BLADED , #SPC , STAFF in %gdiDesc
+{
+set %deedClass 8
+set %deedItem 3
+}
+if HALBERD in %gdiDesc
+{
+set %deedClass 8
+set %deedItem 4
+}
+if LANCE in %gdiDesc
+{
+set %deedClass 8
+set %deedItem 5
+}
+if PIKE in %gdiDesc
+{
+set %deedClass 8
+set %deedItem 6
+}
+if SHORT , #SPC , SPEAR in %gdiDesc
+{
+set %deedClass 8
+set %deedItem 7
+return
+}
+if SHORTSPEAR in %gdiDesc
+{
+set %deedClass 8
+set %deedItem 7
+return
+}
+if SCYTHE in %gdiDesc
+{
+set %deedClass 8
+set %deedItem 8
+}
+if SPEAR in %gdiDesc
+{
+set %deedClass 8
+set %deedItem 9
+}
+if FORK in %gdiDesc
+{
+set %deedClass 8
+set %deedItem 10
+}
+;====================================================================== 
+; deedClass 9 
+if HAMMER , #SPC , PICK in %gdiDesc
+{
+set %deedClass 9
+set %deedItem 1
+}
+if MACE in %gdiDesc
+{
+set %deedClass 9
+set %deedItem 2
+}
+if MAUL in %gdiDesc
+{
+set %deedClass 9
+set %deedItem 3
+}
+if SCEPTER in %gdiDesc
+{
+set %deedClass 9
+set %deedItem 4
+}
+if WAR , #SPC , MACE in %gdiDesc
+{
+set %deedClass 9
+set %deedItem 5
+}
+if WAR , #SPC , HAMMER in %gdiDesc
+{
+set %deedClass 9
+set %deedItem 6
+}
+return
+
+; ===================================================================== 
+; Name: PropteryParse 
+; Version: 1.0.0 
+; By: Minoc Miner Murderer (tcb's algorithym) 
+; Purpose: Breaks the #property variable into individual vars 
+; Returns: %TotalProps , %prop1 , %prop2 , %prop3 , %prop4 , etc. 
+;---------------------------------------------------------------------- 
+SUB PropertyParse
+        SET %subject #PROPERTY
+        SET %temp 0
+        PropLoop:
+        SET %temp %temp + 1
+        STR POS %subject $
+        IF #STRRES = 0
+        {
+                SET %prop . %temp %subject
+                GOTO ExitProp
+        }
+        SET %area #STRRES - 1
+        STR LEFT %subject %area
+        SET %prop . %temp #STRRES
+        SET %area %area + 1
+        STR DEL %subject 1 %area
+        SET %subject #STRRES
+        GOTO PropLoop
+        ExitProp:
+        SET %TotalProps %temp - 1
+RETURN
+
+; ===================================================================== 
+; Name: Amount 
+; Version: 1.0.0 
+; By: Dalcon 
+; Purpose: Converts new type properties to old style deed props 
+; Returns: %convert 
+;---------------------------------------------------------------------- 
+SUB Amount
+   gosub PropertyParse
+   str right %Prop6 2
+   set %Amounttomake #strRes
+   str right %prop7 2
+   set %Amountmade #strRes
+   set %convert ( , %Amountmade , / , %Amounttomake , )
+RETURN
+
+;*********************************************************************** 
+;The Following Subs are from the Alexia Project standard subs. 
+; 
+; 
+;============================================================================ 
+sub checkResource
+;%1 - Container 
+;%2 - Resource type/ID 
+;%3 - Operand for true evaluation (<, >, =, >=, <=) 
+;%4 - Number required for #true return 
+   set %counter 0
+   finditem %2 C_ , %1
+   set %counter #findstack
+   set %return #false
+   if %counter %3 %4
+      set %return #true
+return
+
+; Minor edit to add ore type selection to sub 
+sub getResource
+;%1 - Container ID 
+;%2 - resource/ID 
+;%3 - drop container ID 
+;%4 - findmod for drop container 
+%5 50 ; - amount [optional - not specified will get whole stack/one item] 
+;%6 - Ingot Color to get 
+   set %_gR_parms %0
+   set %_gR_cid %1
+   set %_gR_type %2
+   set %_gR_drop %3
+   set %_gR_mod %4
+   set %_gR_amt 50
+   set %_gR_col %6
+   set %dragcounter 0
+   finditem %_gR_drop
+   if #findkind 2
+      set %return #false
+      return
+   set %temp #findmod
+   _getRes_openCont:
+   gosub openCont %_gR_cid 0 0
+   if ! %return
+      goto _getRes_openCont
+   _getitem:
+   finditem %_gR_type C_ , %_gR_cid
+If #findid = x || #findstack < 30 2
+display msg Out of Ingots or Low on ingots
+halt
+   if #findcol <> %_gR_col
+   {
+      ignoreitem #findid
+      wait 20
+      goto _getitem
+   }
+   if #findkind 2
+      set %return #false
+      return
+   event drag #findid
+   wait 1s
+   if %_gR_type in %stackable_items
+   {
+      if %_gR_parms > 4 && %_gR_amt > 0 && #findstack > 1
+         msg %_gR_amt $
+      if %_gR_parms = 4
+         msg $
+   }
+   set #findmod %_gR_mod
+   finditem %_gR_drop
+   click #findx #findy p
+   wait 1s
+   if %_gR_type notin %stackable_items && %_gR_parms = 5
+   {
+      set %dragcounter %dragcounter + 1
+      if %dragcounter < %_gR_amt
+      goto _getitem
+   }
+   click 85 40 r
+   set #findmod %temp
+   set %return #true
+   ignoreitem reset
+return
+
+sub useItem
+;%1 container 
+;%2 item type/id 
+   finditem %2 C_ , %1
+   if ! #findkind
+   {
+      set #lobjectid #findid
+      event macro 17
+   }
+   set %return ! #findkind
+return
+
+sub sysVarWait
+   if ( %0 < 2 ) || ( %0 > 3 )
+   {
+      display ok Invalid Use of SysVarWait
+      set %return #false
+      return
+   }
+   if %0 = 3
+      set %_SVtimeout #scnt2 + 100
+   else
+      set %_SVtimeout #scnt2 + %3
+   _waitSV:
+      if #scnt2 >= %_SVtimeout 2
+         set %return #false
+         return
+      if # . %1 <> %2
+         goto _waitSV
+   set %return #true
+return
+
+sub openCont
+;%1 - ContainerID 
+;%2 - Xcoord to move container to 
+;%3 - Ycoord to move container to 
+   set %_oC_ID %1
+   set %_oC_X %2
+   set %_oC_Y %3
+   _oC:
+   set #lobjectid %_oC_ID
+   event macro 17
+   gosub SysVarWait contid %_oC_ID 50
+   if %return
+      contpos %_oC_X %_oC_Y
+return
