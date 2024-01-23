@@ -1,0 +1,597 @@
+;======================================================
+;Welcome to Blast's Multiskill Trainer 3.5  It will allow you to macro
+;Spirit Speak, Necromancy, Chivalry, Eval, Magery or Focus from 30-GM+.
+;For the %skill variable, set it to spirit, necro, chivalry, eval, or mage
+;depending on what you want to raise.  If you want focus or med to raise
+;also, turn its skilllock to the up position and it will gain passively.
+;======================================================
+InitEvents
+set %maxSkill 100
+set %med no ;Meditate after each spell?  Yes or No[Default]
+set %regsuit no ;Are you wearing a lower reagent suit?  Yes or No[Default]
+set %easysetup on ;Easy Setup On or Off
+ 
+set %targetID 0 ;ID of Horse(Necro) Or Tillerman(Magery, Eval)
+set %maxSkill2 %maxskill * 10
+set %boatStopped 0
+set %serverLine 0
+set %goLeft 0
+set %thisMana 0
+ 
+if %easysetup = off
+        set %skill chivalry ;Spirit, Necro, Chivalry, Eval or Mage
+ 
+if %easysetup = on
+{
+        ;Menu System from Dumbanimal's 8x8 1.08
+        Menu HideEUO
+        Menu Clear
+        Menu Window size 500 150
+        Menu Font Name tahoma
+        Menu Window Title Blast's MultiSkill Trainer 3.3
+        Menu Button 1 10 10 150 25 Setup Variables
+        Menu Button 2 10 40 150 25 Choose Skill
+        Menu Button 3 10 100 75 25 Home
+        Menu Button Closed 86 100 74 25 Cancel
+        Goto L3
+       
+        Menu:
+                Set #menubutton N/A
+                Choose:
+                        If #menubutton <> N/A
+                                Goto L , #menubutton
+                Goto Choose
+       
+        L1:
+                Menu Delete txt
+                GoSub ClearButtons
+                Menu Font Style B
+                Menu Font Size 11
+                Menu Text txt 270 12 Variable Setup
+                Menu Font Style A
+                Menu Font Size 9
+                if %regsuit = no
+                        Menu Button 4 170 40 150 25 Reagent Suit: No
+                else
+                        Menu Button 4 170 40 150 25 Reagent Suit: Yes
+                if %med = no
+                        Menu Button 5 330 40 150 25 Meditate: No
+                else
+                        Menu Button 5 330 40 150 25 Meditate: Yes
+        Goto Menu
+       
+        L2:
+                ;Spirit, Necro, Chivalry, Eval or Mage
+                Menu Delete txt
+                GoSub ClearButtons
+                Menu Font Style B
+                Menu Font Size 11
+                Menu Text txt 280 12 Choose A Skill
+                Menu Font Style A
+                Menu Font Size 9
+                Menu Button 6 170 40 100 25 Magery
+                Menu Button 7 280 40 100 25 Eval Int
+                Menu Button 8 390 40 100 25 Necromancy
+ 
+                Menu Button 9 170 70 100 25 Spirit Speak
+                Menu Button 10 390 70 100 25 Chivalry
+                if %skill = Chivalry
+                        Menu Button 11 275 100 110 25 Start Chivalry
+                if %skill = Mage
+                        Menu Button 11 275 100 110 25 Start Magery
+                if %skill = Eval
+                        Menu Button 11 275 100 110 25 Start Eval Int
+                if %skill = Necro
+                        Menu Button 11 275 100 110 25 Start Necro
+                if %skill = Spirit
+                        Menu Button 11 260 100 110 25 Start Spirit
+        Goto Menu
+ 
+        L3:
+                Menu Delete txt
+                Gosub ClearButtons
+                Menu Font Style B
+                Menu Font Size 11
+                Menu Text txt 270 12 Introduction
+                Menu Font Style A
+                Menu Font Size 9
+                Menu Text txt 170 40 Please make sure you have set all variables to your
+                Menu Text txt 170 55 specifications.  By default, it won't see a lower regsuit
+                Menu Text txt 170 70 or meditate.
+                Menu Text txt 170 100 When you have configured the script, get on a boat
+                Menu Text txt 170 115 facing north(Near Moonglow is best) and press start.
+        Goto Menu      
+       
+        L4:
+                Menu Delete 4
+                if %regsuit = no
+                {
+                        set %regsuit yes
+                        Menu Button 4 170 40 150 25 Reagent Suit: Yes
+                }
+                else
+                {
+                        set %regsuit no
+                        Menu Button 4 170 40 150 25 Reagent Suit: No
+                }
+        Goto Menu
+       
+        L5:
+                Menu Delete 5
+                if %med = no
+                {
+                        set %med yes
+                        Menu Button 5 330 40 150 25 Meditate: Yes
+                }
+                else
+                {
+                        set %med no
+                        Menu Button 5 330 40 150 25 Meditate: No
+                }
+        Goto Menu
+       
+        L6:
+                set %skill mage
+                Menu Button 11 275 100 110 25 Start Magery
+        Goto Menu
+       
+        L7:
+                set %skill eval
+                Menu Button 11 275 100 110 25 Start Eval Int
+        Goto Menu
+       
+        L8:
+                set %skill necro
+                Menu Button 11 275 100 110 25 Start Necro
+        Goto Menu
+       
+        L9:
+                set %skill spirit
+                Menu Button 11 275 100 110 25 Start Spirit
+        Goto Menu
+       
+        L10:
+                set %skill chivalry
+                Menu Button 11 275 100 110 25 Start Chivalry
+        Goto Menu
+       
+        LClosed:
+                Menu Hide
+                Halt
+ 
+        L11:
+                Menu Hide
+                goto Loop
+}
+ 
+loop:
+        chooseskill %skill
+        gosub %skill
+        gosub ForwardEight
+goto loop
+ 
+sub chivalry
+        chivloop:
+        set %nowskill #skill
+        set %thismana #mana
+        gosub checkstatus
+        if #skill < 300
+        {
+                display ok Please buy your chivalry skill up to 30.
+                halt
+        }
+        if #skill >= 300
+        {
+                set %spell 203 ;Consecrate Weapon
+                set %castat 15
+        }
+        if #skill >= 400
+        {
+                set %spell 205 ;Divine Fury
+        }
+        if #skill >= 550
+        {
+                set %spell 204 ;Dispel Evil
+        }
+        if #skill >= 700
+        {
+                set %spell 207 ;Holy Light
+        }
+        if #skill >= 880
+        {
+                set %spell 208 ;Noble Sacrifice
+                set %castat 20
+        }
+        if #skill = %maxskill
+        {
+                display ok Congratulations!  You have reached %maxskill chivalry!
+                halt
+        }
+        if #mana < %castat
+                gosub waitformana
+        event macro 15 %spell
+        wait 4s
+        if #mana >= %thisMana
+        {
+                wait 2s
+                goto chivloop
+        }
+        if #skill > %nowskill
+                return
+        if #mana < %castat
+        {
+                if %med = yes
+                        event macro 13 46
+                gosub waitformana
+        }
+return
+ 
+sub necro
+        necroloop:
+        set %nowskill #skill
+        set %thismana #mana
+        gosub checkstatus
+        if #skill < 300
+        {
+                display ok Please buy your necromancy skill up to 30.
+                halt
+        }
+        if #skill >= 300
+        {
+                set %spell 109 ;Pain Spike
+                set %castat 5
+                set %target 1
+        }
+        if #skill >= 500
+        {
+                set %spell 106 ;Horrific Beast
+                set %castat 11
+                set %target 0
+        }
+        if #skill >= 700
+        {
+                set %spell 115 ;Wither
+                set %castat 23
+        }
+        if #skill >= 850
+        {
+                set %spell 107 ;Lich Form
+                set %castat 23
+        }
+        if #skill >= 1100
+        {
+                set %spell 113 ;Vampiric Embrace
+                set %castat 23
+        }
+        if #skill = %maxskill
+        {
+                display ok Congratulations!  You have reached %maxskill Necromancy!
+                halt
+        }
+        if #mana < %castat
+                gosub waitformana
+        set %nowskill #skill
+        if %target = 1
+                gosub checkpetid
+        event macro 15 %spell
+        wait 2s
+        if %target = 1
+        {
+                set #ltargetid %targetid
+                event macro 22 0
+        }
+        wait 2s
+        if #mana >= %thisMana
+        {
+                gosub CheckSpell
+                goto necroloop
+        }
+        if %med = yes
+                event macro 13 46
+        gosub waitformana
+        if #skill > %nowskill
+                return
+return
+ 
+sub mage
+        mageloop:
+        set %nowskill #skill
+        set %thismana #mana
+        gosub checkstatus
+        if #skill < 300
+        {
+                display ok Please buy your magery skill up to 30.
+                halt
+        }
+        if #skill >= 300
+        {
+                set %spell 17 ;Fireball
+                set %castat 9
+                set %target 1
+        }
+        if #skill >= 380
+        {
+                set %spell 29 ;Lightning
+                set %castat 11
+                set %target 1
+        }
+        if #skill >= 500
+        {
+                set %spell 37 ;Paralyze
+                set %castat 14
+                set %target 1
+        }
+        if #skill >= 650
+        {
+                set %spell 41 ;Energy Bolt
+                set %castat 20
+                set %target 1
+        }
+        if #skill >= 800
+        {
+                set %spell 50 ;Flamestrike
+                set %castat 40
+                set %target 1
+        }
+        if #skill >= 940
+        {
+                set %spell 56 ;Earthquake
+                set %castat 50
+                set %target 0
+        }
+ 
+        if #skill = %maxskil
+        {
+                display ok Congratulations!  You have reached %maxskill2 Magery!
+                halt
+        }
+        if #mana < %castat
+                gosub waitformana
+        set %nowskill #skill
+        event macro 15 %spell
+        if %target = 1
+        {
+                if %targetid = 0
+                        gosub checktillerid
+                set #ltargetid %targetid
+                wait 3s
+                event macro 22 0
+        }
+        wait 2s
+        if #mana >= %thisMana
+        {
+                gosub CheckSpell
+                goto mageloop
+        }
+        if #skill > %nowskill
+                return
+        if %med = yes
+                event macro 13 46
+        gosub waitformana
+return
+ 
+sub eval
+        gosub checktillerid
+        gosub checkstatus
+        set %castat 4
+        set %nowskill #skill
+        set #ltargetid %targetid
+        if #mana < 4
+                gosub waitformana
+        event macro 15 4
+        wait 2s
+        event macro 22 0
+        if #skill = %maxskil
+        {
+                display ok Congratulations!  You have
+                + reached %maxskill2 Eval Int!
+                halt
+        }
+        if #skill > %nowskill
+                return
+        gosub waitformana
+return
+ 
+sub spirit
+        spiritloop:
+        gosub checkstatus
+        set %nowskill #skill
+        set %castat 10
+        if #mana < %castat
+                gosub waitformana
+        event macro 13 32
+        wait 4s
+        if #skill > %nowskill
+                return
+        gosub dojournal
+        if fail in %journal
+        {
+                wait 3s
+                goto spiritloop
+        }
+        if #skill = %maxskil
+                {
+                display ok Congratulations!  You have
+                + reached %maxskill2 Spirit Speak!
+                halt
+        }
+        if %med = yes
+                event macro 13 46
+        gosub waitformana
+return
+ 
+sub dojournal
+        scanjournal 1
+        set %journal #journal
+        scanjournal 2
+        set %journal %journal , #journal
+return
+ 
+sub waitformana
+        manaloop:
+        if #mana < %castAt
+        {
+                wait 1
+                goto manaloop
+        }
+return
+ 
+sub CheckStatus
+        checkstatus:
+        if #mana = N/A
+        {
+                event macro 8 2
+                goto checkstatus
+        }
+return
+ 
+sub CheckPetID
+        if %targetID = 0
+        {
+                display ok Please target the mount you wish to use as a target for spells.
+                wait 40
+                set #targcurs 1
+                waitforpet:
+                if #targcurs  = 1
+                {
+                        wait 1s
+                        goto waitforpet
+                }
+                wait 20
+                set #lobjectid #ltargetid
+                wait 40
+                event macro 17 0
+                set %targetID #ltargetid
+                wait 40
+        }
+return
+ 
+sub CheckTillerID
+        if %targetID = 0
+        {
+                set #targcurs 1
+                display ok Please target the tillerman on your boat.
+                waitfortiller:
+                if #targcurs  = 1
+                {
+                        wait 1s
+                        goto waitfortiller
+                }
+                set %targetID #ltargetid
+        }
+return
+ 
+sub CheckTithing
+        if %regsuit = yes
+                return
+        gosub dojournal
+        if tithing_points in %journal
+        {
+                display ok You lack tithing points.  The script will now exit.
+                halt
+        }
+return
+ 
+sub CheckSpell
+        if %regsuit = yes
+                return
+        gosub dojournal
+        if more_reagents in %journal
+        {
+                display ok You have run out of reagents.  The script will now exit.
+                halt
+        }
+        if do_not_have in %journal
+        {
+                You don't have the spell needed for this skill level.
+        }
+return
+ 
+Sub ClearButtons
+        for %i 4 11
+        {
+                Menu Delete %i
+        }
+return
+ 
+sub IsBoatStopped
+        scanjournal 1
+        if stopped in #journal
+        {
+                set %boatStopped 1
+        }
+        if turbulent in #journal
+        {
+                set %boatStopped 1
+                set %serverLine 1
+        }
+return
+ 
+sub ForwardEight
+        for %cnt 1 8
+        {
+                msg #smc forward one$
+                wait 20
+                gosub IsBoatStopped
+                if %boatStopped = 1
+                {
+                        gosub FixBoatStopped
+                }
+        }
+return
+ 
+sub FixBoatStopped
+        if %serverLine = 1
+        {
+                if %goLeft = 1
+                {
+                        msg #smc left$
+                }
+                if %goLeft = 0
+                {
+                        msg #smc right$
+                }
+                wait 120
+                msg #smc stop$
+        }
+        if %serverLine = 0
+        {
+                if %boatStopped = 1
+                {
+                        msg #smc back$
+                        wait 120
+                        if %goLeft = 1
+                        {
+                                msg #smc left$
+                        }
+                        if %goLeft = 0
+                        {
+                                msg #smc right$
+                        }
+                        wait 200
+                        msg #smc forward$
+                        wait 180
+                        if %goLeft = 1
+                        {
+                                msg #smc right$
+                        }
+                        if %goLeft = 0
+                        {
+                                msg #smc left$
+                        }
+                        wait 200
+                        msg #smc stop$
+                }
+        }
+        set %temp %goLeft
+        if %temp = 1
+        {
+                set %goLeft 0
+        }
+        if %temp = 0
+        {
+                set %goLeft 1
+        }
+        set %serverLine 0
+        set %boatStopped 0
+return

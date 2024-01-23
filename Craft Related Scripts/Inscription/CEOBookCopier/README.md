@@ -1,0 +1,3 @@
+Here's something I put together for a friend whose guild has a monthly auction night. They advertise the night by copying books with lists of items to be auctioned and other details about the auction and then drop them all over the banks, gates, dungeon entrances, etc.
+
+Simply start the script, it'll ask you to target a "Master" book. And then every book in view will be copied. If a copy fails it'll retry the same book. I managed to copy about 10 books in 2 minutes with 0 inscription since you still have a chance for success. My friend, with inscription, duplicated over 100 books in about 2 minutes. Almost a book a second. Saves alot of time and finger pain. Great for advertising guild events, auctions, weddings, etc!

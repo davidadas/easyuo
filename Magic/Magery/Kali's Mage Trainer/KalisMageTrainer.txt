@@ -1,0 +1,662 @@
+;==================================
+; Script Name:   Kali's Mage Trainer
+; Author: KaliofLS
+; Version: 1.1
+; Client Tested with: 7.0.2.1
+; EUO version tested with: 1.5 v.156
+; Shard OSI / FS: OSI
+; Revision Date: 03/19/13
+; Public Release: 11/10/09
+; Global Variables Used: *51 with CEOFilesystem
+; Purpose: Magery in static location.
+;==================================
+
+;Set this value based on FCR bonus.
+;0 FCR needs 30, 5 FCR needs 10
+set %RecoveryTime 10
+;====================================
+;Don't Edit Anything Else
+;====================================
+
+gosub initvars
+gosub loaduserdata
+if ( %startskill = #SKILL )
+{
+   gosub PutGlobalVar %SaveVar KalisMageTrainer #charID startskill
+}
+gosub initmenu
+
+while ( #SKILL <> %maxskill )
+{
+   gosub ChooseSpell
+   gosub UpdateMenu
+   gosub CastSpell
+   wait %RecoveryTime
+   gosub CheckMana
+}
+menu hide
+gosub endmenu
+halt
+
+sub ChooseSpell
+{
+   namespace push
+   namespace local Choose
+   
+   chooseskill mage
+   set !Skill #SKILL
+
+   set %delay 1
+   
+   if ( !Skill > %harm && !skill <= %fireball )
+   {
+      set %spellmana 10
+      set %spellmacro 11
+      set %currentspell Harm
+   }
+   if ( !skill > %fireball && !skill <= %lightning )
+   {
+      set %spellmana 10
+      set %spellmacro 17
+      set %currentspell Fire , #spc , Ball
+   }
+   if ( !skill > %lightning && !skill <= %paralyze )
+   {
+      set %spellmana 13
+      set %spellmacro 29
+      set %currentspell Lightning
+   }
+   if ( !skill > %paralyze && !skill <= %ebolt )
+   {
+      set %spellmana 15
+      set %spellmacro 37
+      set %currentspell Paralyze
+   }
+   if ( !skill > %ebolt && !skill <= %flamestrike )
+   {
+      set %spellmana 22
+      set %spellmacro 41
+      set %currentspell Energy , #spc , Bolt
+   }
+   if ( !skill > %flamestrike && !skill <= %earthquake )
+   {
+      set %spellmana 40
+      set %spellmacro 50
+      set %currentspell Flame , #spc , Strike
+   }
+   if ( !skill > %earthquake )
+   {
+      set %spellmana 50
+      set %spellmacro 56
+      set %delay 60
+      set %currentspell Earthquake
+   }
+
+   namespace clear
+   namespace pop
+   return
+}
+
+sub CastSpell
+{
+   namespace push
+   namespace local Cast
+   
+   set #targcurs 0
+   set #ltargetID %Target
+   set #ltargetkind 1
+
+   event macro 15 %spellmacro
+   if ( %spellmacro <> 56 )
+   {
+      target 5s
+      event macro 22 0
+      wait %delay
+   }
+   else
+   {
+      wait %delay
+   }
+   
+   namespace clear
+   namespace pop
+   return
+}
+
+sub CheckMana
+{
+   namespace push
+   namespace local Check
+   
+   set !SaveCheck 0
+   
+   TryMed:
+   if ( #mana < %spellmana )
+   {
+         set !jvalue #jindex
+         event macro 13 46
+         wait 20
+         for !i !jvalue #jindex
+         {
+            scanjournal !i
+            if ( cannot in #journal )
+            {
+                wait 11s
+                goto TryMed
+            }
+         }
+         while ( #mana < #maxmana )
+         {
+            if ( !SaveCheck = 0 )
+            {
+               gosub PutGlobalVar %SaveVar KalisMageTrainer #charID begincnt
+               set !SaveCheck 1
+            }
+            wait 1
+         }
+   }
+   
+   namespace clear
+   namespace pop
+   return
+}
+
+sub initvars
+{
+   namespace push
+   namespace local Init
+   
+   
+   set %SaveVar 51  ;edit this to change globalvar
+   set %harm 125
+   set %fireball 250
+   set %lightning 450
+   set %paralyze 600
+   set %ebolt 740
+   set %flamestrike 850
+   set %earthquake 960
+   set %currentspell N/A
+   set %thread 356003#356003
+
+   Display OK Select Your Target (Anything you can cast on)
+   set #targcurs 1
+   while #targcurs = 1
+      wait 0
+      
+   set %target #ltargetID
+   
+   set %spellmana 11
+   
+   if #CHARNAME = N/A
+   {
+      event macro 8 2
+      wait 20
+      contpos 835 15
+   }
+   event macro 8 7
+   wait 20
+   contpos 235 650
+   
+   finditem MPF C_ , #backpackID
+   if ( #findcnt < 1 )
+   {
+      Display OK Get a Spellbook!
+      halt
+   }
+   
+   set %SpellBookID #findid
+   
+   chooseskill mage real
+   set %maxskill #SKILLCAP
+   set %startskill #SKILL
+   set %currentskill #SKILL
+   set %begincnt #scnt
+   
+   namespace clear
+   namespace pop
+   
+   return
+}
+
+sub initmenu
+{
+   namespace push
+   namespace local initmenu
+   
+   set !time #scnt - %begincnt
+   set !hh !time / 3600
+   set !mm ( !time / 60 ) - ( !hh * 60 )
+   
+   if ( !hh < 10 )
+   {
+      set !hh 0 , !hh
+   }
+   if ( !mm < 10 )
+   {
+      set !mm 0 , !mm
+   }
+   
+   menu Clear
+   menu Window Title Kali's Magery Trainer
+   menu Window Color Black
+   menu Window Size 300 140
+   menu Font Size 10
+   menu Font Name Arial
+   menu Font BGcolor Black
+   menu Font Color Green
+   menu text time 20 20 Time Elapsed:
+   menu font Color White
+   menu text startskill 20 45 Initial Skill:
+   menu text currentskill 20 70 Current Skill:
+   menu text skillcap 20 95 Skill Cap:
+   menu text currentspell 20 120 Now Casting:
+   menu Font Color Lime
+   menu text timevalue 150 20 !hh , : , !mm
+   menu font Color Aqua
+   menu text startskillvalue 150 45 %startskill
+   menu text currentskillvalue 150 70 %currentskill
+   menu text skillcapvalue 150 95 %maxskill
+   menu text spellvalue 150 120 %currentspell
+   
+   menu show
+   
+   namespace clear
+   namespace pop
+   return
+}
+
+sub updatemenu
+{
+   namespace push
+   namespace local Update
+   
+   set !time #scnt - %begincnt
+   set !hh !time / 3600
+   set !mm ( !time / 60 ) - ( !hh * 60 )
+
+   if ( !hh < 10 )
+   {
+      set !hh 0 , !hh
+   }
+   if ( !mm < 10 )
+   {
+      set !mm 0 , !mm
+   }
+   
+   chooseskill mage real
+   set %currentskill #SKILL
+   
+   menu set timevalue !hh , : , !mm
+   menu set currentskillvalue %currentskill
+   menu set spellvalue %currentspell
+   
+   namespace clear
+   namespace pop
+   return
+}
+
+sub loaduserdata
+{
+   namespace push
+   namespace local LUD
+   
+   gosub GetGlobalVar %SaveVar KalisMageTrainer #charID begincnt NOLOCK
+   gosub GetGlobalVar %SaveVar KalisMageTrainer #charID startskill NOLOCK
+   
+   namespace clear
+   namespace pop
+   return
+}
+
+sub endmenu
+{
+   namespace push
+   namespace local EM
+
+   set !time #scnt - %begincnt
+   set !hh !time / 3600
+   set !mm ( !time / 60 ) - ( !hh * 60 )
+
+   if ( !hh < 10 )
+   {
+      set !hh 0 , !hh
+   }
+   if ( !mm < 10 )
+   {
+      set !mm 0 , !mm
+   }
+
+   set !skillgained #Skill - %startskill
+
+   menu clear
+   menu Window Title Congratulations!
+   menu Window Color Black
+   menu Window Size 300 160
+   menu Font Size 10
+   menu Font Name Arial
+   menu Font BGcolor Black
+   menu Font Color Green
+   menu text Results 20 20 You gained !Skillgained in !hh Hours and !mm Minutes
+   menu text ThankYou1 20 45 Thank you for using my script!
+   menu text ThankYou2 20 70 I spent a while working on this script if you
+   menu text ThankYou3 20 95 could take a minute to rate it, I'd be grateful!
+   menu font color Lime
+   menu Button RateIt 5 120 150 24 Rate!
+   menu font color green
+   menu Button Quit 175 120 75 24 I'm Lazy :(
+
+   menu show
+
+   set #menubutton N/A
+   while ( #menubutton = N/A )
+   {
+      wait 1
+   }
+
+   if ( #menubutton = RateIt )
+   {
+      execute http://www.easyuo.com/forum/viewtopic.php?p= , %thread
+   }
+   menu hide
+
+   namespace clear
+   namespace pop
+   return
+}
+;*****************************************************
+;The following subs are not mine.
+;They are taken from the scripts page and are
+;properly labeled.  I offer no support with these
+;subs, if you have questions, please locate the
+;script's thread and find answers there.
+;*****************************************************
+
+;==================================
+; Script Name:  CEO*FileSystem (pseudo filesystem)
+; Author: CEO
+; Version: 1.1
+; Client Tested with: 4.0.1b
+; EUO version tested with: 1_41_103
+; Shard OSI / FS: OSI
+; Revision Date: 040219
+; Public Release: 040219
+; Globals Used: User specified (2 total)
+; Purpose: Allows you to use a * variable as a pseudo-filesystem
+;=======================================
+; CEO's global variable management subs:
+;      getGlobalVar  . putGlobalVar  . delGlobalVar
+;=======================================
+;
+;ver 1.1
+;changed the lock file to use *variablename_lock so it'll work with any named *variable
+;
+Sub getGlobalVar
+
+;ver 1.0 posted 19Feb04 by CEO
+;purpose: Allows you to store multiple variables in one global variable unique to
+;             each player and script. getGlobaVar retrieves a value from a global variable.
+;@returns: #result = #false if variable not found, #true if found
+;            % . %3 contains variable value
+;%1 is the global/persistant variable to use ( %1 + 1 is used for locking)
+;%2 is the script identifer or pseudo filename
+;%3 is #charid or pseudo filename
+;%4 is the variable to search for and return in %. %3
+;%5 is for lock control. By default getGlobalVar uses a lock to return a value. In some cases you may want to
+;       retrieve a variable (mostly for speed) without needing a lock as long as you are aware of
+;      any potentional conflicts, that very rarely may occur. Set this param to NOLOCK to access
+;      global storage without a lock.
+;sample usage:
+;               gosub getGlobalVar 50 MyScript #charid backpackid
+; Using global var *50 finds the variable labeled MyScript#charidbackpackid and returns it in %backpackid
+;
+;               gosub getGlobalVar 50 MyScript #charid clothstat NOLOCK
+; Using global var *50 find the variable labeled MyScript#charidclothstat and returns it in %clothstat without using a lock
+; Warning: do not use *1000. * %1 + 1 is used for locking and there is no *1001!
+nameSpace push
+nameSpace local #systime , _ , %2 , _ , %3 , _ , %4 , _ , GET
+set !lpc #lpc
+set #lpc 1000
+set !lock %1 , _lock
+if ( %0 = 5 ) && ( %5 = NOLOCK )
+   goto getGlobalVar_skiplock
+set !lockcount 0
+getGlobalVar_waitforlock:
+if * . !lock <> N/A && * . !lock <> #nsname
+{
+   wait 1 4
+   set !lockcount !lockcount + 1
+   if !lockcount < 10
+      goto getGlobalVar_waitforlock
+   if * . !lock <> N/A
+   {
+      set !currentlock * . !lock
+      if !currentlock = N/A
+         goto getGlobalVar_waitforlock
+      str pos !currentlock _
+      set !strres #strres - 1
+      str left !currentlock !strres
+      set !systime #systime - #strres
+      if !systime < 10000 ; if over 10 seconds assume a broken lock and take it
+      {
+         set !lockcount 0
+         goto getGlobalVar_waitforlock
+      }
+   }
+}
+set * . !lock #nsname
+wait 3 2
+if  * . !lock <> #nsname
+{
+   set !lockcount 0
+   goto getGlobalVar_waitforlock
+}
+getGlobalVar_skiplock:
+set !global * . %1
+set !varName %2 , ^ , %3 , ^ , %4 , |
+str pos !global !varName
+set #result #strres <> 0
+if #result
+{
+   set !varNamePos #strres
+   str len !varName
+   set !delString !varNamePos + #strres - 1
+   str del !global 1 !delString
+   set !global #strres
+   str pos !global |
+   set !varNamePos #strres - 1
+   str left !global !varNamePos
+   set % . %4 #strres
+}
+if ( %0 < 5 || %5 <> NOLOCK ) && * . !lock = #nsname
+   set * . !lock N/A
+set #lpc !lpc
+nameSpace Clear
+nameSpace Pop
+return #result
+
+Sub putGlobalVar
+;ver 1.0 posted 19Feb04 by CEO
+;purpose: Allows you to store multiple variables in one global variable unique to
+;             each player and script. putGlobaVar stores a value into a global variable.
+
+;@returns: #result = #false if variable not found, #true if found
+;            % . %3 contains variable
+;%1 is the global/persistant variable to use
+;%2 is the script identifer or pseudo filename
+;%3 #charid or other identifier
+;%4 is the variable name of the variable to save into the* variable identified in %1
+;sample usage:
+;               gosub putGlovalVar 50 MyScript #chardid backpackid
+; Using global var *50 stores/updates the variable labeled MyScript#charidbackpackid  with %backpackid
+; Warning: do not use *1000. * %1 + 1 is used for locking and there is no *1001!
+nameSpace push
+nameSpace local #systime , _ , %2 , _ , %3 , _ , %4 , _ , PUT
+set !lpc #lpc
+set #lpc 1000
+set !lock %1 , _lock
+set !lockcount 0
+putGlobalVar_waitforlock:
+if * . !lock <> N/A && * . !lock <> #nsname
+{
+   wait 1 4
+   set !lockcount !lockcount + 1
+   if !lockcount < 10
+      goto putGlobalVar_waitforlock
+   if * . !lock <> N/A
+   {
+      set !currentlock * . !lock
+      if !currentlock = N/A
+         goto putGlobalVar_waitforlock
+      str pos !currentlock _
+      set !strres #strres - 1
+      str left !currentlock !strres
+      set !systime #systime - #strres
+      if !systime < 10000 ; if over 10 seconds assume a hung lock and take it
+      {
+         set !lockcount 0
+         goto putGlobalVar_waitforlock
+      }
+   }
+}
+set * . !lock #nsname
+wait 4
+set !global * . %1
+set !varName %2 , ^ , %3 , ^ , %4 , |
+str pos !global !varName
+if #strres = 0
+{
+   if  * . !lock <> #nsname
+   {
+      set !lockcount 0
+      goto putGlobalVar_waitforlock
+   }
+   if  |CEO*FILESYSTEM| notin !global
+      set !global |CEO*FILESYSTEM|
+   set * . %1 !global , !varName , % . %4 , |
+   set * . !lock N/A
+   set #lpc !lpc
+   nameSpace clear
+   nameSpace pop
+   return #true
+}
+set !varNamePos #strres
+str len !varName
+set !splitString !varNamePos + #strres - 1
+str left !global !splitstring
+set !globalPart1 #strres
+str del !global 1 !splitString
+set !global #strres
+str len !global
+set !globalLen #strres
+str pos !global |
+set !splitString !globalLen - #strres + 1
+str right !global !splitstring
+set !global #strres
+if  * . !lock <> #nsname
+{
+   set !lockcount 0
+   goto putGlobalVar_waitforlock
+}
+set * . %1 !globalPart1 , % . %4 , !global
+set * . !lock N/A
+set #lpc !lpc
+nameSpace clear
+nameSpace pop
+return #true
+
+
+Sub delGlobalVar
+;ver 1.0 posted 19Feb04 by CEO
+;purpose: Allows you to delete a variable out of the globalvar pool unique to
+;             each player and script. delGlobaVar deletes a global variable in a * variable.
+
+;@returns: #result = #false if variable not found, #true if  deleted
+;
+;%1 is the global/persistant variable to use
+;%2 is the script identifer or pseudo filename
+;%3 is #charid or other identifier
+;%4 is the variable name of the variable to save into the* variable identified in %1
+;sample usage:
+;               gosub delGlovalVar 50 MyScript #charid backpackid
+; Using global var *50 deletes  the variable label MyScript#charidbackpackid  and it's associated value.
+; Warning: do not use *1000. * %1 + 1 is used for locking and there is no *1001!
+nameSpace push
+nameSpace local #systime , _ , %2 , _ , %3 , _ , %4 , _ , DEL
+set !lpc #lpc
+set #lpc 1000
+set !lock %1 , _lock
+set !lockcount 0
+delGlobalVar_waitforlock:
+if * . !lock <> N/A && * . !lock <> #nsname
+{
+   wait 1 4
+   set !lockcount !lockcount + 1
+   if !lockcount <  10
+      goto delGlobalVar_waitforlock
+
+   if * . !lock <> N/A
+   {
+      set !currentlock * . !lock
+      if !currentlock = N/A
+         goto delGlobalVar_waitforlock
+      str pos !currentlock _
+      set !strres #strres - 1
+      str left !currentlock !strres
+      set !systime #systime - #strres
+      if !systime < 10000 ; if over 10 seconds assume a broken lock and take it
+      {
+         set !lockcount 0
+         goto delGlobalVar_waitforlock
+      }
+   }
+
+}
+set * . !lock #nsname
+wait 4
+set !global * . %1
+set !varName %2 , ^ , %3 , ^ , %4 , |
+str pos !global !varName
+set #result #strres <> 0
+if #result
+{
+   set !varNamePos #strres
+   str len !varName
+   set !splitString !varNamePos + #strres - 1
+   set !delString !varNamePos - 1
+   str left !global !delString
+   set !globalPart1 #strres
+   str del !global 1 !splitString
+   set !global #strres
+   str pos !global |
+   set !delString #strres
+   str del !global 1 !delString
+   if  * . !lock <> #nsname
+   {
+      set !lockcount 0
+      goto delGlobalVar_waitforlock
+   }
+   set * . %1 !globalPart1 , #strres
+}
+if  * . !lock = #nsname
+   set * . !lock N/A
+set #lpc !lpc
+nameSpace clear
+nameSpace pop
+return #result
+
+sub waitForSysVar
+{
+   if %0 < 4 || %4 = N/A
+      set %4 %_defaultWaitForTimeout
+   if %0 < 5
+      set %5 return
+   set %4 #sCnt2 + %4
+_waitForSysVar:
+   set % . %5 # . %1 %2 %3
+   if ! % . %5 && #sCnt2 < %4
+   {
+      Wait 1
+      goto _waitForSysVar
+   }
+return
+}

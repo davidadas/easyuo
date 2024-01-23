@@ -1,0 +1,1426 @@
+;=======================================================
+; Script Name: MW Lumberjacker
+; Author: MWinc.
+; Version: 14.5
+; Client Tested with: Baja
+; EUO version tested with: 152
+; Shard OSI / FS:  OSI
+; Revision Date: 1/31/10
+; Public Release: 2/25/08
+; Purpose: Gets you Wood Fast :) LOL
+;=======================================================
+; Things you Will NEED
+; 1. At Least 1 runebook with 16 Runes Next to Trees
+; 2. A runebook with a Rune for your Secure in the first spot (secure within Reach)
+; 3. A hatchet/axey thing to choppy with
+; 4. If you are On a freeshard where axes break, A supply of axes inside of your secure
+; 5. A Full LRC suit, I Won't hold your hand and pull out regs
+; 6. Something to do for all the time this will buy you
+;=======================================================
+; Basic Instructions
+;=======================================================
+; Put the Word Tree in the Names of All your books with Tree
+; Runes! THEY MUST HAVE 16 RUNES IN THEM!
+; Name your Book with your Home Rune "HOME"
+; Set %menu True if you want to see my sexy menu, otherwise Don't!
+; set %enemy to the TYPE of anything you want it to run away from
+; Refer to the website if you don'tknow what that means....
+; set %Restart True if you want to change your Initial Settings
+set %enemy
+set %menu True
+set %Restart False
+;====================================================================
+; Advanced Instructions - Sexiness at its Best!!
+;====================================================================
+; Set %breakableaxe to true if playing on a freeshard where they break
+; while lumberjacking :)
+; Set %Diagnostics True IF You want it to go to Diagnostic Mode
+; Set %positionmonitor to False if you Don't want it to check For
+; whether you recalled, or not, based on your Position.
+; THIS IS NOT SUGGESTED, as it could slow down the script
+; and lead to problems, but appears to be necessary on Some Shards
+; IF You set %posionmonitor to false then please
+; Set %recallwait To however long you want it to wait After Casting recall
+; and before Trying to find trees.
+; set %maxweight to the maximum weight you can either carry
+; or the maximum weight your bag can carry
+; Hit Play ( tap that button )
+set %Breakableaxe False
+set %diagnostics True
+set %PositionMonitor True
+set %recallWait 90 ; 20 = 1 second, 90 works fairly well on dial up
+set %maxweight #maxweight
+;=====================================================
+; Diagnostic Mode:
+; 1. Slows Down The Script
+; 2. Updates your Status and Displays what its
+; either doing Or Trying To Do on the menu
+; 3. %menu has to be set to True for it to work.
+;====================================================
+; !!Super Advanced Options!! (Because I love you guys)
+;====================================================
+; First I'll Explain that There are Two Swing Speeds While Lumberjacking.
+; THE FIRST is for when you are FAR From your maxweight and is Very Fast
+; The Second Is once you are within 120 Stones of your maxweight and is.... Not so Fast
+; The Reason Is if you don't Slow it down the Script Gets overweight alot and drops logs on ground
+
+; %Fast_Swing_Delay is... exactly what you think it is! Its the Delay
+; For the Fastest Swing!
+; %Slow_Swing_Delay is... Not even going there... You should know this by now...
+set %Fast_Swing_Delay 14
+set %Slow_Swing_Delay 30
+; Next up We have Dropping Timers.
+; Now Because of My Mad Lag Issues I built into my script a loop that checks your weight as
+; You are attempting to drag and drop something. (Once your weight changes you succeeded)
+; After it Succeeds it has a Delay Before it Moves onto Dragging the next item.
+; This Delay Can Vary with Freeshards, but on OSI The fastest you want it is 15
+; Some Freeshards it can go as low as 5
+; %Drag_Drop_Delay Is the wait time inbetween successfully dropping an item and dragging another
+set %Drag_Drop_Delay 20
+; This Only Applies to Dropping Resources.
+; %Log_2_Board_Delay is how long it waits after using your axe on your logs before trying again
+set %Log_2_Board_Delay 10
+set %Scanmenu True
+;=======================================================
+; DISCLAIMERS
+; I Find that Opening your status, backpack, and paperdoll
+; Should be highly unnecessary in this kind of script as they
+; should already be opened anyways. SO, DO IT!
+; If you do not read the instructions, DONT COMPLAIN IF IT DOESNT WORK
+; I'm Currently Testing it on Dial up and it works fine
+; SO for those of you on a REAL connection it should be sexy
+; It now lumberjacks ALL TREES IN A 2 TILE RADIUS!!
+; SO read the Forum for ways to optimize your output
+; Fear The hell Monkeys
+;===================================================================
+; Touch nothing below here unless you want to be touched back!!!!
+;===================================================================
+; Intro/Setup variables
+;===================================================================
+set #Lpc 500
+if %restart = True
+gosub ClearGlobals
+set %lumberjacker_setup *mwinc_lumberjacker_setup_ . #charid
+if  %lumberjacker_setup <> Done
+gosub Initial_setup
+set %hatchet *mwinc_Lumberjacker_axe_ . #charid
+set %secure *mwinc_Lumberjacker_Secure_ . #charid
+set %bank *mwinc_Lumberjacker_Bank_ . #charid
+set %RecallMethod *mwinc_Lumberjacker_Recall_ . #charid
+set %hiding *mwinc_lumberjacker_hiding_ . #charid
+set %Craft_Board *Mwinc_Lumberjacker_Craft_Board_ . #charid
+set %choppylimit 30 ; max number of chops before recalling away if tree hasn't depleted
+set %tree_found No
+set %init True
+set %tinker GTL_KTL_JTL
+set %carp KGG_WFG_IGG_ZFG_BIG_CIG_ZHG_YFG_AIG_EGG
+set %board TLK
+set %startscnt #scnt ; Start Time
+set %axe LSF_OSF_NSF_BSF_MSF_CSF_ISF_MPH_JOH_UOH_RMH_LPH_ZRF_FSF_ASF
+set %lefthand ZRF_RMH_OFR_NSF_LSF_LPH_FSF_HSF_CSF
+set %righthand BSF_FSF_MSF ;
+set %resources ZLK_YWS_NWS_BWR_FXS_XWS_TLK
+set %bookspot 1 ; The Spot In your Book You are Recalling To
+set %y 1
+set %keeper 1
+set %trees 0
+set %logs 0
+set %oak 0
+set %ash 0
+set %yew 0
+set %heart 0
+set %blood 0
+set %frost 0
+set %totalpoints 0
+set %specialbark 0
+set %specialswitch 0
+set %specialparasitic 0
+set %specialfungi 0
+set %specialamber 0
+set %totalpoints 0
+set #lpc 20
+set %scnt ( #scnt - %startscnt )
+set %hours ( %scnt / 3600 )
+set %minutes ( ( %scnt - ( %hours * 3600 ) ) / 60 )
+set %seconds ( %scnt - ( %hours * 3600 ) - ( %minutes * 60 ) )
+set %logsperhour ( ( %totallogs * 3600 ) / %scnt )
+set %pointsperhour ( ( %totalpoints * 3600 ) / %scnt )
+menu clear
+menu window title #charname
+menu window size 150 330
+menu show
+menu window color black
+gosub Menus
+if %Breakableaxe <> True
+{
+Finditem %hatchet
+if #findcnt < 1
+{
+display Couldn't Find Axe
+halt
+}
+}
+;===================================================================
+; Id's Your Books
+;===================================================================
+Bookie:
+gosub Diagnostics Finding 20
+finditem ZBN C_ , #backpackid
+set %Tree_Book_Number 0
+For #findindex 1 #findcnt
+{
+event property #findid
+if Tree In #property
+{
+set %Tree_Book_Number %Tree_Book_Number + 1
+set % . Treebook . %Tree_Book_Number #findid
+}
+if home in #property
+set %homebook #findid
+}
+set %bookie %Tree_Book_Number
+gosub Diagnostics Bookdone 20
+set %treebook %treebook1
+set %book %treebook
+gosub menus
+goto recall
+;==================================================================
+; Main Recall Control
+;==================================================================
+recall:
+ignoreitem Reset
+gosub Bookkeeper ;Clear
+gosub Diagnostics Recall 0
+set %jindexlimit #jindex
+gosub health ;Clear
+if #weight > %maxweight
+{
+set %Ground_Location 1
+goto Drop_on_Ground
+}
+gosub position ; Clear
+set #lobjectid %book
+event macro 17 0
+gosub bookgump ;Clear
+if #Result <> Clear
+goto #result
+gosub clicky ;Clear
+gosub turnthepage ; Clear
+click %page %y2
+click %side %y3
+;gosub Spellwait
+if %hiding = yes
+wait 40
+gosub Hiding ;Clear
+if %positionmonitor = True
+{
+Gosub Positionmonitor ;Clear
+if #result <> Clear
+goto #result
+}
+else
+{
+gosub Diagnostics Recallwait 0
+wait %recallwait
+gosub Scan ; Clear
+if #result <> Clear
+goto #result
+}
+if %book = %homebook
+goto drop
+if %breakableaxe = True
+gosub axefind
+if #result <> Clear
+goto #Result
+set %chops 0
+goto Choppy
+;===================================================================
+; Chopping Lumberjacking
+;===================================================================
+Choppy:
+gosub Hiding
+set %chops %chops + 1
+if %chops > %choppylimit
+{
+set %bookspot %bookspot + 1
+Menu Delete Spot
+menu text Spot 7 160 Spot: %bookspot
+set %init True
+set %tree_found NO
+goto recall
+}
+if %breakableaxe = True
+{
+gosub checkaxe  ;Clear
+if #result <> Clear
+goto #result
+}
+gosub bagaxe  ; Clear
+gosub enemy ;Clear
+if #result <> Clear
+goto #Result
+set %x_limit #charposx + 2
+set %y_limit #charposy + 2
+gosub health ; Clear
+gosub eyerape ;Clear
+if #result <> Clear
+goto #result
+if %tree_found = no
+{
+if %init = True
+gosub init ;Clear
+gosub tiler ; Clear
+}
+if %tree_found = no
+{
+gosub Diagnostics Notree 20
+set %bookspot ( %bookspot + 1 )
+Menu Delete Spot
+menu text Spot 7 160 Spot: %bookspot
+goto recall
+}
+gosub Diagnostics Lumberjacky 0
+set #lobjectid %hatchet
+event macro 17 0
+target
+event macro 22 0
+wait %delay
+goto choppy
+;==================================================================
+; Dropping Resources
+;==================================================================
+drop:
+gosub hiding
+gosub Diagnostics Drop 0
+if %bank = yes
+gosub bankwait ; clear
+finditem %secure
+gosub securewait ;Clear
+if #Result <> Clear
+goto #result
+gosub health ; Clear
+finditem %resources C_ , #backpackid
+;if #findtype = ZLK && %Craft_Board = True
+;{
+;gosub Log2Board
+;goto drop
+;}
+set %resource #findid
+if #findcnt < 1
+{
+if %breakableaxe = True
+gosub axes  ; Clear
+set %Scanmenu True
+if %menu = True
+gosub menus ;Clear
+set %book %treebook
+wait 20
+goto recall
+}
+if #findtype in NWS_BWR_YWS_XWS && #findstack < 5
+{
+ignoreitem #findtype
+goto drop
+}
+gosub stats  ; Clear
+set %dropweight #weight
+gosub Drag_Drop #findid #findstack %Secure
+goto drop
+;===================================================================
+; HAH POOP!!!! Anyways... Drops Things On Ground
+;===================================================================
+Drop_on_Ground:
+gosub Diagnostics Poop 0
+gosub Drop_On_Ground
+Finditem ZLK C_ , #backpackid
+if #findcnt < 1
+{
+set %book %homebook
+goto recall
+}
+exevent drag #findid 20
+exevent dropg %xpos %ypos #charposz
+wait 30
+if #weight > %maxweight || #weight >= %heffer
+{
+set %Ground_Location %Ground_Location + 1
+goto Drop_on_Ground
+}
+set %book %homebook
+goto recall
+;==================================================================
+; End Main Parts
+;==================================================================
+
+;==================================================================
+; Tile scanning Subs
+;==================================================================
+sub init
+tile init nooverrides
+set %x1 #charposx - 2
+set %y1 #charposy - 2
+set %x_limit #charposx + 2
+set %y_limit #charposy + 2
+return
+
+sub tiler
+Tile init Nooverrides
+gosub Diagnostics Tile 0
+Tiler:
+set #lpc 100
+tile cnt %x1 %y1
+for %tilekind 1 #tilecnt
+{
+tile Init
+tile get %x1 %y1 %tilekind
+set %8x8_X %x1 / 8
+set %8x8_Y %y1 / 8
+set %8x8 %8x8_X , _ , %8x8_Y
+if TREE in #tilename && %8x8 notin %last8x8
+{
+set %last8x8 %last8x8 , _ , %8x8
+set %tree_found YES
+set #ltargetx %x1
+set #ltargety %y1
+set #ltargettile #tiletype
+Set #ltargetkind 3
+set #ltargetz #tilez
+set #lpc 20
+set %chops 0
+return
+}
+}
+gosub Next_tile
+if %y1 > %y_limit
+{
+gosub Diagnostics Notree 20
+set %init True
+set %tree_found No
+set %y1 #charposy - 2
+set #lpc 20
+set %last8x8 N/A
+return
+}
+goto tiler
+
+sub Next_Tile
+set %x1 %x1 + 1
+if %x1 > %x_limit
+{
+set %y1 %y1 + 1
+set %x1 #charposx - 2
+}
+return
+
+
+;=================================================================================================
+; Recalling Subs
+;=================================================================================================
+;Sets the Page and Side Based on %Bookspot
+sub turnthepage
+if %book = %homebook
+{
+set %page %page1
+set %side %leftpage
+return
+}
+if %bookspot > 16
+{
+set %bookspot 1
+Menu Delete Spot
+menu text Spot 7 160 Spot: %bookspot
+}
+set %this ( ( %bookspot + 1 ) / 2 )
+set %page %page . %this
+set %side %bookspot % 2
+if %side > 0
+set %side %leftpage
+if %side = 0
+set %side %rightpage
+return
+;================================================
+; Sets Your current position To compare if you move
+sub position
+set %posx #charposx
+set %posy #charposy
+return
+;================================================
+; Checks to See if Your Position Changes
+sub check
+if %book = %homebook
+{
+finditem %secure
+if #findcnt > 0
+{
+set %moved True
+return clear
+}
+}
+if %posx = #charposx && %posy = #charposy
+{
+set %moved False
+return Clear
+}
+set %moved True
+return clear
+;================================================
+; Checks Journal For Blocked Locations
+sub scan
+For %number 0 8
+{
+set %jindex #jindex - %number
+scanjournal %jindex
+if %scanmenu = true
+{
+  if menu in #journal
+  {
+    if %menu = false
+    {
+      set %menu true
+      menu show
+      set %scanmenu false
+    }
+    else
+    {
+      set %menu false
+      menu hide
+      set %scanmenu false
+    }
+  }
+
+}
+if %jindex = %jindexlimit
+return Clear
+if something_is_blocking in #journal || That_location_is_blocked in #journal
+   {
+   if %book = %treebook
+      {
+      wait 200
+      set %bookspot %bookspot + 1
+      Menu Delete Spot
+      menu text Spot 7 160 Spot: %bookspot
+      Return Recall
+      }
+   if %book = %homebook
+      {
+      if %bank = Yes
+         {
+         gosub bankwait
+         if #contsize <> 180_240
+            {
+            set %book %homebook
+            Return Recall
+            }
+         }
+      }
+   }
+}
+return Clear
+;================================================
+; Sets the Position For your clicking Based on Position
+sub clicky
+set %page1 #contposx + 135
+set %page2 #contposx + 170
+set %page3 #contposx + 205
+set %page4 #contposx + 240
+set %page5 #contposx + 305
+set %page6 #contposx + 340
+set %page7 #contposx + 375
+set %page8 #contposx + 410
+set %y2 #contposy + 195
+set %leftpage #contposx + 135
+set %rightpage #contposx + 295
+if %recallmethod = Recall
+set %y3 #contposy + 144
+else
+set %y3 #contposy + 180
+return
+;================================================
+; Waits For Your Book To Open
+sub bookgump
+wait 10
+gosub Diagnostics Book 0
+set %Limit_Timer #Scnt + 2
+while #contsize <> 452_236 && #Scnt < %Limit_Timer
+wait 5
+if %Limit_Timer < #Scnt
+{
+gosub Diagnostics Bookfail
+Return Recall
+}
+return Clear
+;==============================================
+;===============================================
+; Waits For A change In your Position over 7 seconds
+sub Positionmonitor
+set %moved False
+gosub Diagnostics movement 0
+set %Timer_Limit #scnt + 7
+set #result Clear
+While %Moved <> True && #Scnt < %Timer_Limit && #result = Clear
+{
+gosub check  ;Clear
+gosub scan   ;Clear
+wait 5
+}
+if #result <> Clear
+Return #Result
+if %Timer_limit <= #scnt
+{
+gosub Diagnostics Movementfail 20
+Return Recall
+}
+return Clear
+;===============================================
+; Allows For INFINITE Book Usage PWNT!!!!
+sub bookkeeper
+if %bookspot < 17
+return
+set %bookspot 1
+Menu Delete Spot
+menu text Spot 7 160 Spot: %bookspot
+set %Keeper %keeper + 1
+if %keeper > %bookie
+set %keeper 1
+Menu Delete book
+menu text Book 4 176 Book: %Keeper
+set %treebook % . Treebook . %keeper
+set %book %treebook
+return
+
+;==============================================================================================
+sub Hiding
+if %hiding = No
+return
+if %hidingTimer > #scnt
+Return
+if H in #charstatus
+return
+Event macro 13 21
+set %hidingtimer #scnt + 12
+Return
+;==============================================================================================
+
+sub eyerape
+Eyerape:
+if #weight > %maxweight
+return Drop_on_Ground
+scanjournal
+finditem ZLK G_2
+if #findstack > ( ( %Maxweight - #Weight ) / 2 ) )  && #findcnt > 0
+{
+ignoreitem #findid
+goto Eyerape
+}
+If #findcnt > 0
+{
+exevent drag #findid #findstack
+wait 15
+exevent dropc #backpackid
+wait 20
+}
+if #jindex <> %badjindex
+{
+if Too_far_away in #journal || You_can't_do_that in #journal || Target_Cannot_Be_Seen  in #Journal
+{
+set %bookspot %bookspot + 1
+set %tree_found NO
+set %init True
+Return Recall
+}
+if harvest in #journal
+{
+set %badjindex #jindex
+set %trees %trees + 1
+set %tree_found No
+set %init False
+gosub Next_tile
+if %y1 > %y_limit
+{
+gosub Diagnostics Notree 20
+set %init True
+set %tree_found No
+set %y1 #charposy - 2
+set #lpc 20
+set %bookspot %bookspot + 1
+Return Recall
+}
+Return Choppy
+}
+}
+set %weight ( %maxweight - 50 )
+finditem ZLK C_ , #backpackid
+if #weight > %weight && #findcnt > 0
+{
+if %Craft_board = True
+gosub Log2Board
+set %weight ( %maxweight - 50 )
+if #weight > %weight
+{
+set %book %homebook
+Return Recall
+}
+}
+set %delay %Fast_Swing_Delay
+set %weight ( %maxweight - #weight )
+if %weight < 120
+set %delay %Slow_Swing_Delay
+return Clear
+
+sub Drop_On_Ground
+if %Ground_Location = 1
+{
+set %xpos #charposx
+set %ypos #charposy
+}
+if %Ground_Location = 2
+{
+set %xpos ( #charposx + 1 )
+set %ypos #charposy
+}
+if %Ground_Location = 3
+{
+set %xpos ( #charposx - 1 )
+set %ypos #charposy
+}
+if %Ground_Location = 4
+{
+set %xpos #charposx
+set %ypos ( #charposy + 1 )
+}
+if %Ground_Location = 5
+{
+set %xpos #charposx
+set %ypos ( #charposy - 1 )
+}
+if %Ground_Location > 5
+{
+gosub backpack
+wait 20
+set %Ground_Location 1
+}
+return
+
+sub health
+if C in #charstatus
+{
+gosub Diagnostics Curing 0
+if %Recallmethod = Recall
+event macro 15 10
+if %Recallmethod = Sacred
+Event macro 15 201
+target 60
+event macro 23 0
+set %tree_found no
+}
+set %biotch #maxhits - 20
+if #hits < %biotch
+{
+event macro 52 1
+event macro 53 0
+set %hp ( #maxhits - 20 )
+if #hits < %hp
+{
+gosub diagnostics Healing 0
+if %Recallmethod = Recall
+event macro 15 28
+if %Recallmethod = Sacred
+event macro 15 202
+target 80
+event macro 23 0
+}
+set %tree_found No
+}
+return
+
+sub enemy
+finditem %enemy
+if #findcnt > 0
+{
+gosub Diagnostics Enemy 20
+set %bookspot ( %bookspot + 1 )
+set %book %homebook
+set %init True
+set %Tree_found NO
+Return Recall
+}
+return Clear
+
+sub menus
+set %scnt ( #scnt - %startscnt )
+set %hours ( %scnt / 3600 )
+set %minutes ( ( %scnt - ( %hours * 3600 ) ) / 60 )
+set %seconds ( %scnt - ( %hours * 3600 ) - ( %minutes * 60 ) )
+set %logsperhour ( ( %totallogs * 3600 ) / %scnt )
+set %pointsperhour ( ( %totalpoints * 3600 ) / %scnt )
+set %LogsPerc %Logs * 100 / %TotalLogs
+set %OakPerc %Oak * 100 / %TotalLogs
+set %AshPerc %Ash * 100 / %TotalLogs
+set %YewPerc %Yew * 100 / %TotalLogs
+set %heartPerc %Heart * 100 / %TotalLogs
+set %BloodPerc %Blood * 100 / %TotalLogs
+set %FrostPerc %Frost * 100 / %TotalLogs
+Gosub Roundit %Logs Logs %Logsperc
+gosub Roundit %Oak Oak %OakPerc
+Gosub Roundit %Ash Ash %AshPerc
+Gosub Roundit %Yew Yew %YewPerc
+Gosub Roundit %Heart Heart %HeartPerc
+Gosub Roundit %Blood Blood %BloodPerc
+Gosub Roundit %Frost Frost %FrostPerc
+;if %menu = true
+  ;menu show
+;else
+  ;menu hide
+Menu Delete TimeMenu
+Menu Delete Logs_Hour
+Menu Delete Points_Hour
+Menu Delete Trees
+Menu Delete Logs
+Menu Delete Oak
+Menu Delete Ash
+Menu delete Yew
+Menu Delete Heart
+Menu Delete Blood
+Menu Delete Frost
+Menu Delete Spot
+Menu Delete Book
+Menu Delete Bark
+Menu Delete Switch
+Menu Delete Fungi
+Menu Delete Parasitic
+Menu Delete Amber
+Menu Delete Logsperc
+Menu Delete OakPerc
+Menu Delete AshPerc
+Menu Delete YewPerc
+Menu Delete Heartperc
+Menu Delete BloodPerc
+Menu Delete FrostPerc
+menu window color black
+menu font bgcolor black
+menu font style bold
+menu font size 10
+menu font color Yellow
+menu Text Time 0 0 Time: %hours : %minutes : %seconds
+menu Text Logs_Hour 0 16 Logs/Hour: %logsperhour
+Menu Text Points_Hour 0 208 Points/Hour: %Pointsperhour
+menu font Color Green
+menu text Trees 2 32 Trees: %trees
+menu font color 2511000
+Menu Text Logs 7 48 Logs: %logs
+Menu Text Logsperc 110 48 %LogsPerc %
+menu Font Color olive
+menu Text Oak 12 64 Oak: %oak
+Menu Text Logsperc 110 64 %OakPerc %
+menu font color 10010000
+menu text Ash 14 80 Ash: %ash
+Menu Text Logsperc 110 80 %AshPerc %
+menu font color 2510000
+menu text Yew 10 96 Yew: %yew
+Menu Text Logsperc 110 96 %YewPerc %
+menu Font color green
+menu text Heart 3 112 Heart: %heart
+Menu Text Logsperc 110 112 %HeartPerc %
+menu font color Maroon
+menu text Blood 0 128 Blood: %blood
+Menu Text Logsperc 110 128 %BloodPerc %
+menu font color aqua
+menu text Frost 5 144 Frost: %frost
+Menu Text Logsperc 110 144 %FrostPerc %
+menu font color Yellow
+menu text Spot 7 160 Spot: %bookspot
+menu text Book 4 176 Book: %Keeper
+menu font color 4444499
+menu text special 0 226 SPECIAL ITEMS:
+menu font color 10010000
+menu text Bark 26 242 Bark: %specialbark
+menu Font color 2511000
+menu text Switch 12 258 Switch: %specialswitch
+menu font color white
+menu text Fungi 19 274 Fungi: %specialfungi
+menu font color green
+menu text Parasitic 0 290 Parasitic: %specialparasitic
+menu font color Yellow
+menu text Amber 13 306 Amber: %specialamber
+gosub status
+return
+
+
+sub stats
+event property #findid
+if #findid = %stuff
+return
+set %stuff #findid
+gosub Type
+set % . %type % . %type + #findstack
+set %totallogs %totallogs + #Findstack
+if frost in #property
+set %totalpoints ( %totalpoints + ( #findstack * 48 ) )
+if blood in #property
+set %totalpoints ( %totalpoints + ( #findstack * 24 ) )
+if heart in #property
+set %totalpoints ( %totalpoints + ( #findstack * 12 ) )
+if Yew in #property
+set %totalpionts  ( %totalpoints + ( #findstack * 9 ) )
+if oak in #property
+set %totalpoints ( %totalpoints + ( #findstack * 6 ) )
+if Ash in #property
+set %totalpoints ( %totalpoints + ( #findstack * 3 ) )
+if %type = Logs
+set %totalpoints %totalpoints + #findstack
+return
+
+;===========================================================================
+
+;============================================================================
+; Waits for your Bank To open :)
+sub bankwait
+bankwait:
+gosub Diagnostics Bank 20
+finditem %secure
+if #findcnt > 0
+return
+msg Bank$
+set %Timer_Limit #scnt + 2
+while #contsize <> 180_240  && %Timer_Limit > #Scnt ; lol Keep switching this up.....  #Scnt < %Timer_Limit
+wait 1
+if %Timer_Limit <= #Scnt
+{
+gosub diagnostics Bankfail 20
+return recall
+}
+return Clear
+
+;==============================================================================
+; Waits for your secure to APPEAR
+sub securewait
+set %Timer_Limit #scnt + 2
+While #findcnt < 1 && #scnt < %Timer_Limit
+{
+wait 1
+finditem %secure
+}
+if %Timer_Limit <= #Scnt
+return Recall
+return Clear
+
+;================================================================================
+; Figures out which stack of logs is the Heaviest in your bag
+; I'm Saving this Because Its Ingenious :)
+sub heaviest
+set %heaviest 0
+set %heaviestNUM 0
+Heaviest:
+finditem ZLK C_ , #backpackid
+if #findstack > %heaviestNUM
+{
+set %heaviest #findid
+set %heaviestNUM #findstack
+}
+ignoreitem #findid
+if #findcnt < 1
+{
+ignoreitem Reset
+return
+}
+goto heaviest
+
+;========================================================================
+; Checks for those of you with non spell channeling axes - SLUTS!
+sub axefind
+finditem %axe C_ , #Charid
+if #findcnt < 1
+   {
+   Finditem %axe C_ , #Backpackid
+   if #findcnt < 1 && %breakableaxe <> True
+      {
+      Display WTF Happened To Your Axe Buddy?
+      Halt
+      }
+   if #findcnt < 1 && %breakableaxe = True
+      {
+      Set %book %homebook
+      Return Recall
+      }
+   set %hatchet #findid
+   gosub equipaxe
+   }
+return Clear
+
+
+;=========================================================================
+; I wonder what this one does?
+sub equipaxe
+gosub diagnostics Equipaxe 20
+if #findtype in %lefthand
+set %equip 1
+if #findtype in %righthand
+set %equip 2
+if %equip = 1
+set #lhandid #findid
+if %equip = 2
+set #rhandid #findid
+event macro 24 %equip
+wait 20
+return
+
+
+;============================================================================
+; ooo... Fun one. Drags And drops things, Without creating false items, by watching your weight
+sub droppy
+droppy:
+finditem %resource C_ , #backpackid
+if #findcnt < 1
+return
+set %Timer_Limit #scnt2 + 20
+exevent drag #findid #findstack
+exevent dropc %secure
+while #weight = %dropweight && %Timer_Limit > #scnt2
+wait 1
+if %Timer_Limit < #Scnt2
+{
+wait 20
+gosub backpack
+wait 20
+goto droppy
+}
+wait %Drag_Drop_Delay
+return
+;========================================================================
+
+sub Backpack
+Backpack:
+event macro 9 7
+wait 20
+event macro 8 7
+set %Timer_Limit #scnt + 2
+while #contid <> #backpackid  && %Timer_Limit > #Scnt
+wait 1
+if %Timer_Limit <= #scnt
+goto Backpack
+contpos 700 525
+return
+
+
+;=============================================================================
+; Probably Going to Get rid of
+sub bagaxe
+finditem %hatchet C_ , #charid
+if #findcnt = 1
+return
+Finditem %hatchet C_ , #backpackid
+gosub equipaxe
+return
+
+;=============================================================================
+; changes %status to whatever I set %1 to when I call this sub ( %status Used in sub status)
+sub Diagnostics
+if %Diagnostics <> True
+Return
+if %status = %1
+return
+set %status %1
+;wait %2
+gosub status
+return
+;=============================================================================
+; Displays Status Of Script on Menu
+sub status
+menu delete status
+menu font color gray
+if %status = Finding
+menu text status 0 192 Finding Your Books..
+if %status = Bookdone
+menu text status 0 192 Books Found.
+if %status = Recall
+menu text status 0 192 Recalling..
+if %status = Poop
+menu text status 0 192 Dropping Logs..
+if %status = Book
+menu text status 0 192 Opening Book..
+if %status = Bookfail
+menu text status 0 192 Reopen Book.
+if %status = Spell
+menu text status 0 192 Casting..
+if %status = Spellfail
+menu text status 0 192 Retrying Recall.
+if %status = movement
+menu text status 0 192 Position Change?
+if %status = movementfail
+menu text status 0 192 Failed.  Recalling..
+if %status = Lumberjacky
+menu text status 0 192 Lumberjacking..
+if %status = Drop
+menu text status 0 192 Dropping Resources.
+if %status = Tile
+Menu text status 0 192 Finding Tree..
+if %status = Notree
+menu text status 0 192 No More Trees
+if %status = Block
+Menu text status 0 192 Blocked, Trying Next
+if %status = Recallwait
+{
+set %recallwaitseconds %recallwait / 20
+menu text status 0 300 Waiting %recallwaitseconds Seconds
+}
+if %status = Curing
+menu text status 0 192 Curing poison
+if %status = Healing
+menu text status 0 192 Healing
+if %status = Makingboards
+menu text status 0 192 Making Boards
+if %status = setwood
+menu text status 0 192 Changing To %Type
+if %status = carpentry
+menu text status 0 192 Crafting Plane.
+If %status = Craftfail
+menu Text status 0 192 Retrying: Make Logs.
+if %status = Bank
+menu text status 0 192 Waiting For Bank.
+if %status = BankFail
+menu Text status 0 192 Bank Failed: Retrying
+if %status = equipaxe
+menu Text status 0 192 Equipping Axe..
+if %status = Getaxe
+menu text status 0 192 Getting More Axes..
+if %status = Initiating
+menu text status 0 192 Make Last To Boards.
+if %status = Enemy
+menu text status 0 192 Enemy Found!! Escaping!
+menu font color yellow
+return
+
+
+;==============================================================================
+
+;=============================================================================
+;===========================================================================
+
+
+;================================ JUNK FOR BREAKABLE HATCHETS ================================
+; If it can't find your hatchet it attempts to find it in your bag
+sub checkaxe
+finditem %Axe C_ , #Charid
+if #findcnt < 1
+   {
+   finditem %axe C_ , #backpackid
+   if #findcnt < 1
+      {
+      set %book %homebook
+      Return Recall
+      }
+set %hatchet #findid
+gosub equipaxe
+}
+if %hatchet <> #findid ; <- That Should Never Happen, But what Do I know I'm Only A Leprachaun.... Why are you reading this?
+set %hatchet #findid
+return Clear
+
+;==========================================================================================
+; Decides whether you need more axes or not
+
+sub Axes
+finditem %axe C_ , #backpackid
+if #findcnt > 2
+return
+open:
+Gosub diagnostics Axeget 20
+set #lobjectid %secure
+event macro 17 0
+set %Timer_Limit #scnt + 3
+while #contid <> %secure  && %Timer_Limit > #Scnt
+wait 1
+if %Timer_Limit <= #Scnt
+goto open
+wait 20
+Finditem %axe C_ , #backpackid
+While #findcnt < 2
+{
+finditem %axe C_ , %secure
+if #findcnt < 1
+{
+Display Out of Axes.
+halt
+}
+exevent Drag #findid
+wait 20
+exevent dropc #backpackid
+wait 20
+Finditem %axe C_ , #backpackid
+}
+return
+;========================================================
+sub type
+event property #findid
+set %type logs
+if oak in #property
+set %type oak
+if ash in #property
+set %type ash
+if yew in #property
+set %type yew
+if Heartwood in #property
+set %type heart
+if blood in #property
+set %type blood
+if frost in #property
+set %type frost
+if bark in #property
+set %type specialbark
+if switch in #property
+set %type specialswitch
+if fungi in #property
+set %type specialfungi
+if parasitic in #property
+set %type specialparasitic
+if amber in #property
+set %type specialamber
+return
+;========================================================
+; Initial Setup
+;========================================================
+Sub Initial_Setup
+menu clear
+menu window Title MWincSetup
+menu window Color black
+menu window size 400 200
+menu show 0 0
+menu font size 20
+menu font color Silver
+Menu font Bgcolor Black
+;menu Text Mwincsetup 50 50 M
+menu image create Axe 0 0 300 300
+menu image Ellipse Axe  50 30 150 150 Silver #true
+menu image line Axe 70 25 10 200 2511000 40 #true
+menu Image create Tree 350 0 50 200
+menu Image Rectangle Tree  0 0 400 250 2511000 #true
+menu Image
+set #lpc 50
+for %number 1 25
+{
+set %x_menu_pos ( %number * 10 + 0 )
+menu Image pos Axe %x_menu_pos 0 300 300
+if %number = 4
+menu text mwincSetup 50 50 M
+if %number = 5
+menu text mwincsetup 50 50 Ma
+if %number = 7
+menu text mwincsetup 50 50 Man
+if %number = 9
+menu text mwincsetup 50 50 ManW
+if %number = 11
+menu text mwincsetup 50 50 ManWh
+if %number = 12
+menu text mwincsetup 50 50 ManWho
+if %number = 13
+Menu text mwincsetup 50 50 ManWhor
+if %number = 14
+menu text mwincsetup 50 50 ManWhore'
+if %number = 17
+menu Text mwincsetup 50 50 ManWhore's
+if %number = 19
+menu text mwincsetup 50 50 ManWhore's I
+if %number = 23
+menu text mwincsetup 50 50 ManWhore's Inc.
+if %number > 20
+{
+menu Image create Tree 350 0 50 200
+menu Image Rectangle Tree  0 0 400 250 2511000 #true
+}
+}
+wait 10
+Menu Text mwincsetup 50 80 Proudly
+wait 10
+Menu Text mwincsetup 50 80 Proudly Presents~
+wait 20
+menu clear
+Menu Font size 24
+menu Font Bgcolor Black
+Menu Font Color 2511000
+Menu Text mwincSetup 50 80 Mwinc. Lumberjacker
+Menu Font color White
+menu Font size 15
+wait 10
+menu Text mwincsetup 0 0 V. 14.3
+wait 40
+Menu Clear
+Menu font color Maroon
+Menu font BGcolor Black
+Menu Font Size 24
+Menu Text mwincsetup 50 80 Fear The Hell Monkeys
+wait 7
+AxeSetup:
+Menu clear
+Menu Window Size 250 300
+menu Font color yellow
+Menu Font bgcolor black
+menu Font size 14
+menu Text mwincsetup 25 25 Please Target Your Axe
+set #targcurs 1
+while #targcurs = 1
+wait 1
+Event property #ltargetid
+set %string #property
+Menu clear
+menu Font color yellow
+Menu Font bgcolor black
+menu Font size 14
+menu Text mwincsetup 50 25 Is This Your Axe?
+Menu Font color White
+menu Font size 8
+Menu Text mwincsetup 25 50 %string
+Menu Button Yes 180 60 50 30 Yes
+Menu Button No 180 90 50 30 No
+set #menubutton N/A
+While #menubutton = N/A
+wait 1
+if #menubutton = No
+goto AxeSetup
+set *Mwinc_Lumberjacker_Axe_ , #charid  #ltargetid
+SecureSetup:
+Menu Clear
+menu Font color yellow
+Menu Font bgcolor black
+menu Font size 14
+menu Text mwincsetup 50 25 Target Your Secure.
+set #targcurs 1
+while #targcurs = 1
+wait 1
+Event Property #ltargetid
+set %string #property
+Menu clear
+menu Font color yellow
+Menu Font bgcolor black
+menu Font size 14
+menu Text mwincsetup 50 25 Is This Your Secure?
+Menu Font color White
+menu Font size 8
+Menu Text mwincsetup 25 50 %string
+Menu Button Yes 180 60 50 30 Yes
+Menu Button No 180 90 50 30 No
+set #menubutton N/A
+While #menubutton = N/A
+wait 1
+if #menubutton = No
+Goto SecureSetup
+set *mwinc_Lumberjacker_Secure_ , #charid   #ltargetid
+Menu clear
+menu Font color yellow
+Menu Font bgcolor black
+menu Font size 14
+menu Text mwincsetup 10 25 Is The Secure In The Bank?
+Menu Button Yes 100 60 50 30 Yes
+Menu Button No 100 90 50 30 No
+set #menubutton N/A
+while #menubutton = N/A
+wait 1
+set *mwinc_Lumberjacker_Bank_ , #charid #menubutton
+Menu clear
+menu Font color yellow
+Menu Font bgcolor black
+menu Font size 14
+menu Text mwincsetup 10 25 Sacred Journey Or Recall?
+Menu Button Sacred 100 60 75 30 Sacred
+Menu Button Recall 100 90 75 30 Recall
+set #menubutton N/A
+while #menubutton = N/A
+wait 1
+set *mwinc_lumberjacker_Recall_ , #charid #menubutton
+Menu clear
+menu Font color yellow
+Menu Font bgcolor black
+menu Font size 14
+menu Text mwincsetup 10 25 Do You Wish To Hide?
+Menu Button yes 100 60 75 30 Yes
+Menu Button no 100 90 75 30 No
+set #menubutton N/A
+while #menubutton = N/A
+wait 1
+set *mwinc_lumberjacker_hiding_ , #charid #menubutton
+Menu clear
+menu Font color yellow
+Menu Font bgcolor black
+menu Font size 14
+menu Text mwincsetup 10 25 Craft Logs To Boards
+menu Text Mwincsetup 25 50 Using An Axe?
+Menu Button True 100 90 75 30 True
+Menu Button False 100 120 75 30 False
+set #menubutton N/A
+while #menubutton = N/A
+wait 1
+set *mwinc_lumberjacker_Craft_Board_ , #charid #menubutton
+Menu Hide
+Wait 20
+set *MWINC_Lumberjacker_setup_ , #charid  Done
+Return
+
+Sub ClearGlobals
+set *MWINC_Lumberjacker_setup_ , #charid N/A
+return
+
+;=============================================
+sub Log2Board
+gosub diagnostics makingboards
+FInditem TLK C_ , #Backpackid
+if #findcnt >= 1 && %Book = %TreeBook
+return
+Finditem ZLK C_ , #backpackid
+set %Heaviest_Log 0
+set %Heaviest_Log_Id N/A
+for #findindex 1 #findcnt
+{
+if #findstack > %Heaviest_Log
+{
+set %Heaviest_Log #findstack
+set %Heaviest_Log_id #findid
+}
+}
+set #lobjectid %hatchet
+event macro 17 0
+target 40
+set #ltargetid %Heaviest_Log_Id
+set #ltargetkind 1
+event macro 22 0
+wait %Log_2_Board_Delay
+set #ltargetx %x1
+set #ltargety %y1
+set #ltargettile #tiletype
+Set #ltargetkind 3
+set #ltargetz #tilez
+return
+
+sub Drag_Drop
+Finditem %1 C_ , #backpackid
+if #findcnt < 1
+return
+set %dropweight #weight
+exevent drag %1 %2
+exevent dropc %3
+set %Time_Limit #scnt + 3
+while #weight = %dropweight && %Time_Limit > #Scnt
+wait 1
+if #scnt >= %Time_limit
+{
+wait 20
+gosub Backpack
+}
+wait 20
+return
+
+Sub Roundit
+set %roundit ( ( %1 * 1000 / %totallogs ) - ( %1 * 100 / %totallogs * 10 ) )
+if %roundit > 4
+set %3 %3 + 1
+set % , %2 , perc %3
+return
+
+
+
+
+
+
+
+
+
+
+

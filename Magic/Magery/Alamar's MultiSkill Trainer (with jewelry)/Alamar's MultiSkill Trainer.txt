@@ -1,0 +1,518 @@
+;-----------------------------------------------------------
+; Script Name: Alamar's MultiSkill Trainer (with jewelry)
+; Authors: Alamar, Artgenos 
+; Version: 1.41 
+; Client Tested with: 4.0.5a
+; EUO version tested with: 1.42.009A
+; Shard: OSI (FS Unsupported)
+; Revision Date: 19Oct2004
+; Public Release: 15July2004
+; Purpose: Trains Multiple Skills Using Jewelry.  See Thread.
+;=========================================
+; Nullifying Variables
+;=========================================
+set #menubutton N/A
+set %tman ENX_HNX_ZNX_JNX
+set %inst PRF_QRF_MQF_LQF_OQF_KRF
+set %skillTrain N/A
+set %minMana 0
+set %dispSkill 0
+set %realSkill 0
+set %startSkill 0
+Set %gained 0
+set %temp 0
+set %preMana 0
+set %useMed 1
+set %elapsed 0
+set %timer 0
+set %hour 0
+set %lasthour 0
+set %mins 0
+set %lastmins 0
+set #lpc 100
+set %BackpackID N/A
+;=========================================
+gosub showMainMenu
+sub showMainMenu
+;	menu HideEUO
+	menu Clear
+	menu Window Title Alamar's Multi-skill Trainer
+	menu Window Color Black
+	menu Window Size 242 330
+	menu Font Transparent #true
+	menu Font Align Right
+	menu Font Name Courier New
+	menu Font Size 14
+	menu Font Style b
+	menu Font Color Red
+	menu Font Transparent #false
+	menu Font Align Left
+	menu Font BGColor Black
+	menu Text EUOLabel1 16 16 Please select skill
+	menu Font Name MS Sans Serif
+	menu Font Size 8
+	menu Font Style
+	menu Font BGColor White
+	menu Button btnMage 28 44 75 25 Magery
+	menu Button btnEvalInt 140 44 75 25 Eval Int
+	menu Button btnNecro 28 76 75 25 Necromancy
+	menu Button btnChiv 140 76 75 25 Chivalry
+	menu Button btnMusic 28 108 75 25 Musicianship
+	menu Button btnPeace 140 108 75 25 Peacemaking
+	menu Button btnQuit 84 240 75 25 Quit
+	menu Show
+mainMenu:
+menu show
+if #menubutton = btnMage
+{
+  menu hide
+  set %skillTrain mage
+  gosub mageryTrain
+  set #menubutton = N/A
+  goto mainMenu
+}
+if #menubutton = btnEvalInt
+{
+  menu hide
+  set %skillTrain eval
+  gosub evalTrain
+  set #menubutton = N/A
+  goto mainMenu
+}
+if #menubutton = btnNecro
+{
+  menu hide
+  set %skillTrain necr
+  gosub necrTrain
+  set #menubutton = N/A
+  goto mainMenu
+}
+if #menubutton = btnChiv
+{
+  menu hide
+  set %skillTrain chiv
+  gosub ChivTrain
+  set #menubutton = N/A
+  goto mainMenu
+}
+if #menubutton = btnMusic
+{
+  menu hide
+  set %skillTrain musi
+  gosub musiTrain
+  set #menubutton = N/A
+  goto mainMenu
+}
+if #menubutton = btnPeace
+{
+  menu hide
+  set %skillTrain peac
+  gosub peacTrain
+  set #menubutton = N/A
+  goto mainMenu
+}
+if #menubutton = btnQuit
+{
+  menu hide
+  halt
+}
+  goto mainMenu
+;=========================================
+;Common subs
+;=========================================
+; Sets the skills up
+;=========================================
+sub skillSetup
+chooseskill %skillTrain
+set %dispSkill #skill
+chooseskill %skillTrain real
+set %realSkill #skill
+if #SkillLock <> up
+   event SkillLock %skillTrain up
+if %dispSkill < #skillcap
+   {
+   DISPLAY OK Your jewelry must get you from your real skill to cap skill.$
++  Please get the right jewelry and try again
+   goto mainMenu
+   }
+if %realSkill = #skillcap
+   {
+   DISPLAY OK You're already to your cap.  Thanks for using my script!
+   goto mainMenu
+   }
+if #CHARNAME = N/A
+   event macro 8 2
+set %backpackID #backpackID
+;Sets the skill to check against gains
+set %startSkill %realSkill
+;Starts the boat.  Anchors away, matey.  Arrrg!
+event macro 3 0 raise anchor
+event macro 3 0 slow forward
+return
+;=========================================
+;Checks mana, meds/waits as needed
+;=========================================
+sub CheckMana
+if #mana < %MinMana
+    {
+     if %Gained = 0
+          event macro 3 0 Stop
+    TRYAGAIN:
+    if #Mana >= %MinMana
+          goto MANALOOP
+    if %UseMed = 0
+         goto MANALOOP
+    wait 10
+    event macro 13 46
+    wait 5
+    scanjournal 1
+    If meditative in #journal
+          goto MANALOOP
+   wait 11s
+   goto TRYAGAIN
+   MANALOOP:
+   if #mana < #maxmana
+      {
+       wait 1
+       goto MANALOOP
+      }
+  if %Gained = 0
+      event macro 3 0 Slow Forward
+  }
+return
+;=========================================
+; This sub Checks for gain
+;=========================================
+Sub CheckForGain
+ChooseSkill %SkillTrain Real
+if #skill = #skillcap
+  Goto AllDone
+ScanJournal 1
+if ( fizzles in #journal ) || ( you_are_already in #journal ) || ( you_have_not_yet in #journal )
+  Return
+if %gained = 0
+  {
+  if %StartSkill < #skill
+    {
+     Event Macro 3 0 stop
+     wait 5
+     Event Macro 3 0 back one
+     set %startSkill #skill
+     set %gained 1
+     Return
+     }
+   if %gained = 1
+     set %gained 0
+   Return
+  }
+if %gained = 1
+  {
+  if %StartSkill = #skill
+    {
+     set %gained 0
+     Event Macro 3 0 slow forward
+     Return
+    }
+  Set %StartSkill #skill
+  Return
+  }
+Return
+;=========================================
+; Checks to see if you have any instruments
+;=========================================
+sub instCheck
+finditem %inst CA_ , %backpackid
+if #findkind = -1
+  {
+  display ok You are out of instruments, please get more.
+  halt
+  }
+return
+;=========================================
+; Checks to see if boat is stopped
+;=========================================
+sub CheckBoatBlock
+wait 5
+scanjournal 1
+if ( stopped in #journal ) || ( turbulent in #journal )
+       {
+       event macro 1 0 back
+       wait 120
+       event macro 1 0 left
+       wait 200
+       event macro 1 0 forward
+       wait 180
+       event macro 1 0 right
+       wait 200
+       event macro 1 0 slow forward
+       }
+Return
+;=========================================
+; Sub for getting out of loop
+;=========================================
+sub showElapsedMenu
+	menu Clear
+	menu Window Title Multi Trainer
+	menu Window Color Black
+	menu Window Size 212 153
+	menu Font Transparent #true
+	menu Font Align Right
+	menu Font Name Garamond
+	menu Font Size 16
+	menu Font Style b
+	menu Font Color Red
+	menu Font Transparent #false
+	menu Font Align Left
+	menu Font BGColor Black
+	menu Text EUOLabel1 40 20 Time Running
+	menu text lblhour 80 50 %hour , h
+	menu text lblmins 105 50 %mins , m
+	menu Font Size 18
+	menu Font Color Red
+	menu Font BGColor CaptionText
+	menu Button btnExit 60 96 99 33 Exit
+	menu Show
+
+if #menubutton = btnExit
+{
+  event macro 1 0 stop
+  event macro 1 0 drop anchor
+  display ok Thank you for using our script
+  menu hide
+  gosub showMainMenu
+}
+gosub elapsedTime
+return
+;=========================================
+; Sub for getting your running time
+;=========================================
+sub elapsedTime
+set %elapsed #scnt - %timer
+set %hour %elapsed / 3600
+set %mins  ( %elapsed / 60 ) - ( %hour * 60 )
+menu Font Name Courier New
+menu Font Size 14
+menu Font BGColor Window
+menu Font Name Garamond
+if %lasthour <> %hour
+{
+	set %lasthour %hour
+	menu delete lblhour
+	menu text lblhour 80 50 %hour , h
+}
+if %lastmins <> %mins
+{
+	set %lastmins %mins
+	menu delete lblmins
+	menu text lblmins 105 50 %mins , m
+}
+return
+;=========================================
+; Sub for getting your cap!
+;=========================================
+AllDone:
+event macro 3 0 stop
+event macro 3 0 drop anchor
+DISPLAY OK Congrats! You're capped out!  Go vote for this script!!
+goto mainMenu
+;=========================================
+; Main Magery sub
+;=========================================
+sub mageryTrain
+finditem %tman G_5
+set %tillerman #findid
+set %minMana 70
+gosub skillSetup
+set %timer #scnt
+Goto mageSearch
+;---------------------------------
+;Search Loop
+;---------------------------------
+mageSearch:
+GoSub mageCast
+GoSub CheckForGain
+GoSub CheckBoatBlock
+GoSub CheckMana
+gosub showElapsedMenu
+Goto mageSearch
+;---------------------------------
+;Casts Magery
+;---------------------------------
+Sub mageCast
+if #skillcap < 105
+  {
+  event macro 15 50
+  set #LTargetID %tillerman
+  set #LTarketKind 1
+  Event Macro 22 0
+  Return
+  }
+event macro 15 56
+wait 90
+Return
+;=========================================
+; Main Eval Int sub
+;=========================================
+sub evalTrain
+finditem %tman G_5
+set %tillerman #findid
+set %minMana 15
+gosub skillSetup
+set %timer #scnt
+Goto evalSearch
+;---------------------------------
+;Search Loop
+;---------------------------------
+evalSearch:
+GoSub evalCast
+wait 10
+GoSub CheckForGain
+GoSub CheckBoatBlock
+wait 20
+GoSub CheckMana
+gosub showElapsedMenu
+wait 20
+Goto evalSearch
+;---------------------------------
+;Casts Magic Arrow
+;---------------------------------
+Sub evalCast
+      event macro 15 4
+      target 10s
+      set #lTargetID %tillerman
+      set #lTargetKind 1
+      event macro 22 0
+      wait 5
+Return
+;=========================================
+; Main Necromancy sub
+;=========================================
+sub necrTrain
+set %minMana 35
+gosub skillSetup
+set %timer #scnt
+Goto necrSearch
+;---------------------------------
+;Search Loop
+;---------------------------------
+necrSearch:
+GoSub necrCast
+GoSub CheckForGain
+GoSub CheckBoatBlock
+GoSub CheckMana
+gosub showElapsedMenu
+Goto necrSearch
+;---------------------------------
+;Casts Vampire Embrace
+;---------------------------------
+Sub necrCast
+event macro 15 113
+wait 80
+Return
+;=========================================
+; Main Chivalry sub
+;=========================================
+sub chivTrain
+set %minMana 20
+Display yesno Use Meditation to suppliment your mana regen?
+if #dispRes = no
+  set %useMed 0
+Else
+  set %useMed 1
+gosub skillSetup
+set %timer #scnt
+Goto chivSearch
+;---------------------------------
+;Search Loop
+;---------------------------------
+chivSearch:
+set %preMana #mana
+GoSub chivCast
+GoSub CheckForGain
+GoSub CheckBoatBlock
+GoSub CheckMana
+gosub showElapsedMenu
+wait 20
+Goto chivSearch
+;---------------------------------
+;Casts Chivalry
+;---------------------------------
+Sub chivCast
+ChivCastAgain:
+set %premana #mana
+event macro 15 208
+wait 50
+if #mana >= %premana
+  {
+  wait 25
+  Goto ChivCastAgain
+   }
+Return
+;=========================================
+; Main Peacemaking  sub
+;=========================================
+sub peacTrain
+gosub skillSetup
+set %timer #scnt
+Goto peacSearch
+;---------------------------------
+;Search Loop
+;---------------------------------
+peacSearch:
+gosub instCheck
+GoSub AreaPeace
+GoSub CheckForGain
+;GoSub CheckFailMusic
+wait 210
+GoSub CheckBoatBlock
+gosub showElapsedMenu
+Goto peacSearch
+;---------------------------------
+; Area Peacemake
+;---------------------------------
+Sub AreaPeace
+      event macro 13 9
+      wait 5
+      event macro 23 0
+Return
+;---------------------------------
+; Checks for Failed Music
+;---------------------------------
+Sub CheckFailMusic
+Wait 1
+ScanJournal 1
+if play_poorly in #journal
+   GoSub AreaPeace
+Return
+;=========================================
+; Main Musicianship  sub
+;=========================================
+sub musiTrain
+gosub skillSetup
+set %timer #scnt
+goto musiSearch
+;---------------------------------
+;Search Loop
+;---------------------------------
+musiSearch:
+;gosub instCheck
+GoSub musiPlay
+wait 10
+GoSub CheckForGain
+wait 40
+GoSub CheckBoatBlock
+gosub showElapsedMenu
+Goto musiSearch
+;-----------------------------------------------
+; Plays any instrument in backpack
+;-----------------------------------------------
+sub musiPlay
+finditem %inst CA_ , %backpackid
+if #findkind = -1
+{
+  display ok You are out of instruments, please get more.
+  halt
+}
+set #lobjectid #findid
+event macro 17
+return

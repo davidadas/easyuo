@@ -1,0 +1,574 @@
+;================================== 
+; Script Name:  LeeCH's Inscription Trainer 
+; Author: LeeCH 
+; Version: 3.0a
+; Client Tested with: 4.0.9b
+; EUO version tested with: V1.42.00A3
+; Shard : OSI ; RunUO
+; Purpose: Train Inscription to GM 
+;================================== 
+;**************************************** 
+;Set this to 1 unless using UOASSIST 
+;**************************************** 
+set %usetitlebar 0
+ ;**************************************** 
+;Set this to 0 unless using UOASSIST 
+;**************************************** 
+set %usesysmsg 0  
+ ;******************************** 
+;Amount of Resources to grab 
+;******************************** 
+set %amount 100  
+ 
+;************************************ 
+;Lag adjustments and Fine tuning 
+;************************************ 
+set %delay 25
+set %drag 25
+set %makedelay 50  
+set %manafail 200
+set %manapass 200
+;set %maxmana #maxmana ; change this to the most mana you want
+set %maxmana #maxmana / 2
+set %weight #weight
+if #weight > 420
+	set %weight 400
+;**************************************************
+;You shouldn't need to touch these, unless FS
+;**************************************************
+set %pen PBG 
+set %blank DPF 
+set %pearl KUF 
+set %moss JUF 
+set %garlic KZF 
+set %ginseng JZF 
+set %root MZF 
+set %shade WZF 
+set %silk RZF 
+set %ash SZF 
+set %usealt 0  
+set %gump KJCB
+set %gump1 generic_gump
+chooseskill insc
+wait %delay
+set %SS #skill
+;******************* 
+;Script Starts Here 
+;*******************
+gosub setup
+gosub menu
+gosub checks
+
+loop:
+gosub make
+gosub moreresources
+gosub checks
+goto loop
+
+;****************** 
+;Makes the items 
+;****************** 
+sub make
+finditem %pen C_ , %main  
+if #findkind = -1  
+{  
+set %dragthis %pen  
+gosub getmore 
+}  
+set #lobjectid #findid  
+trythatagain:
+event macro 17 0  
+wait %makedelay
+
+startmake:
+set %task Working...
+gosub ref
+click %circlex %circley  
+gosub waitfg Generic_gump
+click %clickx %clicky  
+gosub waitfg Generic_gump
+makeloop:
+set %cx #contposx + 290
+set %cy #contposy + 420
+click %cx %cy F
+set %timeout #time + 15
+set %task waiting
+gosub ref
+set %timeout #scnt + 6
+waitforgumpnow:
+if #scnt => %timeout
+	Return
+if #contname <> %gump1
+{  
+scanJournal 2
+if You_have_worn_out_ in #journal
+{
+deleteJournal
+return
+}
+scanJournal 1
+if You_have_worn_out_ in #journal
+{
+deleteJournal
+return
+}
+goto waitforgumpnow
+} 
+if #mana < %mana  
+{
+gosub meditate
+} 
+finditem %blank C_ , %main  
+set %scrollcnt #findstack  
+if #findkind = -1  
+{  
+Return
+}  
+finditem %res1 C_ , %main  
+set %res1cnt #findstack  
+if #findkind = -1  
+{  
+Return
+}  
+finditem %res2 C_ , %main  
+set %res2cnt #findstack  
+if #findkind = -1  
+{  
+Return
+}  
+finditem %res3 C_ , %main  
+set %res3cnt #findstack  
+if #findkind = -1  
+{  
+Return
+}  
+if #weight => %weight
+	gosub deposit
+if %usetitlebar = 1  
+{  
+setuotitle Skill: #skill Making: %making Scrolls: %scrollcnt %count1 : %res1cnt %count2 : %res2cnt %count3 : %res3cnt  
+}
+if #skill => %next
+	gosub checks
+set %task working
+gosub ref
+goto makeloop 
+
+;******************
+;Get more Resources
+;******************
+sub moreresources
+finditem %blank C_ , %main  
+if #findkind = -1  
+{ 
+set %task Scrolls...
+gosub ref 
+set %dragthis %blank  
+gosub getmore 
+}  
+finditem %res1 C_ , %main  
+if #findkind = -1  
+{
+set %task Res1
+gosub ref 
+set %dragthis %res1  
+gosub getmore 
+}  
+finditem %res2 C_ , %main  
+if #findkind = -1  
+{
+set %task Res2
+gosub ref 
+set %dragthis %res2  
+gosub getmore 
+}  
+finditem %res3 C_ , %main  
+if #findkind = -1  
+{
+set %task Res3
+gosub ref 
+set %dragthis %res3  
+gosub getmore 
+} 
+gosub ref
+wait 1s
+return  
+
+;*********************
+; Deposit made scrolls 
+;*********************
+sub deposit
+finditem %made C_ , %main  
+if #findkind = 0  
+{
+gumpclearcheck:  
+if #contname = generic_gump
+{
+set %clearx #contposx + 26
+set %cleary #contposy + 413
+click %clearx %cleary F
+wait 2s
+goto gumpclearcheck
+}
+set %task deposit
+gosub ref
+finditem %rescont G_3
+if #findkind = 1 0
+{
+set #lobjectid %rescont  
+wait %delay  
+event macro 17 0
+}
+if #findkind = -1
+{
+event macro 1 0 Bank
+}
+set #nextcposx 0  
+set #nextcposy 0  
+wait %delay  
+finditem %madecont C_ , %rescont  
+set %dropx #findx + 20  
+set %dropy #findy + 15
+finditem %made C_ , %main
+set %dragnow #findid  
+event drag %dragnow  
+wait %drag  
+msg $ 
+wait %drag  
+click %dropx %dropy F
+wait %delay  
+} 
+Return
+
+;******************** 
+;Grabs Resources 
+;******************** 
+sub getmore
+finditem %rescont G_3
+if #findkind = 1
+{
+set #lobjectid %rescont  
+wait %delay  
+event macro 17 0
+}
+if #findkind = -1
+{
+event macro 1 0 Bank
+}
+wait %delay  
+set #contposx 0  
+set #contposy 0
+gosub deposit
+finditem %dragthis C_ , %rescont  
+if #findkind = -1
+	gosub halt
+if #findstack < %amount
+   set %usealt 1  
+if %dragthis = %pen  
+   set %usealt 1  
+set %dragnow #findid  
+event drag %dragnow  
+wait %drag  
+if %usealt  = 0  
+{  
+msg %amount $ 
+}  
+if %usealt = 1  
+{  
+wait %drag  
+msg $
+set %usealt 0  
+}  
+click %mainx %mainy p
+return  
+
+;************************************************************ 
+;Sub Checks Skills, moves made items, gets resources 
+;************************************************************ 
+sub checks
+set %task checks...
+gosub ref
+finditem %pen C_ , %main  
+if #findkind = -1  
+{  
+set %dragthis %pen  
+gosub getmore 
+}  
+set #lobjectid #findid  
+event macro 17 0  
+wait 1s
+if #skill => 300  
+{  
+set %Making Recall 
+set %mana 11
+set %res1 %pearl  
+set %count1 Pearl 
+set %res2 %root  
+set %count2 M.Root 
+set %res3 %moss  
+set %count3 B.Moss 
+set %made WTL 
+set %circlex #contposx + 25
+set %circley #contposy + 151 
+set %clickx #contposx + 230  
+set %clicky #contposy + 210
+set %next 608
+}  
+if #skill > 608 ;marks 
+{  
+set %Making Mark 
+set %mana 20
+set %res1 %pearl  
+set %count1 Pearl 
+set %res2 %root  
+set %count2 M.Root 
+set %res3 %moss  
+set %count3 B.Moss 
+set %made PUL 
+set %circlex #contposx + 25  
+set %circley #contposy + 190  
+set %clickx #contposx + 232
+set %clicky #contposy + 151
+set %next 850
+}  
+if #skill > 850  
+{  
+set %making G.Travel 
+set %mana 35  
+set %res1 %pearl  
+set %count1 Pearl 
+set %res2 %root  
+set %count2 M.Root 
+set %res3 %ash  
+set %count3 S.Ash 
+set %made YUL 
+set %circlex #contposx + 25  
+set %circley #contposy + 211  
+set %clickx #contposx + 232
+set %clicky #contposy + 132  
+set %next 920
+}  
+if #skill > 920  
+{  
+set %making Ress.  
+set %mana 50  
+set %res1 %garlic  
+set %count1 Garlic 
+set %res2 %ginseng  
+set %count2 Ginseng 
+set %res3 %moss  
+set %count3 B.Moss 
+set %made VUL 
+set %circlex #contposx + 29
+set %circley #contposy + 231  
+set %clickx #contposx + 233  
+set %clicky #contposy + 112
+set %next 1000
+}  
+if #skill = 1000  
+{  
+if %usetitlebar = 1  
+{  
+setuotitle Congratulations #charname , GM Inscriptionist!  
+}  
+if %usesysmsg = 1  
+{  
+event SysMessage Congratulations #charname , GM Inscriptionist!  
+}  
+gosub GM
+} 
+
+Return
+
+
+;******************************** 
+;Set containers and screen loc 
+;******************************** 
+sub setup
+menu clear    
+menu window size 425 55 
+menu window title -=LeeCH's Inscription Trainer =-  
+menu window color Gray
+menu show  
+menu font bgcolor Gray
+menu font size 12  
+menu font style B
+menu font color Black
+menu text inset 3 3 Moving Gumps, Please Wait...
+event macro 9 1  
+event macro 9 7  
+wait %delay  
+event macro 8 1  
+gosub waitfg paperdoll_gump
+set #contposx 640
+set #contposy 0
+set %mainx #contposx + 140
+set %mainy #contposy + 220
+wait %delay
+event macro 8 7  
+gosub waitfg container_gump  
+set #contposx 640  
+set #contposy 300 
+set %main #contid  
+wait %delay  
+retry:  
+if %usetitlebar = 1  
+{  
+setuotitle Open Resource Container or Say Bank
+}  
+if %usesysmsg = 1  
+{  
+event SysMessage Open Resource Container or Say Bank
+}
+menu delete inset
+menu text rescont 3 3 Open Resource Container or Say Bank
+set %tempcont #contid
+rescontloop:  
+if #contid = %tempcont
+goto rescontloop 
+set #lobjectid %rescont  
+event macro 17 0 
+wait %delay
+set %rescont #contid
+set #contposx 0  
+set #contposy 0  
+wait %delay  
+if %usetitlebar = 1  
+{  
+setuotitle Target Made Scroll Container(inside resource container) 
+}  
+if %usesysmsg = 1  
+{  
+event SysMessage Target Made Scroll Container(inside resource container) 
+}
+menu delete rescont
+menu text scbag 3 3 Target Made Scroll Container(inside resource container) 
+madecntesc:  
+set #targcurs 1  
+set #ltargetid null 
+madecntloop:  
+if #ltargetid = null 
+goto madecntloop 
+set %madecont  #ltargetid  
+set #lobjectid %madecont  
+event macro 17 0  
+wait %delay  
+set #contposx 0  
+set #contposy 250 
+wait 3s 
+click 18 67 r 
+wait 2s  
+menu delete scbag
+return 
+
+
+;*****************
+; Meditation Sub
+;*****************
+sub meditate
+set %task Meditating
+gosub ref
+remed:
+event macro 13 46
+wait 1s
+scanJournal 1
+if You_are_at_ in #journal
+	return
+if You_cannot_focus_ in #journal
+	wait %manafail
+if You_enter_ in #journal
+	wait %manapass
+if You_must_wait_ in #journal
+	wait %manafail
+if #mana < %maxmana
+	goto remed
+if #mana => %mana
+	Return
+goto remed
+
+;**********************
+;Wait for gump sub
+;**********************
+sub waitfg
+set %timeout #scnt + 6
+waitfgll:
+if #scnt > %timeout
+	Return
+if #contname <> %1
+	goto waitfgll
+Return
+
+;***********************
+; Out of resource, Halt
+;***********************
+sub halt
+if %usetitlebar = 1  
+{  
+setuotitle Out of %dragthis Script has been halted.
+}  
+if %usesysmsg = 1  
+{  
+event SysMessage Out of %dragthis Script has been halted.
+} 
+menu clear
+menu font bgcolor Gray
+menu font size 12  
+menu font style B
+menu font color Black
+menu text scbag 3 3 Out of %dragthis Script has been halted.
+halt
+
+
+
+;**************************
+;Menu stuff, including ref
+;**************************
+sub menu
+menu clear    
+menu window size 425 55 
+menu window title -=LeeCH's Inscription Trainer =-  
+menu window color Gray
+menu show  
+menu font bgcolor Gray
+menu font size 12  
+menu font style B
+menu font color Black
+menu text starts 6 5 Started Skill:
+menu text currs 3 30 Current Skill:  
+menu text make 145 5 Resources:
+menu text scroll 175 30 Scrolls:  
+menu text make 270 5 Making:  
+menu text taskn 270 30 Task: 
+return
+sub ref
+menu font color Black
+if #skill <> #skill
+	menu delete CS
+if %ss <> %ss
+	menu delete SS
+if %making <> %making
+	menu delete CM
+menu delete SC
+menu delete RES
+menu text SS 108 5 %SS
+menu text CM 335 5 %making
+menu text SC 235 30 %scrollcnt
+menu text RES 235 5 %res1cnt
+menu font color yellow
+menu text CS 108 30 #skill
+menu delete task
+menu text task 315 30 %task
+Return
+
+sub GM
+menu clear    
+menu window size 425 55 
+menu window title -=LeeCH's Inscription Trainer =-  
+menu window color Gray
+menu show  
+menu font bgcolor Gray
+menu font size 12  
+menu font style B
+menu font color Black
+menu text GM 3 3 Congratulations, #charname , #SPC , GM Inscriptionist!
+Halt

@@ -1,0 +1,172 @@
+;================================== 
+; Script Name: Jebbits Easy Wood Chopper 
+; Author: Jebbit 
+; Version: 1.7 
+; Client Tested with: 4.0.1b 
+; EUO version tested with: V1.42 [Build 0066] 
+; Shard OSI / FS: OSI 
+; Revision Date:3/23/2004 
+; Public Release: 12/16/2003 
+; Purpose: One click automated Wood Chopping/Mining/Kindling. Also drops resources if set in script. 
+;================================== 
+
+
+initevents
+
+set %prompts #true  ;<---set to #false if you wish to manually set up script and bypass the prompts 
+
+
+;**CHANGE SETTINGS IF YOU WISH YOUR RESOURCES TO DROP TO GROUND WHEN FULL** 
+set %drop #true                   ;<----Change to #true if you want to drop your resuorces to the ground 
+;***changes these if you are bypassing the auto set up********* 
+set %itemid LSF ;<------Set item to be used for mining or chopping 
+set %timmer 55                     ;<-----Set timmer to 55 for wood 10 for mining 
+if %prompts = #false
+goto start:
+Display yesno Are you chopping/kindling wood Or mining today. Slect Yes for Wood/kindling no for Mining
+      if #dispres = yes
+      set %timmer 55
+else
+      set %timmer 10
+Display msg Click ok and target the Axe/Shovel/Bladed Weapon ( For Kindling )
+      set #targcurs 1
+      wait 10
+      waiting:
+If #targcurs = 1
+      goto waiting
+      wait 25
+      finditem #ltargetid
+      wait 25
+if %timmer = 55
+      set %itemid #findid
+else
+set %itemid #findtype
+
+start:
+;----set target---------- 
+t:
+if %mark = 1
+set %mark 0
+      finditem %itemid c_
+      if #findid = x 2
+display msg Did you set your axe or shovel id in the script. I can't find anything?
+    halt
+    set #lobjectid #findid
+    event macro 17
+    WAIT 20
+    set %mark 0
+tT:
+   if #targcurs = 1
+      goto tT
+      SET %CX #cursorx
+      SET %CY #cursory
+      goto clicks
+
+--------main loop-------------
+loop:
+if %mark = 50 && #weight < #maxweight - 20
+     goto t
+if #weight >= #maxweight - 20 && %drop = #true
+gosub dragit
+if #weight >= #maxweight - 20 && %mark <> 50
+  {
+    event exmsg #charid 0 100 Time to dump or smelt
+      set %mark 50
+       gosub smelt
+        if %mark = 1
+         goto t
+          goto loop
+            }
+if #weight >= #maxweight - 20
+  {
+    gosub smelt
+     if %mark = 1
+      goto t
+        goto loop
+        }
+          set #lobjectid #findid
+           event macro 17
+            TARGET
+clicks:
+event macro 22
+wait 10
+
+;--------status check-------------- 
+for %i 1 2
+  {
+   scanJournal %i
+    WAIT
+     if not_enough_wood_here in #jOURNAL || That_is_too_far in #journal || you_can't in #journal || USE_THIS_ON IN #JOURNAL || CAN'T_DO_THAT IN #JOURNAL || destroy in #journal || YOU_CANNOT_SEE IN #JOURNAL || no_metal in #journal 2
+      deleteJournal
+       goto t
+        }
+         wait %timmer
+          goto loop
+
+
+;-------smelting---------- 
+sub smelt
+   gosub findForge
+if %set = 1
+{
+set %set 0
+return
+}
+set %mark 1
+   set #lTargetID %return
+   set #lTargetKind 1
+_smelt:
+   findItem DWJ_EWJ_GWJ C
+   if ! #findKind
+   {
+      set #lObjectID #findID
+      event Macro 17 0
+      target
+set #ltargetkind 1
+      event Macro 22 0
+      goto _smelt
+
+   }
+return
+
+
+sub findForge
+;forge:    
+   findItem JBG_ivj_ouj g_2
+   if #findKind = -1
+   {
+set %set 1
+finditem %itemid c_
+      return
+   }
+      set %return #findID
+return
+
+sub dragit
+     SET %ST 300
+     SET %SY 215
+     SET %SS 0
+    drop:
+if #weight < #maxweight - 20 2
+finditem %itemid c_
+return
+     WAIT 15
+     SET %SS %SS + 1
+IF %SSS => 5
+     RETURN
+IF %SS = 2
+     SET %SY %SY + 40
+IF %SS = 3
+     SET %ST %ST + 40
+IF %SS = 4
+     SET %SY %SY - 40
+FINDdwj:
+finditem zlk_DWJ_EWJ_GWJ c_
+        Event Drag #Findid
+          wait 5
+            msg  $
+          wait 20
+       click %ST %SY P
+   GOTO drop
+
+return

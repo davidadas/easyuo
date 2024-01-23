@@ -1,0 +1,565 @@
+; ========================================================================= 
+; Script Name: ScriptFellow's KegFiller 
+; Author: ScriptFellow 
+; Version: 2.9 
+; Client Tested with: 4.0.0p 
+; EUO version tested with: 1.41 
+; Shard OSI / FS: OSI 
+; Revision Date: January 29th, 2004. 
+; Public Release: March 1st, 2002. 
+; Copyright (C) 2002-2003 ScriptFellow 
+; ========================================================================= 
+; This program is free software; you can redistribute it and/or modify 
+; it under the terms of the GNU General Public License as published by 
+; the Free Software Foundation; either version 2 of the License, or 
+; (at your option) any later version. 
+; 
+; This program is distributed in the hope that it will be useful, 
+; but WITHOUT ANY WARRANTY; without even the implied warranty of 
+; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+; GNU General Public License for more details. 
+; 
+; GPL - http://www.gnu.org/copyleft/gpl.html 
+; ========================================================================= 
+ 
+; ========================================================================= 
+; This script REQUIRES Codename Alexandria Standard Subs. Download the 
+; package called "codename-alex-redist" from this URL: 
+; http://sourceforge.net/project/showfiles.php?group_id=70961 
+; ========================================================================= 
+ 
+; ========================================================================= 
+; Revision History: 
+; 2.0 Complete rewrite using Codename Alexandria subs. 
+; 2.1 Fixed calls to subs without %subsTxt (Thanks to Khameleon) 
+; 2.2 Fixes problems with dye tub (Thanks to mandrake981) 
+; 2.3 Fixes loop problem (Thanks to Curley) 
+; 2.4 2003-09-23 Fixes a couple of small problems 
+; 2.5 2003-10-07 Fixes a problem with mortars on the ground 
+; 2.6 2003-10-08 Added normal poison (thanks to framsty for the changes). 
+; 2.7 2003-10-13 Added lesser poison and now drops kegs on paperdoll instead. 
+; 2.8 2003-10-14 Fixed a couple of issues (Thanks to Khameleon) 
+; 2.9 2004-01-29 Fixed a problem with lesser poison 
+; ========================================================================= 
+ 
+;==== Start Codename Alexandria header ==================== 
+initEvents  
+;---- relative/absolute path to packages ------------------ 
+set %_subsPath #pathLib , /Lexia/src/
+ 
+;---- uncomment next lines to force initialization -------- 
+;   deleteVar subsInitialized 
+ 
+;---- shortcuts to packages ------------------------------- 
+set %_subsTxt %_subsPath , subs.txt 
+set %_setupTxt %_subsPath , setup.txt 
+ 
+;---- test packages version ------------------------------- 
+set %return #false ; necessary to detect versions prior Alexandria 2.2.0 
+call %_subsTxt requirePackage subs 2 2 0  
+if ! %return  
+{  
+   display Ok Couldn't find a compatible version of the subs.txt library 
+   halt  
+}  
+;==== End Codename Alexandria header ====================== 
+ 
+; =====================================SETUP=============================== 
+; Preface: if you don't have a list of variables on the right side of your 
+; EasyUO, press Ctrl-R inside EasyUO. 
+ 
+; Bag in a secure or your bank that holds the empty and full kegs. 
+; Tip: Open the bag and put the value from #lObjectID here. 
+set %kegBag XXXXX 
+ 
+; Bag in a secure or your bank that holds reagents. 
+; Tip: Open the bag and put the value from #lObjectID here. 
+set %regBag XXXXX 
+ 
+; Your characters mainpack. 
+; Tip: Open the bag and put the value from #lObjectID here. 
+set %mainPack XXXXX 
+ 
+; How many reagents to hold at a time 
+set %maxRegs 500  
+ 
+; Set %colorKeg to #true if you want the script to color your kegs. 
+set %colorKeg #true  
+ 
+; Description here 
+set %verbose #true  
+ 
+; Your furniture dye tub. 
+; Tip: Use the tub and put the value from #lObjectID here. 
+set %furnyTub XXXXX 
+ 
+; Bag in a secure or your bank that your furniture dye tub. 
+; Tip: Open the bag and put the value from #lObjectID here. 
+set %furnyTubBag XXXXX 
+ 
+; Description? 
+set %displayInfo #true  
+ 
+; Number of greater heal kegs to make 
+set %numGH 1  
+ 
+; Number of greater cure kegs to make 
+set %numGC 0  
+ 
+; Number of total refresh kegs to make 
+set %numTR 1  
+ 
+; Number of greater strength kegs to make 
+set %numGS 1  
+ 
+; Number of lesser poison kegs to make 
+set %numLP 0  
+ 
+; Number of poison kegs to make 
+set %numP 0  
+ 
+; Number of greater poison kegs to make 
+set %numGP 1  
+ 
+; Number of night sight kegs to make 
+set %numNS 1  
+ 
+; Number of greater agility kegs to make 
+set %numGA 1  
+ 
+; Number of greater explosion kegs to make 
+set %numGE 1  
+ 
+; Number of deadly poison kegs to make 
+set %numDP 0  
+ 
+; =====================================SETUP=============================== 
+ 
+; =====================================SCRIPT============================== 
+set %typeX 75  
+set %typeY 140  
+set %itemX 280  
+set %itemY 120  
+set %moveY 20  
+ 
+set %x #cliXRes + #cliLeft  
+call %_setupTxt paperdoll %x 0  
+; If you have problems with the backpack opening on the left instead of the right enable this! 
+;set %x %x - 23 
+call %_setupTxt backpack %x 330  
+ 
+display Ok Open your secure or your bank now and place it outside the 
++ game play area. Then press play!  
+pause  
+ 
+checkKegsAgain:  
+   finditem QMJ C_ , %mainPack  
+   if #findKind = 0  
+   {  
+      call %_subsTxt moveItemToContainer #findID %kegBag 0  
+      goto checkKegsAgain 
+   }  
+ 
+set %totalKegs %numGH + %numGC + %numTR + %numGA + %numLP +  
++%numP +%numGP + %numGS + %numGE + %numNS + %numDP  
+ 
+gosub makeKegs numGH 4 3 yellow JZF UUF Greater_Heal 
+gosub makeKegs numGC 7 3 orange KZF NUF Greater_Cure 
+gosub makeKegs numTR 1 2 red KUF ZUF Total_Refreshment 
+gosub makeKegs numGA 2 2 lightblue JUF YUF Greater_Agility 
+gosub makeKegs numLP 6 1 green WZF AVF Lesser_Poison 
+gosub makeKegs numP 6 2 green WZF AVF Poison 
+gosub makeKegs numGP 6 3 green WZF AVF Greater_Poison 
+gosub makeKegs numGS 5 2 white MZF XUF Greater_Strength 
+gosub makeKegs numGE 8 3 purple SZF TUF Greater_Explotion 
+gosub makeKegs numNS 3 1 black RZF OUF Nightsight 
+gosub makeKegs numDP 6 4 green WZF AVF Deadly_Poison 
+ 
+event SysMessage All done!  
+halt  
+ 
+sub makeKegs 
+   if % . %1 <= 0  
+      return  
+   set %kegCountVar %1  
+   set %typeNum %2  
+   set %itemNum %3  
+   set %kegColor %4  
+   set %reg %5  
+   set %potionType %6  
+   set %potionDesc %7  
+   for %kegNum 1 % . %kegCountVar  
+   {  
+      gosub makeKeg %typeNum %itemNum %kegColor %reg %potionType %potionDesc  
+      set % . %kegCountVar % . %kegCountVar - 1  
+   }  
+return  
+ 
+sub makeKeg 
+   set %typeNum %1  
+   set %itemNum %2  
+   set %kegColor %3  
+   set %reg %4  
+   set %potionType %5  
+   set %potionDesc %6  
+ 
+   if #contKind = %menuContKind  
+      click 300 300 r 
+ 
+   call %_subsTxt openContainer %kegBag  
+   wait 10  
+ 
+findKeg:  
+   gosub findEmptyKeg 
+   if %keg = N/A 
+   {  
+      display Ok No more empty kegs! Please get some and press play!  
+      pause  
+      goto findKeg 
+   }  
+   call %_subsTxt closeContainer 
+   set %fillKeg %keg  
+ 
+   if %colorKeg = #true  
+      gosub colorKeg %fillKeg %kegColor  
+ 
+   ; do the actually grinding 
+   gosub fillKeg %fillKeg %reg %typeNum %itemNum %potionType  
+ 
+   ; move regs back to reagent bag 
+   findItem %reg C 
+   call %_subsTxt moveItemToContainer #findID %regBag 0  
+ 
+   ; move keg to bag 
+   call %_subsTxt moveItemToContainer %fillKeg %kegBag 0  
+ 
+return  
+ 
+sub fillKeg 
+   set %keg %1  
+   set %reg %2  
+   set %type %3  
+   set %item %4  
+   set %potiontype %5  
+ 
+   if %verbose = #true  
+      event SysMessage Filling keg 
+ 
+findBottleAgain:  
+   finditem WUF C_ , %mainPack  
+   if #findKind = 0  
+   {  
+      call %_subsTxt moveItemToContainer #findID %kegBag #findStack  
+      goto findBottleAgain 
+   }  
+ 
+   if #contKind = %menuContKind  
+      click 300 300 r 
+ 
+   call %_subsTxt openContainer %kegBag  
+   wait 10  
+ 
+   findItem WUF C_ , %kegBag  
+   call %_subsTxt drag #findID 1  
+    call %_subsTxt dropOnBackPack %backpackID  
+ 
+   call %_subsTxt closeContainer 
+ 
+   set %potionCount 0  
+makePotion:  
+   if %displayInfo = #true  
+      gosub displayInfo 
+   gosub checkReg %reg  
+   if #contKind <> %menuContKind  
+   {  
+      gosub useTool RQF C 
+         if ! %return  
+         {  
+            display Ok You are out of mortars. Please refill and press play.  
+            pause  
+         }  
+   }  
+   if %potionCount = 0  
+      gosub clickType %type  
+   gosub clickItem %item  
+ 
+   if %potionCount = 0  
+   {  
+      findItem %potionType C 
+      if #findkind = -1  
+         goto makePotion 
+ 
+      set %potion #findID  
+      findItem %keg  
+      set #findMod 10_10 
+      call %_subsTxt moveItemToPos %potion #findX #findY 0  
+   }  
+     
+   set %potionCount %potionCount + 1  
+   event Property %keg  
+   if completely notin #property  
+      goto makePotion 
+ 
+   if %displayInfo = #true  
+      gosub displayInfo 
+ 
+   if #contKind = %menuContKind  
+      click 300 300 r 
+return  
+ 
+sub useTool 
+   if %0 < 2  
+      findItem %1  
+   else  
+      findItem %1 %2  
+   set %return #findKind <> -1  
+   if %return  
+   {  
+      set #lObjectID #findID  
+      event Macro 17  
+      call %_subsTxt waitForContKindToOpen %menuContKind  
+   }  
+return  
+ 
+sub clickType 
+   set %clickX %typeX  
+   set %move %1 - 1  
+   set %move %move * %moveY  
+   set %clickY %typeY + %move  
+   call %_subsTxt waitForContKindToOpen %menuContKind  
+   click %clickX %clickY  
+   call %_subsTxt waitForContKindToOpen %menuContKind  
+return  
+ 
+sub clickItem 
+   set %clickX %itemX  
+   set %move %1 - 1  
+   set %move %move * %moveY  
+   set %clickY %itemY + %move  
+   call %_subsTxt waitForContKindToOpen %menuContKind  
+   click %clickX %clickY  
+   call %_subsTxt waitForContKindToOpen %menuContKind  
+return  
+ 
+sub checkReg 
+   set %reg %1  
+   findItem %reg C 
+ 
+   if #findKind = -1 || #findStack < 20  
+   {  
+      if #contKind = %menuContKind  
+         click 300 300 r 
+ 
+      if #findKind = 0 && #findStack > 0  
+         call %_subsTxt moveItemToContainer #findID %regBag 0  
+ 
+      call %_subsTxt openContainer %regBag  
+ 
+      findItem %reg C_ , %regBag  
+         call %_subsTxt drag #findID %maxRegs  
+         call %_subsTxt dropOnBackPack %backpackID  
+ 
+      call %_subsTxt closeContainer 
+   }  
+return  
+ 
+sub findEmptyKeg 
+   set %keg N/A 
+   findItem QMJ C_ , %kegBag  
+   for %i 0 #findCnt  
+   {  
+      findItem QMJ %i C_ , %kegBag  
+      event Property #findID  
+      if the , #spc , keg , #spc , is , #spc , empty in #property  
+      {  
+         set %keg #findID  
+         call %_subsTxt drag %keg 0  
+         call %_subsTxt dropOnBackPack %backpackID  
+         return  
+      }  
+   }  
+return  
+ 
+sub colorKeg 
+   set %keg %1  
+   set %color %2  
+ 
+   if %verbose = #true  
+      event SysMessage Coloring keg %color  
+ 
+   call %_subsTxt openContainer %furnyTubBag  
+   wait 10  
+ 
+   gosub chooseColor %furnyTub %color  
+ 
+   set #lObjectID %furnyTub  
+   event Macro 17  
+ 
+   target 5s  
+ 
+   set #lTargetKind 1  
+   set #lTargetID %keg  
+   event Macro 22  
+ 
+   call %_subsTxt closeContainer 
+return  
+ 
+sub chooseColor 
+   set %tub %1  
+   set %color %2  
+ 
+   set %blueX 46  
+   set %blueY 46  
+ 
+   set %colorDelta 8  
+ 
+   ignoreitem reset 
+tryAnotherDye:  
+   findItem BBG C 
+ 
+   deleteJournal  
+   set #lObjectID #findID  
+   event Macro 17  
+   wait %delay  
+   scanJournal 1  
+   if you_must_wait in #journal  
+      goto tryAnotherDye 
+   if is_currently_being_used in #journal  
+   {  
+      ignoreitem #findID  
+      goto tryAnotherDye 
+   }  
+ 
+   target 5s  
+   set #lTargetKind 1  
+   set #lTargetID %tub  
+   event Macro 22  
+   wait %delay  
+   contPos 10 10  
+ 
+   if %color = green 
+   {  
+      set %colorX 13  
+      set %colorY 0  
+      set %hue -1  
+   }  
+   if %color = blue 
+   {  
+      set %colorX 0  
+      set %colorY 0  
+      set %hue -1  
+   }  
+   if %color = red 
+   {  
+      set %colorX 6  
+      set %colorY 0  
+      set %hue -1  
+   }  
+   if %color = purple 
+   {  
+      set %colorX 3  
+      set %colorY 0  
+      set %hue -1  
+   }  
+   if %color = orange 
+   {  
+      set %colorX 8  
+      set %colorY 0  
+      set %hue -1  
+   }  
+   if %color = black 
+   {  
+      set %colorX 0  
+      set %colorY 9  
+      set %hue 0  
+   }  
+   if %color = white 
+   {  
+      set %colorX 0  
+      set %colorY 9  
+      set %hue 100  
+   }  
+   if %color = cyan 
+   {  
+      set %colorX 17  
+      set %colorY 0  
+      set %hue -1  
+   }  
+   if %color = lightblue 
+   {  
+      set %colorX 17  
+      set %colorY 0  
+      set %hue -1  
+   }  
+   if %color = yellow 
+   {  
+      set %colorX 10  
+      set %colorY 0  
+      set %hue -1  
+   }  
+ 
+   set %colorX %colorX * %colorDelta  
+   set %colorX %colorX + %blueX  
+   set %colorY %colorY * %colorDelta  
+   set %colorY %colorY + %blueY  
+ 
+   click %colorX %colorY  
+   wait %delay  
+ 
+   if %hue > -1  
+   {  
+      click 45 159  
+      set %clicks %hue / 25  
+clickloop:  
+      if %clicks > 0  
+      {  
+         click 199 159  
+         set %clicks %clicks - 1  
+         goto clickloop 
+      }  
+   }  
+     
+   set %x %blueX + 200  
+   set %y %blueY + 112  
+   click %x %y  
+return  
+ 
+sub displayInfo 
+   set %currentKegs %numGH + %numGC + %numTR + %numGA + %numLP +  
+   +%numP +%numGP + %numGS + %numGE + %numNS + %numDP  
+   set %currentKegs %totalKegs - %currentKegs  
+ 
+   event Property %keg     
+   if is , #spc , empty in #property  
+      set %potionCount 0  
+   if is , #spc , nearly , #spc , empty in #property  
+      set %potionCount 3  
+   if is , #spc , not , #spc , very , #spc , full in #property  
+      set %potionCount 17  
+   if is , #spc , about , #spc , one , #spc , quarter , #spc , full in #property  
+      set %potionCount 27  
+   if is , #spc , about , #spc , one , #spc , third , #spc , full in #property  
+      set %potionCount 37  
+   if is , #spc , almost , #spc , half , #spc , full in #property  
+      set %potionCount 44  
+   if is , #spc , approximately , #spc , half , #spc , full in #property  
+      set %potionCount 51  
+   if is , #spc , more , #spc , than , #spc , half , #spc , full in #property  
+      set %potionCount 67  
+   if is , #spc , about , #spc , three , #spc , quarters , #spc , full in #property  
+      set %potionCount 77  
+   if is , #spc , very , #spc , full in #property  
+      set %potionCount 93  
+   if is , #spc , almost , #spc , to , #spc , the , #spc , top , #spc , of ,  
+   + #spc , the , #spc , keg in #property  
+      set %potionCount 97  
+   if is , #spc , completely in #property  
+      set %potionCount 100  
+ 
+   set %finishedTotal %totalKegs * 100  
+   set %finished ( %currentKegs * 100 ) + %potionCount  
+   set %totalPercent ( %finished * 100 ) / %finishedTotal  
+ 
+   setUOTitle Current Keg: %potionCount pct Total: %totalPercent pct 
+return  
+; =====================================SCRIPT==============================

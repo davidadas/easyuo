@@ -1,0 +1,1354 @@
+
+;==================================
+; Script Name:   Adv. 8x8 MultiSkill Trainer
+; Author: Clovis, DumbAnimal
+; Version: 1.10b
+; Client Tested with:
+; EUO version tested with:
+; Shard OSI / FS:
+; Revision Date:
+; Public Release: 07-22-2003
+; Purpose: Trains multiple skills using 8x8
+;==================================
+;============================================================
+;       Adv. 8x8 by DumbAnimal.  Revised for AoS by Clovis
+;       Version 1.10b
+; ============================================================
+        InitEvents
+; ============================================================
+;       **** Setting up ****
+; ============================================================
+;       Get on a boat locating north, that has no staight path
+;       to land.
+;       start both scripts and hit play.
+;
+;       Configs:
+;       0 = False
+;       1 = True
+;
+;       %successful - the amount of successful attempts Your
+;       char should do on a run, before giving up. (default = 3)
+;
+;       %statistics - States if you want to have the statistics
+;       shown in the UO window. (default = 1)
+;
+;       %stoponmed - States if you want to stop the boat on
+;       mediation or not. (default = 0)
+;
+;       %guardme - This will check the pets rep, if they go blue
+;       the script will do a "all guard me". Only set this to 1
+;       if you're in a player guild! (default = 0)
+;
+;       %spiritheal - States if you want heal by using spirit speak
+;       (default = 1 is on)
+;
+;       %chivarlymed - States if you want to use meditation to gain mana while
+;     training Chivarly (default = 1 is on) This is usefull even with low meditation..
+;     If you choose to use meditation, please be aware that you need a spell channeling
+;     weapon otherwise it will disarm when you meditate.
+ 
+; ============================================================
+;       User Setup.
+; ============================================================
+        Set %successful 4
+        Set %statistics 0
+        Set %stoponmed 0
+        Set %guardme 0
+        Set %spiritheal 1
+        Set %chivarlymed 1
+; ============================================================
+;       Pre-Choose Setup
+; ============================================================
+        Set %wm 0
+        Set #sysmsgcol 53
+        Set *30 0
+        Set %didsetup 0
+; ============================================================
+;       Menu
+; ============================================================
+                Menu HideEUO
+                Menu Clear
+                Menu Window size 500 375
+                Menu Font Name tahoma
+                Menu Window Title Adv. 8x8 by DumbAnimal v.1.08b
+                Menu Button 1 10 10 150 25 Evaluating Intelligence
+                Menu Button 2 10 40 150 25 Healing
+                Menu Button 3 10 70 150 25 Hiding
+                Menu Button 4 10 100 150 25 Magery
+                Menu Button 5 10 130 150 25 Musicianship
+                Menu Button 6 10 160 150 25 Peacemaking
+                Menu Button 7 10 190 150 25 Stealth
+                Menu Button 8 10 220 150 25 Veterinary
+                Menu Button 9 10 250 150 25 Spirit Speak
+                Menu Button 10 10 280 150 25 Necromancy
+                Menu Button 11 10 310 150 25 Chivalry
+                Menu Button 18 10 340 73 25 Home
+                Menu Button 19 86 340 73 25 Cancel
+                Menu Show
+                Goto S18
+ 
+        Menu:
+                Set #menubutton N/A
+                Choose:
+                        If #menubutton <> N/A
+                                Goto S , #menubutton
+                Goto Choose
+ 
+        S1:
+                Menu Delete txt
+                Menu Delete %n
+                Menu Font Style B
+                Menu Font size 11
+                Menu Text txt 170 12 Evaluating Intelligence
+                Menu Font Style
+                Menu Font Size 9
+                Menu Text txt 170 40 You need Suflurous Ash.
+                Set %n 21
+                Menu Button %n 250 100 150 25 Start
+        Goto Menu
+ 
+        S2:
+                Menu Delete txt
+                Menu Delete %n
+                Menu Font Style B
+                Menu Font size 11
+                Menu Text txt 170 12 Healing
+                Menu Font Style
+                Menu Font Size 9
+                Menu Text txt 170 40 You need a Ghost, Bandages and at least 80% skill in$Healing and Anatomy.
+                Set %n 22
+                Menu Button %n 250 100 150 25 Start
+        Goto Menu
+ 
+        S3:
+                Menu Delete txt
+                Menu Delete %n
+                Menu Font Style B
+                Menu Font size 11
+                Menu Text txt 170 12 Hiding
+                Menu Font Style
+                Menu Font Size 9
+                Set %n 23
+                Menu Button %n 250 100 150 25 Start
+        Goto Menu
+ 
+        S4:
+                Menu Delete txt
+                Menu Delete %n
+                GoSub MagerySetup
+                Menu Font Style B
+                Menu Font size 11
+                Menu Text txt 170 12 Magery
+                Menu Font Style
+                Menu Font Size 9
+                Set %n 24
+                Menu Button %n 250 100 150 25 Start
+        Goto Menu
+ 
+        S5:
+                Menu Delete txt
+                Menu Delete %n
+                Menu Font Style B
+                Menu Font size 11
+                Menu Text txt 170 12 Musicianship
+                Menu Font Style
+                Menu Font Size 9
+                Menu Text txt 170 40 You need a Instument.
+                Set %n 25
+                Menu Button %n 250 100 150 25 Start
+        Goto Menu
+ 
+        S6:
+                Menu Delete txt
+                Menu Delete %n
+                Menu Font Style B
+                Menu Font size 11
+                Menu Text txt 170 12 Peacemaking
+                Menu Font Style
+                Menu Font Size 9
+                Menu Text txt 170 40 You need instuments.
+                Set %n 26
+                Menu Button %n 250 100 150 25 Start
+        Goto Menu
+ 
+        S7:
+                Menu Delete txt
+                Menu Delete %n
+                Menu Font Style B
+                Menu Font size 11
+                Menu Text txt 170 12 Stealth
+                Menu Font Style
+                Menu Font Size 9
+                Menu Text txt 170 40 You need at least 80% skill in Hiding.
+                Set %n 27
+                Menu Button %n 250 100 150 25 Start
+        Goto Menu
+ 
+        S8:
+                Menu Delete txt
+                Menu Delete %n
+                Menu Font Style B
+                Menu Font size 11
+                Menu Text txt 170 12 Veterinary
+                Menu Font Style
+                Menu Font Size 9
+                Menu Text txt 170 40 You need at two pets and Bandages.
+                Set %n 28
+                Menu Button %n 250 100 150 25 Start
+        Goto Menu
+       
+        S9:
+                Menu Delete txt
+                Menu Delete %n
+                Menu Font Style B
+                Menu Font size 11
+                Menu Text txt 170 12 Spirit Speak
+                Menu Font Style
+                Menu Font Size 9
+                Menu Text txt 170 40 You Need nothing at all.
+                Set %n 29
+                Menu Button %n 250 100 150 25 Start
+        Goto Menu
+ 
+        S10:
+                Menu Delete txt
+                Menu Delete %n
+                GoSub NecroSetup
+                Menu Font Style B
+                Menu Font size 11
+                Menu Text txt 170 12 Necromancy
+                Menu Font Style
+                Menu Font Size 9
+                Set %n 30
+                Menu Button %n 250 100 150 25 Start
+        Goto Menu
+ 
+        S11:
+                Menu Delete txt
+                Menu Delete %n
+                GoSub ChivSetup
+                Menu Font Style B
+                Menu Font size 11
+                Menu Text txt 170 12 Chivalry
+                Menu Font Style
+                Menu Font Size 9
+                Set %n 31
+                Menu Button %n 250 100 150 25 Start
+        Goto Menu
+ 
+ 
+        S18:
+                Menu Delete txt
+                Menu Delete %n
+                Menu Font Style B
+                Menu Font size 11
+                Menu Text txt 170 12 Introduction
+                Menu Font Style
+                Menu Font size 9
+                Menu Text txt 170 40 Before starting, make sure Part Two is running too.$If you're running UOA, please shout that down - UOA$has been known to cause problems with this script
+                Menu Text txt 170 100 When you're ready, get on a boat and make sure its$facing North, then choose the skill you wish to train.
+                Menu Text txt 170 150 Should you run into any problems, please post them$on the Forum. The skill you used, the problem and if$you had any luck with the other skills.
+        Goto Menu
+ 
+        S19:
+                Menu Hide
+                Halt
+ 
+; ============================================================
+;       Skill Setup.
+; ============================================================
+        S21:
+                Menu Hide
+                Set *10 Evaluation
+                Set %check EvalSC
+                Set %loopscan 1
+                Set %loopscanb %loopscan
+                Set %meditation 1
+                Set %ra 1
+                Set %reagents SZF
+                Goto TMID
+        S22:
+                Menu Hide
+                Set *10 Healing
+                Set %check HealSC
+                Set %wm 0
+                Set %meditation 0
+                Goto GID
+        S23:
+                Menu Hide
+                Set *10 Hiding
+                Set %successful %successful - 1
+                Set %check HideSC
+                Set %wm 20
+                Set %loopscan 10
+                Set %loopscanb %loopscan
+                Set %meditation 0
+                Goto Setup
+        S24:
+                Menu Hide
+                Set *10 Magery
+                Set %check MagerySC
+                Set %wm 0
+                Set %loopscan 0
+                Set %loopscanb %loopscan
+                Set %meditation 1
+                Goto TMID
+        S25:
+                Menu Hide
+                Set *10 Musicianship
+                Set %check MusicSC
+                Set %wm 0
+                Set %meditation 0
+                Set %successful 8
+                Goto Setup
+        S26:
+                Menu Hide
+                Set *10 Peacemaking
+                Set %check PeaceSC
+                Set %wm 20
+                Set %meditation 0
+                Goto Setup
+        S27:
+                Menu Hide
+                Set *10 Stlt
+                Chooseskill hiding
+                If #skill < 800
+                {
+                        display ok You must have at least 80% in hiding!
+                        Halt
+                }
+                Set %check StealthSC
+                Set %wm 20
+                Set %loopscan 10
+                Set %loopscanb %loopscan
+                Set %meditation 0
+                Goto Setup
+        S28:
+                Menu Hide
+                Set *10 Veterinary
+                Set %check VetSC
+                Set %wm 0
+                Set %loopscan 0
+                Set %loopscanb %loopscan
+                Set %meditation 0
+                Set %successful 6
+                Goto Vet
+ 
+        S29:
+                Menu Hide
+                Set *10 Spirit
+                Set %check SpiritSC
+                Set %wm 0
+                Set %loopscan 0
+                Set %loopscanb %loopscan
+                Set %meditation 0
+                Set %successful 6
+                Goto Setup
+ 
+        S30:
+                Menu Hide
+                Set *10 Necromancy
+                Set %check NecroSC
+                Set %wm 0
+                Set %loopscan 0
+                Set %loopscanb %loopscan
+                Set %meditation 1
+                Goto Setup
+ 
+        S31:
+                Menu Hide
+                Set *10 Chivalry
+                Set %check ChivSC
+                Set %wm 0
+                Set %loopscan 0
+                Set %loopscanb %loopscan
+                Set %meditation %chivarlymed
+                Goto Setup
+ 
+ 
+; ============================================================
+;       Status Bar Check
+; ============================================================
+        If %meditation = 1
+        {
+                If #mana = N/A
+                {
+                        Event Macro 8 2
+                        Wait 10
+                }
+        }
+; ============================================================
+;       Tillerman ID.
+; ============================================================
+        TMID:
+                display ok Please Target your tillerman.
+                Set #targcurs 1
+                Wait 10
+                WaitTarget:
+                        If #targcurs = 0
+                        {
+                                Set %tm #ltargetid
+                                Goto Setup
+                        }
+                Goto WaitTarget
+; ============================================================
+;       Ghost ID.
+; ============================================================
+        GID:
+                display ok Please Target your Ghost.
+                Set #targcurs 1
+                Wait 10
+                WaitTarget2:
+                        If #targcurs = 0
+                        {
+                                Set %ghost #ltargetid
+                                Goto Setup
+                        }
+                Goto WaitTarget2
+; ============================================================
+;       Veterinary Setup.
+; ============================================================
+        Vet:
+                display ok Please Target Pet one.
+                Set #targcurs 1
+                Wait 10
+                PetOne:
+                        If #targcurs = 0
+                        {
+                                Set %petone #ltargetid
+                                Goto Vet2
+                        }
+                Goto PetOne
+        Vet2:
+                display ok Please Target Pet Two - You can target the same.
+                Set #targcurs 1
+                Wait 10
+                PetTwo:
+                        If #targcurs = 0
+                        {
+                                Set %pettwo #ltargetid
+                                Goto Attack
+                        }
+                Goto PetTwo
+        Attack:
+                Set #ltargetid %petone
+                Wait 20
+                Msg All attack$
+                Target
+                Event Macro 22
+                If %didsetup = 1
+                        Goto Reset
+; ============================================================
+;       Global Setup
+; ============================================================
+        Setup: 
+                Chooseskill *10
+                Set #scnt 0
+ 
+                Set *20 0
+                Set *30 1
+                Set *40 0
+                Set *50 0
+                Set *60 0
+ 
+                Set %medstart 20
+                Set %runs 0
+                Set %scb 0
+                Set %scc 0
+                Set %lastgain N/A
+                Set %total 0
+                Set %bpseachs 0
+ 
+                Set %hours 0
+                Set %mins 0
+                Set %lrun 0
+                Set %pet 1
+                Set %forward 0
+                Set %didsetup 1
+; ============================================================
+        Reset:
+                If %forward <> 1
+                        Msg Slow Forward$
+                Set %forward 0
+                Set %run 0
+                Set %used 0
+                Set *80 0
+                Set *50 0
+                Set %medend #int - 10
+                Set %sails 1
+                Set %currentloc #charposy
+                Set #scnt2 0
+                Set %skill #skill
+                Set %target 1
+                if *10 = Magery
+                        GoSub MagerySetup
+                if *10 = Necromancy
+                        GoSub NecroSetup
+                if *10 = Chivalry
+                        GoSub ChivSetup
+                Wait 10
+; ============================================================
+;       Core
+; ============================================================
+        Core:
+                If %meditation = 1
+                {
+                        If #mana = N/A
+                        {
+                                Event Macro 8 2
+                                Wait 10
+                        }
+                        If %medend <= %medstart
+                                Set %medend #int
+                        If %medstart => #int
+                        {
+                                display ok You do not have enough Intelligence!
+                                Halt
+                        }
+                        If %medstart => #mana
+                                GoSub Meditation
+                        if *10 <> Chivalry
+                                GoSub Reagents
+                }
+                GoSub *10
+                If %statistics = 1
+                        GoSub Statistics
+                Set %loopscan %loopscanb       
+                Wait 20
+ 
+                If #skill > %skill
+                {
+                        Set %lastgain 0
+                        If %run = 0
+                        {
+                                Set %runs %runs + 1
+                                Set %run 1
+                                GoSub Hold
+                        }
+                        If %run = 1
+                        {
+                                If #skill > %skill
+                                {
+                                        Msg Slow Forward$
+                                        If %loopscan > 6
+                                                Set %loopscan 5
+                                        Set #scnt2 0
+                                        Set %sails 1
+                                        Set %currentloc #charposy
+                                        GoSub Hold
+                                }
+                        }
+                }
+                For %cnt %loopscan 1
+                {
+                        Set %return LoopScan
+                        Goto BlockCheck
+                        LoopScan:
+                        Wait %wm
+                }
+                If %successful <= %used
+                        Goto Reset
+                If %run = 1
+                {
+                        GoSub %check
+                        Set %used %used + 1
+                }
+        Goto Core
+; ============================================================
+        Sub Hold
+                Set %return Hold
+                Hold:
+                        If *20 = 1
+                        {
+                                Set %loopscan 4
+                                Set %used 0
+                                Set %skill #skill
+                                Set *20 0
+                                Set %sails 0
+                                Return
+                        }
+                Goto BlockCheck
+; ============================================================
+;       Statistics
+; ============================================================
+        Sub Statistics
+                If #scnt > 60
+                {
+                        Set %mins #scnt / 60
+                        If %mins > 60
+                        {
+                                Set %hours %mins / 60
+                                Set %gm %hours * 60
+                                Set %mins %mins - %gm
+                        }
+                }
+                If *50 > %lrun
+                        Set %lrun *50
+ 
+                Set %total %total + 1
+                Set %lastgain %lastgain + 1
+ 
+                If *40 < 10
+                {
+                        Set %scb 0.
+                        Set %scc *40
+                }
+                If *40 => 10
+                {
+                        Set %sca *40
+                        Set %scb %sca / 10
+                        Set %scc %scb * 10
+                        Set %scc %sca - %scc
+                        Set %s0 .0
+                        Set %s1 .1
+                        Set %s2 .2
+                        Set %s3 .3
+                        Set %s4 .4
+                        Set %s5 .5
+                        Set %s6 .6
+                        Set %s7 .7
+                        Set %s8 .8
+                        Set %s9 .9
+                        For %i 0 10
+                        {
+                                If %scc = %i
+                                {
+                                        Set %s %s . %i
+                                        Set %scc %s
+                                }
+                        }
+                }
+       
+        Set %cn #charname
+        Set %sd ( , #shard , )
+        Set %time %hours , : , %mins
+        Set %gn %scb , %scc , %
+        Setuotitle %cn %sd total usage: %total - since gain: %lastgain | Gain: %gn | running: %time hour(s) | runs: %runs - longest: %lrun
+        Return
+; ============================================================
+;       Reagent Check
+; ============================================================
+        Sub Reagents
+                For %i %ra 1
+                {
+                        FindReagent:
+                                FindItem %reagents
+                                If #findkind <> 0
+                                {
+                                        Set %bps %bps + 1
+                                        If %bps = 2
+                                        {
+                                                display ok Out of Reagents!, Make sure your Reagents are in your main backpack
+                                                Msg Stop$
+                                                Halt
+                                        }
+                                Event Macro 8 7
+                                Wait 20
+                                Goto FindReagent
+                                }
+                        IgnoreItem #findid
+                }
+                Set %bps 0
+                IgnoreItem Reset
+        Return
+; ============================================================
+;       Meditation
+; ============================================================
+        Sub Meditation
+                Set %return ScanMana
+                Meditaion:
+                        If %stoponmed = 1
+                        {
+                                If %run = 0
+                                {
+                                        Msg Stop$
+                                        Set %sails 0
+                                        Wait 10
+                                }
+                        }
+                        Event Macro 13 46
+                        Wait 10
+                        If Focus in #sysmsg
+                        {
+                                Wait 200
+                                Goto Meditaion
+                        }
+                        If You_must_wait in #sysmsg
+                        {
+                                Wait 200
+                                Goto Meditaion
+                        }
+                        ScanMana:
+                                If #mana => %medend
+                                {
+                                        If %stoponmed = 1
+                                        {
+                                                If %run = 0
+                                                {
+                                                        Msg Slow Forward$
+                                                        Set %sails 1
+                                                        Set #scnt2 0
+                                                }
+                                        }
+                                        Return
+                                }
+                        Goto BlockCheck
+ 
+; ============================================================
+;       Anti-Block
+; ============================================================
+        BlockCheck:
+                If %sails = 1
+                {
+                        If #scnt2 => 20
+                        {
+                                If %currentloc = #charposy
+                                {
+                                        If %doublecheck = N/A
+                                                Set %doublecheck 0
+                                        If %doublecheck = 0
+                                        {
+                                                Set %doublecheck 1
+                                                Wait 20
+                                                Goto BlockCheck
+                                        }
+                                        Set %doublecheck 0
+                                        If *10 = Veterinary
+                                        {
+                                                Msg All stop$
+                                                Wait 5
+                                                Msg All Stay$
+                                        }
+                                        Set *80 1
+                                        Goto Unblock
+                                }
+                                Set #scnt2 0
+                                Set %currentloc #charposy
+                        }
+                }
+        Goto %return
+; ============================================================
+        Unblock:
+                FindItem ENX_LWX_ONX_JNX
+                Wait 10
+                If #findkind = -1
+                        Goto CheckNorth
+                If #findtype = ONX
+                {
+                        Set %west 13
+                        Set %east 6
+                        Set %ctrcal 8
+                }
+                If #findtype = JNX
+                {
+                        Set %west 6
+                        Set %east 13
+                        Set %ctrcal 8
+                }
+                If #findtype = ENX
+                {
+                        Set %west 6
+                        Set %east 6
+                        Set %ctrcal 6
+                }
+                If #findtype = LWX
+                {
+                        Set %west 5
+                        Set %east 5
+                        Set %ctrcal 3
+                }
+                        Set %b_west #findx - %west
+                        Set %b_east #findx + %east
+                        Set %ctr %b_east - %ctrcal
+               
+ 
+                        If #charposx <= %b_east
+                        {
+                                If #charposx => %b_west
+                                {
+                                        If #findy <= #charposy
+                                        {
+                                                If %ctr > #charposx
+                                                {
+                                                        Msg Left$
+                                                        Set #scnt2 0
+                                                        Goto ScanWest
+                                                }
+                                                If %ctr <= #charposx
+                                                {
+                                                        Msg Right$
+                                                        Set #scnt2 0
+                                                        Goto ScanEast
+                                                }
+                                        }
+                                }
+                        }
+                IgnoreItem #findid
+                Goto Unblock
+; ============================================================
+        ScanWest:
+                Set %tiles #charposx - %b_west
+                If %tiles > 20
+                        Goto Back
+                If #charposx <= %b_west
+                        Goto CheckNorth
+                If #scnt2 => 120
+                {
+                        Msg Back$
+                        Wait 220
+                        Msg Left$
+                        For %cnt 8 1
+                        {
+                                Set %left #charposx
+                                Wait 25
+                                If %left = #charposx
+                                        Goto Right
+                        }
+                        Goto CheckNorth
+                }
+        Goto ScanWest
+; ============================================================
+        ScanEast:
+                Set %tiles %b_east - #charposx
+                If %tiles > 20
+                        Goto Back
+                If #charposx => %b_east
+                        Goto CheckNorth
+                If #scnt2 => 120
+                {
+                        Back:
+                        Msg Back$
+                        Wait 220
+                        Right:
+                                Msg Right$
+                                Wait 200
+                                Goto CheckNorth
+                }
+        Goto ScanEast:
+; ============================================================
+        CheckNorth:
+                Set %loc_north #charposy
+                Set #scnt2 0
+                Msg Slow Forward$
+                CNLoop:
+                        If #scnt2 => 40
+                        {
+                                If %loc_north = #charposy
+                                {
+                                        Msg Back$
+                                        Wait 100
+                                        Msg Left$
+                                        Wait 200
+                                        Msg Forward$
+                                        Wait 200
+                                        Msg Right$
+                                }
+                                If %loc_north <> #charposy
+                                {
+                                        Set %forward 1
+                                        If *10 = Veterinary
+                                                Goto Attack
+                                        Goto Reset                                     
+                                }
+                        }              
+                Goto CNLoop
+; ============================================================
+;       Use Skil
+; ============================================================
+        Sub Evaluation
+                Set #ltargetid %tm
+                Event Macro 15 4
+                Target 6s
+                Event Macro 22 0
+                Wait 10
+                Return
+ 
+        Sub EvalSC
+        Return
+; ============================================================
+        Sub Healing
+                HealingB:
+                Set #ltargetid %ghost
+                Set %res 1
+                Finditem ZLF
+                Wait 10
+                If #findkind = -1
+                {
+                        Event Macro 8 7
+                        Wait 10
+                        If %bps => 2
+                        {
+                                Msg Stop$
+                                display ok No bandages!, Make sure your bandages are in your main backpack
+                                Halt
+                        }
+                        Set %bps %bps + 1
+                        Goto HealingB
+                }
+                Set %bps 0
+                Set #lobjectid #findid
+                Event Macro 17
+                Target
+                Event Macro 22
+                Set #scnt2 0
+                ScanHeal:
+                If finish in #sysmsg
+                        Return
+                If unable_to in #sysmsg
+                {
+                        Set %res 0
+                        Return
+                }
+                If #scnt2 => 100
+                        Return
+                Goto ScanHeal
+ 
+        Sub HealSC
+                If %res = 0
+                        Goto Global
+        Return
+; ============================================================
+        Sub Hiding
+                Event Macro 13 21
+        Return
+ 
+        Sub HideSC
+                If H NotIn #charstatus
+                        Goto Core
+        Return
+; ============================================================
+        Sub Spirit
+                Event Macro 13 32
+                Wait 3s
+        Return
+ 
+        Sub SpiritSC
+        Return
+; ============================================================
+        Sub Magery
+                Set %castcheck #mana
+                Event Macro 15 %spell
+                If %target = 1
+                {
+                        Set #ltargetid %tm
+                        Target 6s
+                        Event Macro 22 0
+                }
+                Wait 10
+                If %target = 0
+                        Wait 50
+        Return
+ 
+        Sub MagerySC
+                If #mana => %castcheck
+                        Goto Core
+        Return
+; ============================================================
+        Sub Necromancy
+                ssHealThySelf:
+                if %spiritheal  = 1 && %spell <> 107
+                {
+                        if #Hits < #MaxHits
+                        {
+                                Gosub Spirit
+                                Wait 20
+                                Goto ssHealThySelf
+                        }
+                }
+                Set %castcheck #mana
+                Event Macro 15 %spell
+                If %target = 1
+                {
+                        Target 6s
+                        set #ltargetkind 1
+                        Event Macro 23 0
+                }
+                Wait 10
+                If %target = 0
+                        Wait 50
+        Return
+ 
+        Sub NecroSC
+                If #mana => %castcheck
+                        Goto Core
+        Return
+; ============================================================
+        Sub Chivalry
+                Set %castcheck #mana
+                Event Macro 15 %spell
+                If %target = 1
+                {
+                        Target 6s
+                        set #ltargetkind 1
+                        Event Macro 23 0
+                }
+                Wait 10
+                If %target = 0
+                        Wait 50
+        Return
+ 
+        Sub ChivSC
+                If #mana => %castcheck
+                        Goto Core
+        Return
+; ============================================================
+        Sub Musicianship
+                M_Instrument:
+                Finditem PRF_LQF_MQF_QRF_OQF
+                Wait 10
+                If #findkind = -1
+                {
+                        Event Macro 8 7
+                        Wait 10
+                        If %bps => 2
+                        {
+                                Msg Stop$
+                                display ok No instrument!, Make sure your instruments are in your main backpack
+                                Halt
+                        }
+                        Set %bps %bps + 1
+                        Goto M_Instrument
+                }
+                Set %bps 0
+                Set #lobjectid #findid
+                Event Macro 17
+                Return
+ 
+        Sub MusicSC
+        Return
+; ============================================================
+        Sub Peacemaking
+                Set %loopscan 10
+                Set %loopscanb %loopscan
+                Set %peacemade 0
+                Event Macro 13 9
+                Wait 10
+                If What_instrument_shall in #sysmsg
+                {
+                        Set #targcurs 0
+                        Wait 10
+                        P_Instrument:
+                                Finditem PRF_LQF_MQF_QRF_OQF
+                                Wait 10
+                                If #findkind = -1
+                                {
+                                        Event Macro 8 7
+                                        Wait 10
+                                        If %bps => 2
+                                        {
+                                                Msg Stop$
+                                                display ok No instrument!, Make sure your instruments are in your main backpack
+                                                Halt
+                                        }
+                                Set %bps %bps + 1
+                        Goto P_Instrument
+                                }
+                        Set #lobjectid #findid
+                        Event Macro 17
+                }
+                Set %bps 0
+                Target 4s
+                Event Macro 23
+                Wait 10
+                If You_play_hypnotic in #sysmsg
+                {
+                        Set %peacemade 1
+                        Set %loopscan 6
+                        Set %loopscanb %loopscan
+                }
+                Return
+ 
+        Sub PeaceSC
+                If %peacemade = 0
+                        Goto Core
+                Return
+; ============================================================
+        Sub Stlt
+                If H NotIn #charstatus
+                {      
+                        Event Macro 13 21
+                        For %cnt 11 1
+                        {
+                                Set %return AtStealth
+                                Goto BlockCheck
+                                AtStealth:
+                                Wait %wm
+                        }
+                }
+                Event Macro 13 47
+        Return
+ 
+        Sub StealthSC
+                If H NotIn #charstatus
+                        Goto Core
+        Return
+; ============================================================
+        Sub Veterinary
+                If %pet = 1
+                {
+                        Set %vet %petone
+                        Set %pet 0
+                        Goto VeterinaryB
+                }
+                If %pet = 0
+                {
+                        Set %vet %pettwo
+                        Set %pet 1
+                        Goto VeterinaryB
+                }
+                VeterinaryB:
+                        Set %vet_success 0
+                        Finditem ZLF
+                        Wait 10
+                        If #findkind = -1
+                        {
+                                Event Macro 8 7
+                                Wait 10
+                                If %bpseachs => 3
+                                {
+                                        Msg Stop$
+                                        Msg All stop$
+                                        display ok No bandages!, Make sure your bandages are in your main backpack
+                                        Halt
+                                }
+                                Set %bpseachs %bpseachs + 1
+                                Goto VeterinaryB
+                        }
+                        Set %bpseachs 0
+                        Set #lobjectid #findid
+                        Set #ltargetid %vet
+                        FindItem #ltargetid
+                        If %guardme = 1
+                        {
+                                If #findrep = 1
+                                        Msg All guard me$
+                        }
+                        Event Macro 17
+                        Target
+                        Event Macro 22
+                        Set #scnt2 0
+                        ScanVet:
+                                If finish in #sysmsg
+                                {
+                                        Set %vet_success 1
+                                        Return
+                                }
+                                If barely in #sysmsg
+                                        Return
+                                If little in #sysmsg
+                                {
+                                        Set %vet_success 1
+                                        Return
+                                }
+                                If being in #sysmsg
+                                        Goto VeterinaryB
+                                If #scnt2 => 100
+                                        Return
+                        Goto ScanVet
+ 
+        Sub VetSC
+                If %vet_success = 0
+                        Goto Core
+        Return
+; ============================================================
+;       Magery Setup
+; ============================================================
+Sub MagerySetup
+        Chooseskill Magery
+        If #skill => 920
+        {
+                Set %ra 4
+                Set %reagents JUF_JZF_MZF_SZF
+                Menu Text txt 170 40 You need Blood Moss, Ginseng, Mandrake Root and$Suflurous Ash reagents.
+                Set %target 0
+                Set %spell 56
+                Set %medstart 60
+                Return
+        }
+        If #skill => 780
+        {
+                Set %ra 2
+                Set %reagents RZF_SZF
+                Menu Text txt 170 40 You need Spider's and Silk Suflurous Ash reagents.
+                Set %spell 50
+                Set %medstart 50
+                Return
+        }
+        If #skill => 640
+        {
+                Set %ra 2
+                Set %reagents KUF_WZF
+                Menu Text txt 170 40 You need Black Pearl and Nightshade reagents.
+                Set %spell 41
+                Set %medstart 40
+                Return
+        }
+        If #skill => 500
+        {
+                Set %ra 3
+                Set %reagents KZF_MZF_RZF
+                Menu Text txt 170 40 You need Garlic, Mandrake Root and Spider's Silk$reagents.
+                Set %spell 37
+                Return
+        }
+        If #skill => 360
+        {
+                Set %ra 2
+                Set %reagents MZF_SZF
+                Menu Text txt 170 40 You need Mandrake and Suflurous Ash reagents.
+                Set %menuspell Lightning
+                Set %spell 29
+                Return
+        }
+        If #skill => 220
+        {
+                Set %ra 1
+                Set %reagents WZF
+                Menu Text txt 170 40 You need Nightshade reagents.
+                Set %spell 19
+                Return
+        }
+        display ok Save yourself some Reagents and me some time, go buy your skill up to 30
+        halt
+Return
+ 
+ 
+; ============================================================
+;       Necromancy Setup
+; ============================================================
+Sub NecroSetup
+        Chooseskill Necromancy
+        if #skill >= 990
+        {
+                Set %ra 3
+                Set %reagents UZF_IUF_YZF
+                Menu Text txt 170 40 You need Bat Wing, Nox Crystal, and Pig Iron reagents.
+                Set %target 0
+                Set %spell 113
+                Set %medstart 30
+                Return
+        }
+        If #skill => 770
+        {
+                Set %ra 3
+                set %target 0
+                Set %reagents UZF_DUF_TZF
+                Menu Text txt 170 40 You need Nox Crystal, Grave Dust, and Daemon Blood reagents.
+                Set %spell 107
+                Set %medstart 30
+                Return
+        }
+        if #skill => 660
+        {
+                set %ra 3
+                set %target 1
+                set %reagents UZF_YZF_TZF
+                Menu Text txt 170 40 You need Nox Crystal, Grave Dust, and Pig Iron reagents.
+                set %spell 115
+                set %medstart 30
+                return
+        }
+        if #skill => 560
+        {
+                set %ra 1
+                set %target 1
+                set %reagents UZF
+                Menu Text txt 170 40 You need Nox Crystal reagents.
+                set %spell 110
+                set %medstart 30
+                return
+        }
+        If #skill => 480
+        {
+                Set %ra 2
+                set %target 0
+                Set %reagents IUF_DUF
+                Menu Text txt 170 40 You need Batwing and Daemon Blood reagents.
+                Set %spell 106
+                Set %medstart 30
+                Return
+        }
+        If #skill => 380
+        {
+                Set %ra 3
+                set %target 1
+                Set %reagents YZF_DUF_IUF
+                Menu Text txt 170 40 You need Batwing, Daemon Blood, and Pig Iron reagents.
+                Set %spell 108
+                Set %medstart 10
+                Return
+        }
+        If #skill => 280
+        {
+                Set %ra 2
+               
+                set %target 1
+                Set %reagents IUF_TZF
+                Menu Text txt 170 40 You need Grave dust and Bat wing reagents.
+                Set %spell 103
+                Set %medstart 10
+                Return
+        }
+        display ok Save yourself some Reagents and me some time, go buy your skill up to 30
+        halt
+Return
+ 
+ 
+; ============================================================
+;       Chivalry Setup
+; ============================================================
+Sub ChivSetup
+        Chooseskill Chivalry
+        If #skill => 815
+        {
+                Set %target 0
+                Set %spell 208
+                Set %medstart 25
+                Menu Text txt 170 40 You will need to have a weapon and tithe a huge amount of gold to your nearest shrine.
+                Return
+        }
+        If #skill => 680
+        {
+                Set %target 0
+                Set %spell 207
+                Set %medstart 25
+                Menu Text txt 170 40 You will need to have a weapon and tithe a huge amount of gold to your nearest shrine.
+                Return
+        }
+        If #skill => 570
+        {
+                Set %target 0
+                Set %spell 206
+                Set %medstart 25
+                Menu Text txt 170 40 You will need to have a weapon and tithe a huge amount of gold to your nearest shrine.
+                Return
+        }
+        If #skill => 450
+        {
+                Set %target 0
+                Set %spell 204
+                Set %medstart 25
+                Menu Text txt 170 40 You will need to have a weapon and tithe a huge amount of gold to your nearest shrine.
+                Return
+        }
+        if #skill => 350
+        {
+                Set %target 0
+                set %spell 205
+                Set %medstart 20
+                Menu Text txt 170 40 You will need to have a weapon and tithe a huge amount of gold to your nearest shrine.
+                return
+        }
+        If #skill => 299
+        {
+                Set %target 0
+                Set %spell 203
+                Set %medstart 20
+                Menu Text txt 170 40 You will need to have a weapon and tithe a huge amount of gold to your nearest shrine.
+                Return
+        }
+        display ok Save yourself some gold and me some time, go buy your skill up to 30
+        halt
+Return
+ 
+

@@ -1,0 +1,574 @@
+;================================== 
+; Script Name:   Mytilus Mega Mage Trainer 
+; Author: Mytilus 
+; Version: 2.50 
+; Client Tested with: 4.0.5a 
+; EUO version tested with: 1.42 [build 009A] 
+; Shard OSI / FS: OSI 
+; Revision Date: 10/21/04 
+; Public Release: 3/17/04 
+; Global Variables Used: 
+; Purpose: 8x8 Magery and Eval with antiblock, slow forward to find gains. 
+;================================== 
+; 
+;  
+;If this script works well for you please leave me a thank you And 
+;vote for it!  If you have problems with this script please let me 
+;know and I will try to address them. 
+; 
+; 
+; SETUP INSTRUCTIONS  
+; Get on a boat and make sure you have tons of regs or a 100% lrc suit 
+; Get your boat into 8x8 alley (far east side of map, east of glow) 
+; Point yourself north and start the script 
+; If you have high magery find yourself a wand with negative magery skill 
+;   you will still gain real good and wont be wasting time meditating  
+;  
+; 
+;---------------------------------------------- 
+; USER DEFINED VARIABLES 
+;---------------------------------------------- 
+;If you would like the script to stop before your skill cap enter that value here 
+;otherwise leave it set to auto (GM=1000, Elder=1100, etc) 
+; 
+set %maxmage auto 
+set %maxeval auto 
+;  
+;Set number of recast attempts to get gain 
+set %loopmax 3   
+; 
+;You may need to adjust this based on your connection. 
+;Lower if you dont stop the boat right away after getting a gain. 
+;Increase if script doesn't see gain until you have casted a second time. 
+set %aftercastwait 15 
+; 
+;You must Lower these values if your char has lower than 40 hitpoints!! 
+;amount of hitpoints lost before you char casts greater heal 
+set %slowhealdamage 20  
+; 
+; amount of hitpoints lost before you char cast fast heal 
+set %fasthealdamage 40  
+; 
+;Minimum skill that each spell will be cast (you might need to adjust these as necessary!!!) 
+set %harm 125 
+set %fireball 250   
+set %lightning 440   
+set %paralyze 600   
+set %ebolt 740   
+set %flamestrike 850   
+set %earthquake 960   
+; 
+;------------------------------------------------ 
+; DO NOT EDIT THE SCRIPT BELOW 
+;------------------------------------------------  
+ 
+chooseskill mage 
+if %maxmage = auto 
+  set %maxmage #skillCap   
+set %currentmage #SKILL   
+set %magestart #SKILL  
+chooseskill eval 
+if %maxeval = auto 
+  set %maxeval #skillCap  
+set %currenteval #SKILL   
+set %evalstart #SKILL  
+set %evalgain 0   
+set %boatStopped 0   
+set %serverLine 0   
+set %goLeft 0   
+set %loop 0   
+set %spellmana 20   
+set %tman enx_hnx_znx_jnx 
+if #charname = N/A 
+  event macro 8 2   
+set %fastheal #hits - %fasthealdamage   
+set %slowheal #hits - %slowhealdamage   
+set %status Searching_for_gain_run 
+gosub showmenu 
+  
+;--Find Spellbook and save to variable 
+event macro 8 7   
+wait 20   
+set %backpack #lobjectid   
+finditem MPF C_ 
+if #findkind = -1   
+  {   
+  display ok Could not find your spellbook, please target it now 
+  set #targcurs 1     
+  waitforclick:   
+  if #targcurs = 1   
+    goto waitforclick 
+  set %spellbook #ltargetid   
+  }   
+if #findkind <> -1   
+  set %spellbook #findID   
+ 
+;--Find tillerman and start the gaining 
+finditem %tman G_5 
+set %tillerman #findid   
+event macro 3 0 raise anchor 
+wait 20   
+event macro 3 0 slow forward 
+wait 20   
+  
+;-------------------------------------------------------- 
+; Searches for 8x8 spot while going slow forward 
+;-------------------------------------------------------- 
+FINDGAIN:   
+set %gainrun 0   
+gosub CAST 
+;---goes to 8x8gain on mage gain--- 
+gosub WANDCHECK 
+chooseskill mage 
+if #SKILL > %currentmage   
+  {   
+    set %magerun 1 
+    event macro 3 0 stop   
+    chooseskill mage 
+    set %status Woot!!_Magery_gain!   
+    set %currentmage #SKILL   
+    gosub showmenu 
+    goto 8x8GAIN 
+  }   
+;---goes to 8x8gain on eval gain--- 
+chooseskill eval 
+if #SKILL > %currenteval   
+  {   
+    set %magerun 0 
+    event macro 3 0 stop   
+    chooseskill eval 
+    set %status Woot!!_eval_gain!  
+    set %currenteval #SKILL   
+    gosub showmenu 
+    set %evalgain 1   
+    goto 8x8GAIN 
+  }   
+;---fixes endless loop issue related to mage lowering wands--- 
+if #SKILL < %currentskill   
+  {   
+    chooseskill mage 
+    set %currentskill #SKILL   
+    goto FINDGAIN 
+  }   
+;---makes sure boat is moving and corrects if its not--- 
+if %stopped = #CharPosy   
+  {   
+     event macro 3 0 slow forward 
+     wait 2s   
+  }   
+set %stopped #CharPosy   
+goto FINDGAIN 
+  
+;---------------------------------------------------- 
+;Milks the 8x8 run and continues on when dry 
+;---------------------------------------------------- 
+8x8GAIN:   
+set %gainrun 1  
+;moves boat 8 spaces 
+for %step 1 8   
+  {   
+  event macro 3 0 forward one 
+  wait 1s   
+  gosub IsBoatStopped 
+  if %boatStopped = 1    
+    gosub FixBoatStopped 
+  }   
+wait 1s   
+gosub IsBoatStopped 
+if %boatStopped = 1    
+  gosub FixBoatStopped 
+gosub CAST 
+  
+NOGAINLOOP: 
+gosub WANDCHECK 
+;---fixes endless loop issue related to mage lowering wands--- 
+chooseskill mage 
+if #SKILL < %currentmage   
+  {   
+    chooseskill mage 
+    set %currentmage #SKILL   
+    goto NOGAINLOOP 
+  }   
+;---repeats 8x8 if you gain magery--- 
+chooseskill mage 
+if #SKILL > %currentmage   
+  {   
+    set %magerun 1 
+    chooseskill mage 
+    set %currentmage #SKILL   
+    chooseskill eval 
+    set %currenteval #SKILL 
+    set %status Another_mage_gain!!!  
+    gosub showmenu 
+    set %loop 0  
+    goto 8x8GAIN 
+  }   
+;---repeats 8x8 if you gain eval only when not in a mage run--- 
+chooseskill eval 
+if #SKILL > %currenteval && %magerun = 0  
+  {   
+    chooseskill eval 
+    set %currenteval #SKILL  
+    set %status Another_eval_gain!!!  
+    gosub showmenu 
+    set %loop 0   
+    goto 8x8GAIN 
+  }    
+;---counts number of successful casts without magery or eval gain--- 
+;chooseskill eval 
+;if #SKILL = %currenteval  
+;  {  
+    chooseskill mage 
+    if #SKILL = %currentmage   
+      {   
+        set %loop %loop + 1  
+        set %status Crap!_lets_try_again...  
+        gosub showmenu 
+        gosub CAST 
+      }   
+;  }  
+;---if number of cast attempts w/o gain is exceeded returns to finding gains--- 
+if %loop > %loopmax   
+  {   
+    set %loop 0   
+    chooseskill mage 
+    set %currentmage #SKILL   
+    chooseskill eval 
+    set %currenteval #SKILL   
+    set %evalgain 0   
+    set %status Searching_for_gain_run 
+    gosub showmenu 
+    event macro 3 0 slow forward 
+    goto FINDGAIN 
+  }   
+goto NOGAINLOOP 
+  
+;---------------------------------------------- 
+; sub for spellcasting and meditation 
+;---------------------------------------------- 
+sub CAST 
+gosub DoneYet 
+if #CHARNAME = N/A 
+  event macro 8 2   
+gosub CHECKHEALTH 
+set #ltargetkind 1   
+set #ltargetid %tillerman    
+gosub IsBoatStopped 
+if %boatStopped = 1   
+  gosub FixBoatStopped 
+gosub MANACHECK 
+RECAST: 
+gosub WANDCHECK 
+wait 1s   
+chooseskill mage 
+;---casts earthquake--- 
+if #skill > %earthquake    
+   {    
+      set %spellmana 50   
+      set %timebetween 6  
+      event macro 15 56    
+      gosub GAINCHECK 
+      if #result  
+        return  
+      gosub FIZZLECHECK 
+   goto DONE 
+   }    
+;---casts flamestrike--- 
+if #skill > %flamestrike    
+   {    
+      set %spellmana 40    
+      event macro 15 50    
+      target 10s    
+      event macro 22 0    
+      gosub FIZZLECHECK 
+   goto DONE 
+   }    
+;---casts e-bolt--- 
+if #skill > %ebolt    
+   {    
+      set %spellmana 22   
+      event macro 15 41    
+      target 10s    
+      event macro 22 0    
+      gosub FIZZLECHECK 
+   goto DONE 
+   }    
+;---casts paralyze--- 
+if #skill > %paralyze    
+   {    
+      set %spellmana 15   
+      event macro 15 37    
+      target 10s    
+      event macro 22 0    
+      gosub FIZZLECHECK 
+   goto DONE 
+   }       
+;---casts lightning--- 
+if #skill > %lightning    
+   {    
+      set %spellmana 13   
+      event macro 15 29    
+      target 10s    
+      event macro 22 0    
+      gosub FIZZLECHECK 
+   goto DONE 
+   }    
+;---casts fireball--- 
+if #skill > %fireball    
+   {    
+      event macro 15 17    
+      target 10s    
+      event macro 22 0    
+      gosub FIZZLECHECK 
+   goto DONE 
+   }    
+;---casts harm--- 
+if #skill > %harm    
+   {    
+      event macro 15 11   
+      target 10s    
+      event macro 22 0    
+      gosub FIZZLECHECK 
+   goto DONE 
+   }    
+;---casts magic arrow--- 
+      event macro 15 4    
+      target 10s    
+      event macro 22 0     
+      gosub FIZZLECHECK 
+   goto DONE 
+   
+DONE:    
+if %recast = 1    
+  {    
+   set %recast 0    
+   goto RECAST 
+  }    
+return    
+ 
+  
+;--------------------------------------- 
+; checks spell for fizzle and recast 
+;--------------------------------------- 
+sub FIZZLECHECK 
+wait %aftercastwait 
+chooseskill eval 
+if #SKILL > %currenteval && %gainrun = 0 
+   {   
+   set %evalgain 1   
+   event macro 3 0 stop   
+   return   
+   }   
+scanjournal 1   
+if fizzles in #journal           
+   set %recast 1 
+if reagents in #journal   
+  set %recast 1        
+return     
+ 
+;--------------------------------------- 
+; Scans for Gain 
+;--------------------------------------- 
+sub gaincheck 
+set %waittime #scnt + %timebetween  
+gaincheck:   
+if #skill > %currentskill   
+  return #true   
+if %waittime > #scnt   
+  goto gaincheck 
+return #false   
+ 
+;-------------------------------------------------------------- 
+;Disarm and Rearm mage wand to reset skill 
+;-------------------------------------------------------------- 
+sub WANDCHECK 
+finditem %spellbook C_ 
+if #findkind = -1   
+  {   
+  event macro 8 7   
+  wait 1s   
+  event macro 24 2   
+  wait 50   
+  event macro 24 2   
+  wait 10   
+  chooseskill mage 
+  set %currentskill #SKILL   
+  }   
+return   
+  
+;------------------------------------- 
+; Checks to see if boat is stopped 
+;------------------------------------- 
+sub IsBoatStopped 
+scanjournal 1    
+if stopped in #journal    
+  set %boatStopped 1    
+if turbulent in #journal    
+  {    
+  set %boatStopped 1    
+  set %serverLine 1    
+  }     
+return     
+  
+;----------------------------------- 
+; Moves boat if it is stopped 
+;----------------------------------- 
+sub FixBoatStopped 
+if %serverLine = 1   
+   {   
+   if %goLeft = 1   
+     event macro 3 0 left 
+   if %goLeft = 0   
+     event macro 3 0 right 
+   wait 120   
+   event macro 3 0 stop   
+   }   
+if %serverLine = 0 && %boatstopped = 1 
+   {   
+   event macro 3 0 back 
+   wait 120   
+   if %goLeft = 1   
+     event macro 3 0 left 
+   if %goLeft = 0     
+     event macro 3 0 right 
+   wait 200   
+   event macro 3 0 forward 
+   wait 180   
+   if %goLeft = 1   
+     event macro 3 0 right 
+   if %goLeft = 0    
+     event macro 3 0 left 
+   wait 200   
+   event macro 3 0 stop   
+   }      
+set %temp %goLeft   
+if %temp = 1   
+   set %goLeft 0    
+if %temp = 0   
+   set %goLeft 1   
+   set %serverLine 0   
+   set %boatStopped 0   
+      event macro 3 0 slow forward 
+return   
+  
+;------------------------------------------------------------- 
+;Checks current skills against both skillcaps and ends script 
+;------------------------------------------------------------- 
+sub DoneYet 
+If %currentmage => %maxmage && %currenteval => %maxeval    
+  {   
+  event macro 3 0 stop   
+  wait 1s  
+  event macro 3 0 drop anchor 
+  display ok Woot! Your Magery and Eval Roxxors!!!$Now go and vote for this script 
+  halt   
+  }   
+ return 
+ 
+;------------------------------------------------------------------------ 
+;Checks mana and meditates if necessary 
+;------------------------------------------------------------------------ 
+sub MANACHECK 
+if #mana < %spellmana   
+{   
+set %status Hold_on..._meditating!  
+gosub showmenu 
+if %gainrun = 0   
+  event macro 3 0 Stop   
+TRYAGAIN:   
+if #mana = #maxMana   
+  goto MANALOOP 
+event macro 13 46    
+wait 15   
+scanjournal 1   
+If meditative in #journal   
+   goto MANALOOP 
+wait 11s   
+goto TRYAGAIN 
+MANALOOP:   
+    if #mana < #maxMana   
+     {            
+        wait 10   
+        goto MANALOOP 
+     }   
+set %status Ok,_here_we_go!  
+gosub showmenu 
+if %gainrun = 0   
+  event macro 3 0 Slow Forward 
+}   
+return   
+  
+;--------------------------------------------- 
+; Simple Healthwatch Sub 
+;--------------------------------------------- 
+sub CHECKHEALTH 
+healloop:   
+if C in #charstatus   
+  {  
+  set %status Ouch!_poison!  
+  gosub showmenu 
+  event macro 15 10   
+  target 2s   
+  event macro 23 0   
+  wait 1s   
+  wait 20   
+  goto healloop 
+  }   
+if #hits < %fastheal   
+  {   
+  set %status ahhh_that's_better!  
+  gosub showmenu 
+  event macro 15 3   
+  target 3s   
+  event macro 23 0   
+  wait 1s   
+  goto healloop 
+  }   
+if #hits < %slowheal   
+  {   
+  set %status ahhh_that's_better!  
+  gosub showmenu 
+  event macro 15 28   
+  target 3s   
+  event macro 23 0   
+  wait 1s   
+  goto healloop 
+  }   
+return   
+  
+  
+ 
+;--------- EasyUO Menu Designer Code Begin --------- 
+sub showmenu 
+  menu Clear  
+  menu Window Title Mytilus Mega Mage Trainer 
+  menu Window Color BtnText 
+  menu Window Size 227 183  
+  menu Font Transparent #true  
+  menu Font Align Right 
+  menu Font Name MS Sans Serif 
+  menu Font Size 10  
+  menu Font Style b 
+  menu Font Color Red 
+  menu Font Transparent #false  
+  menu Font Align Left 
+  menu Font BGColor InfoText 
+  menu Text EUOLabel1 4 12 Starting Magery 
+  menu Font BGColor BtnText 
+  menu Text EUOLabel2 4 70 Starting Eval 
+  menu Text EUOLabel3 4 40 Current Magery 
+  menu Text EUOLabel4 4 98 Current Eval 
+  menu Font Color Lime 
+  menu Text EUOLabel5 4 132 Status:  
+  menu Font Color Red 
+  menu Text EUOLabel6 128 12 %magestart  
+  menu Text EUOLabel7 128 40 %currentmage  
+  menu Text EUOLabel8 128 70 %evalstart  
+  menu Text EUOLabel9 128 98 %currenteval  
+  menu Font Color Lime 
+  menu Text EUOLabel10 8 156 %status  
+  menu Shape EUOShape1 4 60 221 5 3 7 1 Black 7 White 
+  menu Shape EUOShape2 4 120 221 5 3 7 1 Black 7 White 
+  menu Show  
+return  
+;--------- EasyUO Menu Designer Code End ---------

@@ -1,0 +1,1778 @@
+=========================================================================
+; Script Name: EnCode MegaLumberjack
+; Author: EnCode
+; Version: 1.2.0
+; Client Tested with: 4.0.10b
+; EUO version tested with: 1.42.00A5
+; Shard OSI / FS: FS
+; Revision Date: 5-31-05
+; Public Release: 5-15-05
+; Global Variables Used: All global vars used by settings starts by *ECLJ
+; This is a very powerful and easy to set up fully automatic script without rails!
+; All you need is enough skills to craft tools and recall and some ingots in your bank box.
+=========================================================================
+
+; if you wish to use login by password (NOT RECOMMENDED)
+; set up the macro as using razorlogin but uncomment and change these lines:
+
+;set *ECLJloginmode bypassword
+;set %password YOURPASS
+
+;You may edit these values if you wish but you should do just fine
+;with these.
+set %axetype FSF_LSF_BSF_NSF_ZRF_RMH_LPH_UOH
+set %tooltype AIG_AGG_BIG_CIG_CGG_EGG_IGG_KGG_WFG_YFG_ZHG
+set %tinkertool GTL_JTL_KTL
+set %solvepk 0 ;if you have the PKCurses.txt set up change this to 1
+set %forcebankweight 380 ;maxweight before bankup
+;================================
+;do not change below here
+;================================
+set %VerMajor 1
+set %VerMinor 2
+set %VerRevision 0
+gosub showMenu
+menu HideEuo
+if SEND in #opts
+{
+	menu delete status
+	menu Text status 116 119 Checking for updates...
+	send httppost leiska.ath.cx /~encode/getversion.php?$scriptname=EnCode%20Megalumberjack
+	if %Major <> N/A && %Minor <> N/A && %Revision <> N/A
+	{
+		if %Major > %VerMajor
+		{
+			menu hide
+			Display YesNo There is a completely new version of this script available!$The newest version is: %Major , #dot , %Minor , #dot , %Revision , $Yours is: %VerMajor , #dot , %VerMinor , #dot , %VerRevision , $Would like to dowload the newest file?
+			if #dispres = Yes
+			{
+				if EXEC in #opts
+				{
+					execute http://www.easyuo.com/psl.php?page=mypsl&scripter=EnCode^
+					halt
+				}
+				else
+				{
+					display ok Cannot open the page automatically.$Please go to the following address:$http://www.easyuo.com/psl.php?page=mypsl&scripter=EnCode^
+					halt
+				}
+			}
+		}
+		if %Major = %VerMajor && %Minor > %VerMinor
+		{
+			menu hide
+			Display YesNo There is an update with new features available!$The newest version is: %Major , #dot , %Minor , #dot , %Revision , $Yours is: %VerMajor , #dot , %VerMinor , #dot , %VerRevision , $Would like to dowload the newest file?
+			if #dispres = Yes
+			{
+				if EXEC in #opts
+				{
+					execute http://www.easyuo.com/psl.php?page=mypsl&scripter=EnCode^
+					halt
+				}
+				else
+				{
+					display ok Cannot open the page automatically.$Please go to the following address:$http://www.easyuo.com/psl.php?page=mypsl&scripter=EnCode^
+					halt
+				}
+			}
+		}
+		if %Major = %VerMajor && %Minor = %VerMinor && %Revision > %VerRevision
+		{
+			menu hide
+			Display YesNo There is an update with bugfixes available!$The newest version is: %Major , #dot , %Minor , #dot , %Revision , $Yours is: %VerMajor , #dot , %VerMinor , #dot , %VerRevision , $Would like to dowload the newest file?
+			if #dispres = Yes
+			{
+				if EXEC in #opts
+				{
+					execute http://www.easyuo.com/psl.php?page=mypsl&scripter=EnCode^
+					halt
+				}
+				else
+				{
+					display ok Cannot open the page automatically.$Please go to the following address:$http://www.easyuo.com/psl.php?page=mypsl&scripter=EnCode^
+					halt
+				}
+			}
+		}
+	}
+	menu delete status
+	menu Text status 116 119 Initializing
+}
+if *ECLJok <> 2
+{
+	menu hide
+	if *ECLJok = 1
+		display ok You have to setup the macro again as your settings are from older version!
+	gosub settings
+}
+display YesNo Do you wish to use your last settings?
+if #dispres = Yes
+{
+	set %shardid *ECLJshardid
+	set %charnum *ECLJcharnum
+	set %loginmode *ECLJloginmode
+	set %recallstyle *ECLJrecallstyle
+	set %showmap *ECLJshowmap
+	set %bookid *ECLJbookid
+	set %bankid *ECLJbankid
+	set %ljspots *ECLJspots
+}
+if #dispres = No
+	gosub settings
+set %spot 0
+tile init
+linespercycle 200
+set %hod 0
+if #clilogged = 0
+{
+	if %loginmode <> none
+	{
+		gosub Login %loginmode %password #true
+	}
+	else
+	{
+		display Ok Please log in and unpause.
+		pause
+	}
+}
+if %solvepk = 1
+	call PKCurses.txt
+gosub openwhatneeded
+
+if %recallstyle = Magery
+{
+	set %healspell 28
+	set %curespell 10
+	set %protspell 14
+	set %lrc 0
+	set %arcane 0
+	finditem * C_ , #charid
+	set %findcnt #findcnt
+	for %i 1 %findcnt
+	{
+		finditem * %i C_ , #charid
+		event property #findid
+		str pos #property Lower , #spc , Reagent , #spc , Cost
+		if #strres > 0
+		{
+			set %pos #strres + 18
+			str len #property
+			str mid #property %pos #strres - %pos
+			set %str #strres
+			str pos %str %
+			set %pos #strres - 1
+			str left %str %pos
+			set %lrc %lrc + #strres
+		}
+		str pos #property Arcane , #spc , Charges: , #spc
+		if #strres > 0
+		{
+			set %pos #strres + 16
+			str len #property
+			str mid #property %pos #strres - %pos
+			set %str #strres
+			str pos %str #spc
+			set %pos #strres - 1
+			str left %str %pos
+			set %arcane %arcane + #strres
+		}
+	}
+	set %restockregs 1
+	if %lrc > 69
+	{
+		set %restockregs 0
+	}
+	else
+	{
+		if %arcane > 0
+		{
+			display yesno You seem to have %arcane arcane charges on your clothning
+				+ $Do you wish to use them instead of reagants?
+				+ $(Remember that YOU need to make sure that they won't run out!)
+			if #dispres = yes
+				set %restockregs 0
+		}
+	}
+}
+menu delete lrc
+menu Text lrc 60 112 Lrc: %lrc
+menu delete arcane
+menu Text arcane 60 124 Arc: %arcane
+if %recallstyle = Chivalry
+{
+	set %healspell 202
+	set %curespell 201
+	set %protspell 0
+	set %restockregs 0
+}
+menu delete restock
+if %restockregs = 0
+	menu Text restock 116 75 Restock Reagants: No
+else
+	menu Text restock 116 75 Restock Reagants: Yes
+menu delete tools
+chooseskill tink
+if #skill < 500
+	menu Text tools 116 87 Make Tools: No
+else
+	menu Text tools 116 87 Make Tools: Yes
+menu delete status
+menu Text status 116 119 Recalling to bank
+gosub recall 1 %recallstyle
+gosub bankup
+gosub checkprot
+gosub chooseforest
+start:
+gosub checkweight
+gosub checkpk
+gosub checkConLost
+gosub closest
+move %x %y 1 10s
+gosub checkpk
+gosub checkdistance
+gosub choptree
+gosub toboards
+goto start
+
+sub checkdistance
+	set %distx #charposx - %x
+	set %disty #charposy - %y
+	if %distx > -2 && %distx < 2 && %disty > -2 && %disty < 2
+		return
+	set %tempx #charposx - 5
+	move %tempx #charposy 1 2s
+	set %tempy #charposy - 5
+	move #charposx %tempy 1 2s
+	move %x %y 1 10s
+return
+
+sub checkweight
+	gosub toboards
+	if #weight > #maxweight || #weight > %forcebankweight
+	{
+		menu delete status
+		menu Text status 116 119 Recalling to bank
+		gosub recall 1 %recallstyle
+		gosub bankup
+		gosub chooseforest
+		set %hod 0
+	}
+return
+
+sub toboards
+	if #weight > #maxweight || #weight > %forcebankweight
+	{
+		menu delete status
+		menu Text status 116 119 Making boards...
+		wait 17
+		finditem ZLK C_ , #backpackid
+		if #findkind = -1
+			goto nowood
+		finditem %tooltype C_ , #backpackid
+		if #findkind = -1
+		{
+			display ok Something went wrong and we are out of carpenter tools!$This should never happen, please inform EnCode
+			halt
+		}
+		set #lobjectid #findid
+		event macro 17
+		gosub waitforgump generic_gump 530_437
+		set %clickx #contposx + 30
+		set %clicky #contposy + 90
+		click %clickx %clicky
+		wait 6
+		set %clickx #contposx + 230
+		set %clicky #contposy + 70
+		click %clickx %clicky
+		gosub waitforgump generic_gump 530_437
+		set %clickx #contposx + 30
+		set %clicky #contposy + 415
+		click %clickx %clicky
+		wait 6
+		finditem TLK C_ , #backpackid
+		set %boards %boards_in_bank + #findstack
+		menu delete boards
+		menu Text boards 12 44 Boards: %boards | Iron: %iron
+	}
+	nowood:
+return
+
+sub choptree
+	menu delete status
+	menu Text status 116 119 Chopping...
+	set %backupwait #scnt + 60
+	choploop:
+	if #scnt > %backupwait
+		goto ready
+	wait 17
+	gosub hit
+	set %hitwait #scnt + 5
+	deletejournal
+	jrloop:
+	wait 1
+	scanjournal 1
+	if logs in #journal
+		goto choploop
+	if hack in #journal
+		goto choploop
+	if not_enough_wood in #journal
+		goto ready
+	if you_can't_use_an_axe_on_that in #journal
+		goto ready
+	if cannot_be_seen in #journal
+		goto ready
+	if that_is_too_far in #journal
+		goto ready
+	gosub checkConLost
+	gosub toboards
+	if is_attacking_you in #journal
+	{
+		gosub antipk
+		return
+	}
+	if #hits < #maxhits - 1
+	{
+		gosub antipk
+		return
+	}
+	if #scnt > %hitwait
+		goto choploop
+	goto jrloop
+	ready:
+return
+
+sub hit
+	chop:
+	finditem %axetype C_ , #charid
+	if #findkind = -1
+	{
+		finditem %axetype C_ , #backpackid
+		if #findkind = -1
+		{
+			gosub toboards
+			menu delete status
+			menu Text status 116 119 Recalling to bank
+			gosub recall 1 %recallstyle
+			gosub bankup
+			set %hod 0
+			gosub chooseforest
+			return
+
+		}
+		set #lhandid #findid
+		event macro 24 1
+		wait 15
+	}
+	set #lobjectid #findid
+	event macro 17
+	target 1s
+	set #ltargetkind 3
+	set #ltargettile %tiletype
+	set #ltargetx %x
+	set #ltargety %y
+	set #ltargetz %tilez
+	event macro 22
+return
+
+sub closest
+	menu delete status
+	menu Text status 116 119 Finding tree...
+	set %x #charposx
+	set %y #charposy
+	set %r 0
+	set %fspiral -1
+	treefinder:
+	if %fspiral = -1
+	{
+		set %fspiral 1
+	}
+	else
+	{
+		set %fspiral -1
+	}
+	set %r %r + 1
+	for %yx 1 %r
+	{
+		set %x %x + %fspiral
+		gosub checktile
+		if %findkind = 1
+			return
+	}
+	for %yy 1 %r
+	{
+		set %y %y + %fspiral
+		gosub checktile
+		if %findkind = 1
+			return
+	}
+	goto treefinder
+
+sub checktile
+	tile cnt %x %y
+	set %ennestaan 0
+	set %findkind -1
+	for %cnt 1 #tilecnt
+	{
+		tile get %x %y %cnt
+		if tree in #tilename
+		{
+			if %hod > 0
+			{
+				set %doh 0
+				for %doh 1 %hod
+				{
+					if %x = %hodx . %doh && %y = %hody . %doh
+					{
+						set %ennestaan 1
+					}
+				}
+			}
+			if %ennestaan = 0
+			{
+				set %hod %hod + 1
+				set %hodx . %hod %x
+				set %hody . %hod %y
+				set %findkind 1
+				set %tilez #tilez
+				set %tiletype #tiletype
+			}
+		}
+	}
+return
+
+sub waitforgump
+	set %tempwait #scnt
+	loop:
+	if #contname = %1 && ( #contsize = %2 || %2 = varies )
+		return
+	if #scnt > %tempwait + 3
+		return
+	goto loop
+
+sub chooseforest
+	set %spot %spot + 1
+	if %spot > %ljspots
+		set %spot 1
+	set %runenum %spot + 1
+	menu delete status
+	menu Text status 116 119 Recalling to forest # %spot
+	gosub recall %runenum %recallstyle
+return
+
+sub antipk
+	menu delete status
+	menu Text status 116 119 ESCAPING!!!
+	if %solvepk = 1
+		gosub curse
+	gosub toboards
+	gosub recall 1 %recallstyle
+	wait 2s
+	gosub HealMe
+	wait 20
+	gosub chooseforest
+	set %hod 0
+return
+
+sub curse
+	set %random #random * %curses + 1000
+	set %random %random / 1000
+	str lower %curse . %random
+	event macro 1 0 #strres
+return
+
+sub checkpk
+	set %journalkohta 0
+	chkpkloop:
+	set %journalkohta %journalkohta + 1
+	wait 1
+	scanjournal %journalkohta
+	if is_attacking_you in #journal
+	{
+		gosub antipk
+		return
+	}
+	if #hits < #maxhits - 1
+	{
+		gosub antipk
+		return
+	}
+	if %journalkohta < 5
+		goto chkpkloop
+	deletejournal
+return
+
+sub dragfinditem
+	event drag #findid
+	if #findstack > 1
+	{
+		set %oottele #scnt2
+		oota2:
+		click #cursorx #cursory
+		if #contname <> stack_gump
+		{
+			if #scnt2 > %oottele + 3
+				goto oota2
+		}
+		if %0 = 0
+			msg $
+		else
+			msg %1 , $
+		wait 1
+	}
+return
+
+sub openbank
+		bankstart:
+		set %nextcposx #nextcposx
+		set %nextcposy #nextcposy
+		set #nextcposx #cliXres - 180
+		set #nextcposy #cliYres - 240
+		set %attempts 0
+		rebank:
+		set %attempts %attempts + 1
+		if %attempts > 5
+		{
+			menu delete status
+			menu Text status 116 119 Recalling to bank
+			gosub recall 1 %recallstyle
+			goto bankstart
+		}
+		event macro 1 0 bank
+		set %bankkiwaitti #scnt
+		ootabank:
+			if #scnt > %bankkiwaitti + 2
+				goto rebank
+			if #contid <> %bankid
+				goto ootabank
+		set #nextcposx %nextcposx
+		set #nextcposy %nextcposy
+return
+
+sub bankup
+	gosub openbank
+	menu delete status
+	menu Text status 116 119 Banking boards
+	set %contposx #contposx
+	set %contposy #contposy
+	restartbanking:
+	set %puukasa 0
+	nextstack:
+	set %puukasa %puukasa + 1
+	finditem TLK %puukasa C_ , %bankid
+	if #findkind = -1
+	{
+		finditem TLK C_ , #backpackid
+		gosub dragfinditem
+		set %clickx %contposx + 150
+		set %clicky %contposy + 170
+		click %clickx %clicky
+		wait 20
+		finditem TLK C_ , #backpackid
+		if #findkind <> -1
+			goto restartbanking
+		if %restockregs = 1
+			gosub restockregs
+		gosub maketools
+		return
+	}
+	set %lautapino #findstack
+	finditem TLK C_ , #backpackid
+	if %lautapino + #findstack > 60000 && %lautapino < 60000
+	{
+		set %dragamount 60000 - %lautapino
+		gosub dragfinditem %dragamount
+		finditem TLK %puukasa C_ , %bankid
+		set #findmod 23_18
+		click #findx #findy p
+		wait 20
+		goto restartbanking
+	}
+	if %lautapino = 60000
+		goto nextstack
+	gosub dragfinditem
+	finditem TLK %puukasa C_ , %bankid
+	set #findmod 23_18
+	click #findx #findy p
+	wait 20
+	finditem TLK C_ , #backpackid
+	if #findkind <> -1
+		goto restartbanking
+	if %restockregs = 1
+		gosub restockregs
+	gosub maketools
+
+	set %boards_in_bank 0
+	finditem TLK C_ , %bankid
+	set %cnt #findcnt
+	for %i 1 %cnt
+	{
+		finditem TLK %i C_ , %bankid
+		set %boards_in_bank %boards_in_bank + #findstack
+	}
+
+	set %iron 0
+	gosub findcol ENK 0 C_ , %bankid
+	set %iron #findstack
+	gosub findcol ENK 0 C_ , #backpackid
+	set %iron %iron + #findstack
+	menu delete boards
+	menu Text boards 12 44 Boards: %boards_in_bank | Iron: %iron
+return
+
+sub checkConLost
+	if #contsize = 203_121 && #contname = waiting_gump
+	{
+		menu delete status
+		menu Text status 116 119 Connection Lost
+		set %clickx #contposx + 100
+		set %clicky #contposy + 90
+		click %clickx %clicky
+		wait 60s
+		gosub Login %loginmode %password
+	}
+	if #clilogged = 0
+	{
+		gosub Login %loginmode %password
+	}
+return
+
+sub Login
+	set %lpc #lpc
+	linespercycle 10
+	set %noprot %3
+	restartlogin:
+	menu delete status
+	menu Text status 116 119 Logging in
+	if %1 = none
+	{
+		menu hide
+		halt
+	}
+	if %1 = bypassword
+	{
+		str lower %2
+		click 355 400
+		wait 10
+		msg #strres , $
+		set #strres N/A
+	}
+	else
+	{
+		click 620 460
+	}
+	oottele666:
+	wait 1
+	savepix 255 173 1
+	set %pixcol1 #pixcol
+	savepix 363 192 1
+	set %pixcol2 #pixcol
+	if %pixcol1 = 3750201 && %pixcol2 = 3750201 && #contsize = 408_288
+	{
+		click 317 353
+		wait 60s
+		click 620 460
+		goto oottele666
+	}
+	if #contname <> normal_gump || #contsize <> 640_480
+		goto oottele666
+	retry666:
+	wait 1
+	scanshard:
+	menu delete status
+	menu Text status 116 119 Scanning...
+	set %_shardid 0
+	click 0 0 mc
+	for %x 200 375
+	{
+		savepix %x 115 1
+		set %_shardid %_shardid + #pixcol
+	}
+	if %_shardid = %lastshard
+	{
+		click 595 455
+		for %i 60 0
+		{
+			menu delete status
+			menu Text status 116 119 Shard down, waiting ( , %i , s)...
+			wait 1s
+		}
+		goto restartlogin
+	}
+	if %_shardid <> %shardid
+	{
+		set %lastshard %_shardid
+		click 540 350
+		wait 10
+		goto scanshard
+	}
+	menu delete status
+	menu Text status 116 119 Logging in
+	click 260 120 d
+	set %scnt #scnt + 3
+	oottele69:
+	wait 1
+	if #scnt > %scnt
+		goto retry666
+	if #contname <> Login_gump  || #contsize <> 640_480
+		goto oottele69
+	set %clicky %charnum * 40 + 120
+	retry69:
+	wait 1
+	click 235 %clicky d
+	set %scnt #scnt + 3
+	oottele64:
+	wait 1
+	if #scnt > %scnt
+		goto retry69
+	if #clilogged = 0
+		goto oottele64
+	wait 60
+	gosub openwhatneeded
+	wait 20
+	;Next is for annoying motd gumps on most freeshards
+	;they allmost everytime appear on the middle of screen so
+	;that is where we click to get rid of it
+	set %x #clixres / 2 + #clileft
+	set %y #cliyres / 2 + #clitop
+	click %x %y r
+	wait 10
+	;Lets hide the top bar too :)
+	click 15 15
+	wait 10
+	linespercycle %lpc
+	if %noprot <> #true
+		gosub checkprot
+	wait 25
+return
+
+sub recall
+	set %rn %1
+	set %st %2
+	if %0 = 1
+		set %st Magery
+	if %0 = 0 || %0 > 2
+	{
+		menu hide
+		display ok Invalid use of recall function, please inform EnCode about the bug
+		halt
+	}
+	REcall:
+	if #LLIFTEDKIND = 1
+	{
+		gosub droptobackpack
+	}
+	gosub DropWood
+	if #mana < 11
+		goto REcall
+	gosub checkConLost
+	set #lobjectid %bookid
+	event macro 17
+	gosub waitforgump generic_gump 452_236
+	set %clickx #contposx + 410
+	set %clicky #contposy + 25
+	set %sivu ( ( %rn - 1 ) / 2 ) + 1
+	for %i 1 %sivu
+	{
+ 		click %clickx %clicky
+		wait 4
+	}
+	if %st = Magery
+		set %clicky #contposy + 145
+	if %st = Chivalry
+		set %clicky #contposy + 180
+	set %rune ( %rn + 1 ) % 2 + 1
+	if %rune = 1
+	{
+		set %clickx #contposx + 140
+		click %clickx %clicky
+	}
+	else
+	{
+		set %clickx #contposx + 300
+		click %clickx %clicky
+	}
+	set %seisomapaikka #charposx , _ , #charposy
+	set %oottamisjuba #scnt + 6
+	heimeloopitaantaas:
+	if %seisomapaikka = #charposx , _ , #charposy && %oottamisjuba > #scnt
+		goto heimeloopitaantaas
+	if %seisomapaikka = #charposx , _ , #charposy
+	{
+		gosub toboards
+		set %movex #charposx - 2
+		set %movey #charposy - 2
+		move %movex %movey 0 1s
+		goto REcall
+	}
+	menu delete moss
+	menu delete perl
+	menu delete drake
+	menu delete tithe
+	finditem JUF C_ , #backpackid
+	menu Text moss 12 76 Bm: #findstack
+	finditem KUF C_ , #backpackid
+	menu Text perl 12 88 Bp: #findstack
+	finditem MZF C_ , #backpackid
+	menu Text drake 12 100 Mr: #findstack
+	menu Text tithe 60 100 Tth: #tp
+return
+
+sub findcol
+	finditem %1 %3
+	for %i 1 #findcnt
+	{
+		finditem %1 %i %3
+		if #findcol = %2
+		return
+	}
+	set #findkind -1
+return
+
+sub maketools
+	menu delete status
+	menu Text status 116 119 Restocking tools...
+	gosub checkConLost
+	finditem %tooltype C_ , #backpackid
+	if #findcnt < 4
+	{
+		toolsfrombank:
+		finditem %tooltype C_ , %bankid
+		if #findkind = -1
+			goto maketools
+		gosub dragfinditem
+		gosub droptobackpack
+		finditem %tooltype C_ , #backpackid
+		if #findcnt < 8
+			goto toolsfrombank
+		goto toolsdone
+		maketools:
+		chooseskill tink
+		if #skill < 500
+		{
+			menu hide
+			display ok Out of tools$Halted.
+			halt
+		}
+		gosub maketinkertools
+		if %currenttool = N/A
+		{
+			finditem %tinkertool C_ , #backpackid
+			set %currenttool #findid
+		}
+		gosub tinker %currenttool drawknife 8
+		toolsdone:
+	}
+	finditem %axetype C_ , #backpackid
+	if #findcnt < 4
+	{
+		toolsfrombank2:
+		finditem %axetype C_ , %bankid
+		if #findkind = -1
+			goto maketools2
+		gosub dragfinditem
+		gosub droptobackpack
+		finditem %axetype C_ , #backpackid
+		if #findcnt < 8
+			goto toolsfrombank2
+		goto toolsdone2
+		maketools2:
+		chooseskill tink
+		if #skill < 500
+		{
+			display ok Ouf of tools$Halted.
+			halt
+		}
+		gosub maketinkertools
+		if %currenttool = N/A
+		{
+			finditem %tinkertool C_ , #backpackid
+			set %currenttool #findid
+		}
+		gosub tinker %currenttool hatchet 8
+		toolsdone2:
+	}
+return
+
+sub maketinkertools
+	menu delete status
+	menu Text status 116 119 Checking tinkertools...
+	finditem %tinkertool C_ , #backpackid
+	if #findkind = -1
+	{
+		finditem %tinkertool C_ , %bankid
+		if #findkind = -1
+		{
+			display ok Something is wrong, we are out of tinkertools!
+			halt
+		}
+		gosub dragfinditem
+		gosub droptobackpack
+		finditem %tinkertool C_ , #backpackid
+		set %currenttool #findid
+		finditem %tinkertool C_ , %bankid
+		if #findkind = -1
+		{
+			gosub Tinker %currenttool tinkertool 2
+			finditem %tinkertool C_ , #backpackid
+			for %i 1 #findcnt
+			{
+				gosub checkConLost
+				finditem %tinkertool %i C_ , #backpackid
+				if #findid <> %currenttool
+				{
+					gosub dragfinditem
+					gosub droptobank
+					goto tinerktoolinbank
+				}
+			}
+			tinkertoolinbank:
+		}
+	}
+return
+
+sub tinker
+	menu delete status
+	menu Text status 116 119 Tinkering...
+	if %0 < 3
+	{
+		display ok Invalid use of tinkersub. Report EnCode about the bug
+		halt
+	}
+	set %_1 %1
+	set %_2 %2
+	set %_3 %3
+	set #lobjectid %_1
+	event macro 17
+	gosub waitforgump generic_gump 530_437
+	set %x #contposx + 30
+	set %y #contposy + 110
+	click %x %y
+	wait 10
+	makeanother:
+	gosub checkConLost
+	finditem %_1
+	if #findkind = -1
+	{
+		set %_4 %_2
+		set %_5 %_3
+		gosub maketinkertools
+		finditem %tinkertool C_ , #backpackid
+		set %_1 #findid
+		set %_2 %_4
+		set %_3 %_5
+		set #lobjectid #findid
+		event macro 17
+	}
+	gosub findcol ENK 0 C_ , #backpackid
+	if #findstack < 4
+	{
+		menu delete status
+		menu Text status 116 119 Restocking iron...
+		gosub findcol ENK 0 C_ , %bankid
+		if #findkind = -1
+		{
+			display ok No ingots on toplevel of bank!$Halting script.
+			halt
+		}
+		gosub dragfinditem 50
+		gosub droptobackpack
+		menu Text status 116 119 Tinkering...
+		event macro 17
+		wait 10
+	}
+	if %_2 = tinkertool
+	{
+		set %x #contposx + 235
+		set %y #contposy + 130
+		click %x %y
+	}
+	if %_2 = hatchet
+	{
+		set %x #contposx + 235
+		set %y #contposy + 150
+		click %x %y
+	}
+	if %_2 = drawknife
+	{
+		set %x #contposx + 235
+		set %y #contposy + 170
+		click %x %y
+	}
+	wait 5
+	gosub waitforgump generic_gump 530_437
+	wait 10
+	if %_2 = tinkertool
+	{
+		finditem %tinkertool C_ , #backpackid
+		if #findcnt < %_3
+			goto makeanother
+	}
+	if %_2 = hatchet
+	{
+		finditem %axetype C_ , #backpackid
+		if #findcnt < %_3
+			goto makeanother
+	}
+	if %_2 = drawknife
+	{
+		finditem %tooltype C_ , #backpackid
+		if #findcnt < %_3
+			goto makeanother
+	}
+	set %x #contposx + 30
+	set %y #contposy + 415
+	click %x %y
+	wait 15
+return
+
+sub openwhatneeded
+	if %1 <> Paperdoll_Only
+	{
+		menu delete status
+		menu Text status 116 119 Placing needed gumps...
+		event macro 9 7
+		wait 15
+		event macro 8 7
+		gosub waitforgump container_gump 230_204
+		set %x #contposx + 113
+		set %y #contposy + 172
+		click %x %y
+		set #contposx 20 + #clileft
+		set #contposy 5 + #clitop
+		wait 10
+		event macro 8 2
+		gosub waitforgump status_gump 432_184
+		set %x #contposx + 395
+		set %y #contposy + 160
+		click %x %y
+		set #contposx 100 + #clileft
+		set #contposy 5 + #clitop
+		wait 10
+		if %showmap = 1
+		{
+			map:
+			event macro 8 8
+			gosub waitforgump radar_gump varies
+			if #contsize = 200_200
+			{
+				set #contposx #clixres - 190 + #clileft
+				set #contposy #cliyres - 190 + #clitop
+			}
+			else
+			{
+				goto map
+			}
+			wait 10
+		}
+	}
+	event macro 8 1
+	gosub waitforgump paperdoll_gump 262_324
+	set %x #contposx + 235
+	set %y #contposy + 270
+	click %x %y
+	set #contposx 15 + #clileft
+	set #contposy 70 + #clitop
+	wait 20
+return
+
+sub droptobank
+	wait 15
+	if_something_goes_wrong:
+	if #lliftedkind = 1
+	{
+		gosub openbank
+		set %x #contposx + 90
+		set %y #contposy + 220
+		click %x %y p
+		wait 10
+	}
+	if #lliftedkind = 1
+		goto if_something_goes_wrong
+return
+
+sub droptobackpack
+	wait 15
+	if_something_goes_wrong2:
+	if #lliftedkind = 1
+	{
+		event macro 9 1
+		wait 10
+		event macro 8 1
+		gosub waitforgump paperdoll_gump 262_324
+		set #findmod 140_220
+		finditem #backpackid
+		click #findx #findy p
+		set #findmod 0_0
+		wait 5
+		gosub openwhatneeded Paperdoll_Only
+		wait 10
+	}
+	if #lliftedkind = 1
+		goto if_something_goes_wrong
+return
+
+sub showWizard
+	menu Clear
+	menu Window Title EnCode MegaLumberjack
+	menu Window Color BtnFace
+	menu Window Size 335 124
+	menu Font Transparent #true
+	menu Font Align Right
+	menu Shape Logo1 16 4 9 17 5 7 1 Black 7 $000000C0
+	menu Shape Logo2 16 12 9 17 5 7 1 Black 7 $000000B0
+	menu Shape Logo3 16 20 9 17 5 7 1 Black 7 $000000A0
+	menu Shape Logo4 24 4 9 17 5 7 1 Black 7 $000000D0
+	menu Shape Logo5 32 4 9 17 5 7 1 Black 7 $000000E0
+	menu Shape Logo6 24 20 9 17 5 7 1 Black 7 $000000F0
+	menu Shape Logo7 16 28 9 17 5 7 1 Black 7 $00A0A0FF
+	menu Shape Logo8 16 36 9 17 5 7 1 Black 7 $00B0B0FF
+	menu Shape Logo9 24 36 9 17 5 7 1 Black 7 $00C0C0FF
+	menu Shape Logo10 32 36 9 17 5 7 1 Black 7 $00D0D0FF
+	menu Shape Logo11 44 20 9 13 5 7 1 Black 7 $00E0E0FF
+	menu Shape Logo12 52 20 9 13 5 7 1 Black 7 $00E0E0FF
+	menu Shape Logo13 60 20 9 13 5 7 1 Black 7 $00E0E0FF
+	menu Shape Logo14 44 28 9 13 5 7 1 Black 7 $00EFF0FF
+	menu Shape Logo15 44 36 9 13 5 7 1 Black 7 $00EFF0FF
+	menu Shape Logo16 44 44 9 13 5 7 1 Black 7 $00EFF0FF
+	menu Shape Logo17 44 52 9 13 5 7 1 Black 7 $00F0F0FF
+	menu Shape Logo18 52 52 9 13 5 7 1 Black 7 $00F0F0FF
+	menu Shape Logo19 60 52 9 13 5 7 1 Black 7 $00F0F0FF
+	menu Shape Logo22 24 49 17 21 2 7 1 Gray 7 Gray
+	menu Shape Logo20 22 54 17 21 2 7 1 Gray 7 Gray
+	menu Shape Logo21 22 60 17 21 2 7 1 Gray 7 Gray
+	menu Shape Logo26 41 51 9 9 2 7 1 $00004080 7 $00004080
+	menu Shape Logo24 37 72 9 9 2 7 1 $00004080 7 $00004080
+	menu Shape Logo25 35 79 9 9 2 7 1 $00004080 7 $00004080
+	menu Shape Logo27 35 76 9 9 2 7 1 $00004080 7 $00004080
+	menu Shape Logo28 33 84 9 9 2 7 1 $00004080 7 $00004080
+	menu Shape Logo29 30 90 9 9 2 7 1 $00004080 7 $00004080
+	menu Shape Logo30 32 87 9 9 2 7 1 $00004080 7 $00004080
+	menu Shape Logo31 28 96 9 9 2 7 1 $00004080 7 $00004080
+	menu Shape Logo32 29 94 9 9 2 7 1 $00004080 7 $00004080
+	menu Shape Logo23 28 53 21 25 2 7 1 Gray 7 Gray
+	menu Font Name Tahoma
+	menu Font Size 16
+	menu Font Style b
+	menu Font Color Red
+	menu Font Align Left
+	menu Font BGColor Red
+	menu Text lblLogo1 44 76 Mega
+	menu Text lblLogo2 8 96 Lumberjack
+	menu Shape Separator 136 4 3 117 3 7 1 Black 7 Silver
+	menu Font Name MS Sans Serif
+	menu Font Style
+	menu Font Color WindowText
+	menu Font BGColor BtnFace
+	menu Font Size 8
+	menu Button button2 212 96 65 21 Cancel
+	menu Button button3 276 96 57 21 Next ->
+	menu Show 421 270
+	menu Font Size 10
+return
+
+sub Settings
+	gosub showwizard
+	set #menubutton N/A
+	StartScreen:
+	gosub SETUPClear
+	menu Text Caption 144 4 Welcome To EC LumberJack
+	menu Font Size 8
+	menu Text Line1 148 24 This setup will go trough the setup
+	menu Text Line2 148 36 step by step.
+	menu Text Line3 148 48 At start you need a runebook with
+	menu Text Line4 148 60 first rune marked at bank and others
+	menu Text Line5 148 72 to the forest spots to use.
+	gosub SETUPwaitforuserresponse
+	BookDetermining:
+	gosub SETUPClear
+	menu Text Caption 144 4 Determining Runebook (1/2)
+	menu Font Size 8
+	menu Text Line1 148 24 Now we will determine settings for
+	menu Text Line2 148 36 your runebook. Set it so that bank
+	menu Text Line3 148 48 rune is the first one in the book and
+	menu Text Line4 148 60 all lj spots are right after it. When
+	menu Text Line5 148 72 ready dclick book and press Next.
+	menu Button button1 148 96 65 21 <- Back
+	gosub SETUPwaitforuserresponse
+	if #result = back
+		goto StartScreen
+	gosub SETUPClear
+	if #lobjecttype <> ZBN
+	{
+		display Ok Last Item was not a runebook!
+		goto BookDetermining
+	}
+	set %bookid #lobjectid
+	BookSettings:
+	gosub SETUPClear
+	menu Text Caption 144 4 Determining Runebook (2/2)
+	menu Font Size 8
+	menu Text Line1 148 24 Your book id is set to: %bookid
+	menu Text Line2 148 36 Now we need to know how many
+	menu Text Line3 148 48 lumberjacking spots (runes to forests)
+	menu Text Line4 148 60 it contains. Enter here:
+	menu Edit Line5 204 72 50 3
+	menu Button button1 148 96 65 21 <- Back
+	gosub SETUPwaitforuserresponse
+	if #result = back
+		goto BookDetermining
+	menu getnum Line5
+	set %ljspots #menures
+	AutoLogin:
+	gosub SETUPClear
+	menu Text Caption 144 4 Autologin Settings
+	menu Font Size 8
+	menu Text Line1 148 24 Now we shall determine settings for
+	menu Text Line2 148 36 autologin. I do not recommend login
+	menu Text Line3 148 48 by pass, but with razor for safety.
+	menu Text Line4 148 60 If you wish to use autologin by pass,
+	menu Text Line5 148 72 edit configfile.
+	menu check RLogin 225 74 200 12 0 Use RazorLogin
+	menu Button button1 148 96 65 21 <- Back
+	gosub SETUPwaitforuserresponse
+	if #result = back
+		goto BookSettings
+	menu get RLogin
+	menu Delete RLogin
+	set %loginmode Razor
+	if #menures = 0
+	{
+		set %shardid 0
+		set %charnum 1
+		set %loginmode none
+		goto RecallType
+	}
+	Autologin2:
+	gosub SETUPClear
+	menu Text Caption 144 4 Autologin Details (1/2)
+	menu Font Size 8
+	menu Text Line1 148 24 Now we need to get your shard id.
+	menu Text Line2 148 36 Go to the shardlist on login and set
+	menu Text Line3 148 48 it so your shard is on the top.
+	menu Text Line4 148 60 (use the scroller on right of the list)
+	menu Text Line5 148 72 When ready click next
+	menu Button button1 148 96 65 21 <- Back
+	gosub SETUPwaitforuserresponse
+	if #result = back
+		goto AutoLogin
+	set %shardid 0
+	click 0 0 mc
+	for %x 200 375
+	{
+		savepix %x 115 1
+		set %shardid %shardid + #pixcol
+	}
+	click 260 120 d
+	AutoLogin3:
+	gosub SETUPClear
+	menu Text Caption 144 4 Autologin Details (2/2)
+	menu Font Size 8
+	menu Text Line1 148 24 What is the number of your char:
+	menu Text Line2 148 36 (position on the charlist)
+	menu Text Line3 148 60 Charnum:
+	menu Edit charnum 210 60 30 1
+	menu Button button1 148 96 65 21 <- Back
+	gosub SETUPwaitforuserresponse
+	if #result = back
+		goto AutoLogin
+	menu getnum charnum
+	set %charnum #menures
+	menu delete charnum
+	set %clicky %charnum * 40 + 120
+	wait 10
+	click 235 %clicky d
+
+	RecallType:
+	gosub SETUPClear
+	menu Text Caption 144 4 Recall type
+	menu Font Size 8
+	menu Text Line1 148 24 Okay, allmost done. Now we should
+	menu Text Line2 148 36 find out the way you wish to recall.
+	menu Combo Create Line4 148 60 150
+	menu Combo Add Line4 Magery
+	menu Combo Add Line4 Chivalry
+	menu Combo Select Line4 1
+	menu Button button1 148 96 65 21 <- Back
+	gosub SETUPwaitforuserresponse
+	if #result = back
+		goto AutoLogin
+	menu get Line4
+	if #menures = 1
+		set %recallstyle Magery
+	else
+		set %recallstyle Chivalry
+	RadarMap:
+	gosub SETUPClear
+	menu Text Caption 144 4 Radar map
+	menu Font Size 8
+	menu Text Line1 148 24 Now this may sound stupid but
+	menu Text Line2 148 36 do you wish me to show radar map
+	menu Text Line3 148 48 on screen. Many people wish to see
+	menu Text Line4 148 60 it including me, some doesn't.
+	menu check Line5 148 72 200 20 Show radar map
+	menu Button button1 148 96 65 21 <- Back
+	gosub SETUPwaitforuserresponse
+	if #result = back
+		goto RecallType
+	menu get Line5
+	if #menures = -1
+		set %showmap 1
+	else
+		set %showmap 0
+	BankID:
+	gosub SETUPClear
+	menu Text Caption 144 4 Bank ID
+	menu Font Size 8
+	menu Text Line1 148 24 This is the 2nd final step. Move to
+	menu Text Line2 148 36 bank and press next and i shall
+	menu Text Line3 148 48 determine your bank id.
+	menu Text Line4 148 60 After that we shall save settings and
+	menu Text Line5 148 72 that will take a while.
+	menu Button button1 148 96 65 21 <- Back
+	gosub SETUPwaitforuserresponse
+	if #result = back
+		goto RadarMap
+	event macro 1 0 bank
+	gosub waitforgump container_gump 180_240
+	if #contid = N/A
+		goto BankID
+	set %bankid #contid
+	SaveAll:
+	menu hide
+	set *ECLJshardid %shardid
+	set *ECLJcharnum %charnum
+	set *ECLJloginmode %loginmode
+	set *ECLJrecallstyle %recallstyle
+	set *ECLJshowmap %showmap
+	set *ECLJbookid %bookid
+	set *ECLJbankid %bankid
+	set *ECLJspots %ljspots
+	set *ECLJok 2
+	display ok Please restart EC MegaLumberJack
+	halt
+return
+
+sub SETUPwaitforuserresponse
+	SETUPwaitloop:
+	if #menubutton = button1
+	{
+		set #menubutton N/A
+		return back
+	}
+	if #menubutton = button2
+	{
+		set #menubutton N/A
+		menu hide
+		halt
+	}
+	if #menubutton = button3
+	{
+		set #menubutton N/A
+		return next
+	}
+	if #menubutton = closed
+		halt
+	goto SETUPwaitloop
+
+sub SETUPClear
+	menu Delete Caption
+	menu Delete Line1
+	menu Delete Line2
+	menu Delete Line3
+	menu Delete Line4
+	menu Delete Line5
+	menu Delete button1
+	menu Font Size 10
+return
+
+sub CheckProt
+	if %protspell = 0
+		return
+	menu delete status
+	menu Text status 116 119 Applying Protection...
+	newprot:
+	set %ar #ar
+	event macro 15 %protspell
+	set %wait #scnt + 2
+	waitforprotection:
+	if #scnt > %wait
+		goto failprot
+	if %ar = #ar
+		goto waitforprotection
+	failprot:
+	wait 25
+	gosub countregs
+	if #ar < %ar
+		return
+	goto newprot
+return
+
+sub HealMe
+	healstart:
+	if C in #charstatus
+	{
+		menu delete status
+		menu Text status 116 119 Poisoned... Cure...
+		event macro 15 %curespell
+		gosub target 2
+		wait 10
+		goto healstart
+	}
+	if #hits < #maxhits
+	{
+		menu delete status
+		menu Text status 116 119 Healing...
+		event macro 15 %healspell
+		gosub target 2
+		wait 10
+		goto healstart
+	}
+return
+
+sub target
+	set %wait #scnt + 1
+	wait_for_target:
+		wait 1
+		scanjournal 1
+		if fizzles in #journal || already_performing in #journal || more_reagants in #journal || not_yet_recovered in #journal || your_concentration in #journal || insufficent_mana in #journal
+			return
+		scanjournal 2
+		if fizzles in #journal || already_performing in #journal || more_reagants in #journal || not_yet_recovered in #journal || your_concentration in #journal || insufficent_mana in #journal
+			return
+		if #scnt > %wait
+			return
+		if #targcurs = 0
+			goto wait_for_target
+	if %1 = 1
+	{
+		chkdistance:
+			wait 1
+			finditem #ltargetid
+			if #findkind = -1 && #targcurs = 1
+				goto chkdistance
+			if #finddist > 12 && #targcurs = 1
+				goto chkdistance
+		event macro 22
+	}
+	if %1 = 2
+	{
+		event macro 23
+	}
+return
+
+sub restockregs
+	menu delete status
+	menu Text status 116 119 Restocking reagents...
+	finditem MZF C_ , #backpackid
+	if #findstack < 6
+	{
+		set %stack #findstack
+		finditem MZF C_ , %bankid
+		if #findkind = -1
+		{
+			display Ok Out of mandrakes
+			halt
+		}
+		if #findstack < 15 - %stack
+		{
+			gosub dragfinditem
+			gosub droptobackpack
+			wait 20
+			goto nextreg1
+		}
+		set %drag 15 - %stack
+		gosub dragfinditem %drag
+		gosub droptobackpack
+		wait 20
+	}
+	nextreg1:
+	finditem KUF C_ , #backpackid
+	if #findstack < 6
+	{
+		set %stack #findstack
+		finditem KUF C_ , %bankid
+		if #findkind = -1
+		{
+			display Ok Out of black pearls
+			halt
+		}
+		if #findstack < 15 - %stack
+		{
+			gosub dragfinditem
+			gosub droptobackpack
+			wait 20
+			goto nextreg2
+		}
+		set %drag 15 - %stack
+		gosub dragfinditem %drag
+		gosub droptobackpack
+		wait 20
+	}
+	nextreg2:
+	finditem JUF C_ , #backpackid
+	if #findstack < 6
+	{
+		set %stack #findstack
+		finditem JUF C_ , %bankid
+		if #findkind = -1
+		{
+			display Ok Out of blood moss
+			halt
+		}
+		if #findstack < 15 - %stack
+		{
+			gosub dragfinditem
+			gosub droptobackpack
+			wait 20
+			goto nextreg3
+		}
+		set %drag 15 - %stack
+		gosub dragfinditem %drag
+		gosub droptobackpack
+		wait 20
+	}
+	nextreg3:
+	finditem SZF C_ , #backpackid
+	if #findstack < 6
+	{
+		set %stack #findstack
+		finditem SZF C_ , %bankid
+		if #findkind = -1
+		{
+			display Ok Out of sulphurous ash
+			halt
+		}
+		if #findstack < 15 - %stack
+		{
+			gosub dragfinditem
+			gosub droptobackpack
+			wait 20
+			goto nextreg4
+		}
+		set %drag 15 - %stack
+		gosub dragfinditem %drag
+		gosub droptobackpack
+		wait 20
+	}
+	nextreg4:
+	finditem JZF C_ , #backpackid
+	if #findstack < 6
+	{
+		set %stack #findstack
+		finditem JZF C_ , %bankid
+		if #findkind = -1
+		{
+			display Ok Out of ginseng
+			halt
+		}
+		if #findstack < 15 - %stack
+		{
+			gosub dragfinditem
+			gosub droptobackpack
+			wait 20
+			goto nextreg5
+		}
+		set %drag 15 - %stack
+		gosub dragfinditem %drag
+		gosub droptobackpack
+		wait 20
+	}
+	nextreg5:
+	finditem RZF C_ , #backpackid
+	if #findstack < 6
+	{
+		set %stack #findstack
+		finditem RZF C_ , %bankid
+		if #findkind = -1
+		{
+			display Ok Out of spiders' silk
+			halt
+		}
+		if #findstack < 15 - %stack
+		{
+			gosub dragfinditem
+			gosub droptobackpack
+			wait 20
+			goto nextreg6
+		}
+		set %drag 15 - %stack
+		gosub dragfinditem %drag
+		gosub droptobackpack
+		wait 20
+	}
+	nextreg6:
+	finditem KZF C_ , #backpackid
+	if #findstack < 6
+	{
+		set %stack #findstack
+		finditem KZF C_ , %bankid
+		if #findkind = -1
+		{
+			display Ok Out of garlic
+			halt
+		}
+		if #findstack < 15 - %stack
+		{
+			gosub dragfinditem
+			gosub droptobackpack
+			wait 20
+			goto restockdone
+		}
+		set %drag 15 - %stack
+		gosub dragfinditem %drag
+		gosub droptobackpack
+		wait 20
+	}
+	restockdone:
+	gosub countregs
+return
+
+sub DropWood
+	if #weight > #maxweight
+	{
+		set %todrop ( #weight - #maxweight ) * 10
+		finditem TLK C_ , #backpackid
+		gosub dragfinditem %todrop
+		set %x #clixres / 2
+		set %y #cliyres / 2 + 5
+		click %x %y
+	}
+return
+
+sub showMenu
+	menu Clear
+	menu Window Title ECLJ
+	menu Window Color Lime
+	menu Window Size 263 147
+	menu Font Transparent #true
+	menu Font Align Right
+	menu Shape board1 26 4 2 2 3 7 1 Maroon 7 White
+	menu Shape board2 25 5 3 2 3 7 1 Olive 7 White
+	menu Shape board3 24 6 5 2 3 7 1 Maroon 7 White
+	menu Shape board4 23 7 7 2 3 7 1 Olive 7 White
+	menu Shape board5 22 8 7 2 3 7 1 Maroon 7 White
+	menu Shape board6 21 9 7 2 3 7 1 Olive 7 White
+	menu Shape board7 20 10 7 2 3 7 1 Maroon 7 White
+	menu Shape board8 19 11 7 2 3 7 1 Olive 7 White
+	menu Shape board9 18 12 7 2 3 7 1 Maroon 7 White
+	menu Shape board10 17 13 7 2 3 7 1 Olive 7 White
+	menu Shape board11 16 14 7 2 3 7 1 Maroon 7 White
+	menu Shape board12 15 15 7 2 3 7 1 Olive 7 White
+	menu Shape board13 14 16 7 2 3 7 1 Maroon 7 White
+	menu Shape board14 13 17 7 2 3 7 1 Olive 7 White
+	menu Shape board15 12 18 7 2 3 7 1 Maroon 7 White
+	menu Shape board16 11 19 7 2 3 7 1 Olive 7 White
+	menu Shape board17 10 20 7 2 3 7 1 Maroon 7 White
+	menu Shape board18 10 21 6 2 3 7 1 Olive 7 White
+	menu Shape board19 10 22 5 2 3 7 1 Maroon 7 White
+	menu Shape board20 11 23 3 2 3 7 1 Olive 7 White
+	menu Shape board21 12 24 2 1 3 7 1 Maroon 7 White
+	menu Shape sboard1 30 10 2 2 3 7 1 Maroon 7 White
+	menu Shape sboard2 29 11 3 2 3 7 1 Olive 7 White
+	menu Shape sboard3 28 12 5 2 3 7 1 Maroon 7 White
+	menu Shape sboard4 27 13 7 2 3 7 1 Olive 7 White
+	menu Shape sboard5 26 14 7 2 3 7 1 Maroon 7 White
+	menu Shape sboard6 25 15 7 2 3 7 1 Olive 7 White
+	menu Shape sboard7 24 16 7 2 3 7 1 Maroon 7 White
+	menu Shape sboard8 23 17 7 2 3 7 1 Olive 7 White
+	menu Shape sboard9 22 18 7 2 3 7 1 Maroon 7 White
+	menu Shape sboard10 21 19 7 2 3 7 1 Olive 7 White
+	menu Shape sboard11 20 20 7 2 3 7 1 Maroon 7 White
+	menu Shape sboard12 19 21 7 2 3 7 1 Olive 7 White
+	menu Shape sboard13 18 22 7 2 3 7 1 Maroon 7 White
+	menu Shape sboard14 17 23 7 2 3 7 1 Olive 7 White
+	menu Shape sboard15 16 24 7 2 3 7 1 Maroon 7 White
+	menu Shape sboard16 15 25 7 2 3 7 1 Olive 7 White
+	menu Shape sboard17 14 26 7 2 3 7 1 Maroon 7 White
+	menu Shape sboard18 14 27 6 2 3 7 1 Olive 7 White
+	menu Shape sboard19 14 28 5 2 3 7 1 Maroon 7 White
+	menu Shape sboard20 15 29 3 2 3 7 1 Olive 7 White
+	menu Shape sboard21 16 30 2 1 3 7 1 Maroon 7 White
+	menu Shape hatchet1 13 6 3 2 3 7 1 Olive 7 White
+	menu Shape hatchet2 14 7 3 2 3 7 1 Olive 7 White
+	menu Shape hatchet3 15 8 3 2 3 7 1 Olive 7 White
+	menu Shape hatchet4 16 9 3 2 3 7 1 Olive 7 White
+	menu Shape hatchet5 17 10 3 2 3 7 1 Olive 7 White
+	menu Shape hatchet6 18 11 3 2 3 7 1 Olive 7 White
+	menu Shape hatchet7 19 12 3 2 3 7 1 Olive 7 White
+	menu Shape hatchet8 20 13 3 2 3 7 1 Olive 7 White
+	menu Shape hatchet9 21 14 3 2 3 7 1 Olive 7 White
+	menu Shape hatchet10 22 15 3 2 3 7 1 Olive 7 White
+	menu Shape hatchet11 23 16 3 2 3 7 1 Olive 7 White
+	menu Shape hatchet12 24 17 3 2 3 7 1 Olive 7 White
+	menu Shape hatchet13 25 18 3 2 3 7 1 Olive 7 White
+	menu Shape hatchet14 26 19 3 2 3 7 1 Olive 7 White
+	menu Shape hatchet15 27 20 3 2 3 7 1 Olive 7 White
+	menu Shape hatchet16 28 21 3 2 3 7 1 Olive 7 White
+	menu Shape hatchet17 29 22 3 2 3 7 1 Olive 7 White
+	menu Shape hatchet18 10 8 3 2 3 7 1 Gray 7 White
+	menu Shape hatchet19 9 9 5 2 3 7 1 Silver 7 White
+	menu Shape hatchet20 9 9 5 2 3 7 1 Silver 7 White
+	menu Shape hatchet21 9 10 6 2 3 7 1 Silver 7 White
+	menu Shape hatchet22 9 10 3 2 3 7 1 Gray 7 White
+	menu Shape hatchet23 10 11 6 2 3 7 1 Silver 7 White
+	menu Shape hatchet24 12 11 3 2 3 7 1 Gray 7 White
+	menu Shape hatchet25 11 12 5 2 3 7 1 Silver 7 White
+	menu Shape hatchet26 13 12 2 2 3 7 1 Gray 7 White
+	menu Shape hatchet27 12 13 4 2 3 7 1 Silver 7 White
+	menu Shape hatchet28 13 14 3 2 3 7 1 Silver 7 White
+	menu Font Name MS Sans Serif
+	menu Font Size 14
+	menu Font Style
+	menu Font Color Red
+	menu Font Transparent #false
+	menu Font Align Left
+	menu Font BGColor Lime
+	menu Text ECLJ 40 4 EnCode MegaLumberjack
+	menu Shape Box1 4 36 257 109 3 7 1 Black 7 BtnFace
+	menu Shape Box2 8 60 105 81 3 7 1 Gray 7 InfoBk
+	menu Font Size 8
+	menu Font Color WindowText
+	menu Font Transparent #true
+	menu Text EUOLabel1 12 61 Reagents:
+	menu Shape EUOShape1 8 40 249 21 3 7 1 Gray 7 InfoBk
+	menu Text moss 12 76 Bm: 0
+	menu Text perl 12 88 Bp: 0
+	menu Text drake 12 100 Mr: 0
+	menu Text garlic 12 112 Gr: 0
+	menu Text seng 12 124 Gs: 0
+	menu Text silk 60 76 Ss: 0
+	menu Text ash 60 88 Sa: 0
+	menu Text tithe 60 100 Tth: 0
+	menu Text lrc 60 112 Lrc: 0
+	menu Text arcane 60 124 Arc: 0
+	menu Text boards 12 44 Boards: 0 | Iron: 0
+	menu Shape box3 112 60 145 45 3 7 1 Gray 7 InfoBk
+	menu Text statstext 116 61 Script Stats:
+	menu Text restock 116 75 Restock Reagants: No
+	menu Text tools 116 87 Make Tools: No
+	menu Shape box4 112 104 145 37 3 7 1 Gray 7 InfoBk
+	menu Text statustext 116 105 Status:
+	menu Text status 116 119 Not Available
+	set %y #cliYres + 25
+	menu Show 1 %y
+return
+
+sub countregs
+	menu delete moss
+	menu delete perl
+	menu delete drake
+	menu delete garlic
+	menu delete seng
+	menu delete silk
+	menu delete ash
+	finditem JUF C_ , #backpackid
+	menu Text moss 12 76 Bm: #findstack
+	finditem KUF C_ , #backpackid
+	menu Text perl 12 88 Bp: #findstack
+	finditem MZF C_ , #backpackid
+	menu Text drake 12 100 Mr: #findstack
+	finditem KZF C_ , #backpackid
+	menu Text garlic 12 112 Gr: #findstack
+	finditem JZF C_ , #backpackid
+	menu Text seng 12 124 Gs: #findstack
+	finditem RZF C_ , #backpackid
+	menu Text silk 60 76 Ss: #findstack
+	finditem SZF C_ , #backpackid
+	menu Text ash 60 88 Sa: #findstack
+return

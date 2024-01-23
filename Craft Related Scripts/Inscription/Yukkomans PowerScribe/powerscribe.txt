@@ -1,0 +1,2627 @@
+;================================== 
+; Script Name: Yukkomans PowerScribe
+; Author: Yukkoman
+; Version: 1.2
+; Client Tested with: 4.0.2a
+; EUO version tested with: 1_41_120
+; Shard OSI / FS: OSI 
+; Revision Date: 05-06-2004
+; Public Release: 04-29-2004
+; Global Variables Used: 890+1 used CEO*filesystem
+; Purpose: A massproducin featured full automated Scribe
+;==================================
+
+; I really need feedback on bugs within this script, so plz post problems  you encounter if you use this script
+
+; Main Changes in 1.2
+;==================================
+; Changed setup of containers, to alow it to setup for users with smaller screensize I changed from nextCPos into just contpos, making setup litle slower but safer missplacing wise
+; Changed tinkering to always make/have a backup tinkertool instead of checking amount of uses left before making the backup tinkertool
+; Added a mana check to NOT start to try med if mana below 10 mana, I need this verified if it helps in a higher sucess rate starting meditation or not
+; Added a closemenu before start moving stuff, to avoid trying to drop stuff into accidently moved containers that could be below craft window
+; Added a button in settings for user to change wether to use meditation skill or not, default is YES
+
+; Main Changes in 1.1
+;==================================
+; Fixed a bug in the settingsmenu, where you couldnt open your containers with the "open" buttons
+; Fixed my dragItem sub a litle and added so one can drag items to backpack(paperdoll) where-ever it is placed, so even if you move paperdoll it will still drag/click on backpack
+; Also upgraded to waitForSysVars throo whole script
+; One loop issue in picking circle in the main make loop probably fixed
+
+; Main Release 1.0
+; ==================================
+; Tested on windowed mode at 1280*1024 on WindowsXP with a game play window of 800*600
+; This is my first EUO script project, QuinToks Inscription trainer been used as main body and  I reworked it to make my  final goal of a massproducing featured fully automated Scribe
+; Using CEO*filesystem 890+1 only for settings sofar, looking into implement more options with use of this system
+; At the moment able to scribe ANY amount of ANY mage scroll with scroll speed statistics from bank or house loaded SECURE container
+; Fully automated RESTOCKING of pens, blank scrolls, regents, also NEW option to stop during process and fully UNSTOCK when finnished
+; Will Tinker pens and new toolkits if option abled, needs 1 tinkertoolkit to start with and Ingots in backpack or in Resource Bag, will make 1 pen/kit at a time
+; Able to automaticly fill partial full or empty Spellbooks, with leftovers goin to a ProductBag, still litle buggy on my internal test but works to a limit
+
+; TO ADD (Future version)
+; ==================================
+; Add meditate option on/off
+; Add hide option on/off
+; Add more failure checks and security timeouts during most operations like in scribing, tinkering, movin stuffs etc
+; Statitics of Resource/scrolls/pens/ingots/tinkertoolkits used up
+; Make Runebooks, with a automated line up into a Finnished product bag
+; Make BOD books, with a automated line up into a Finnished product bag
+
+; Dont edit below unless you know what your doin or you can damage the function of the script
+; ==================================
+
+initevents
+
+set %wait 15
+set %wait1 20
+set %wait2 30
+set %shortwait 5
+
+; Script Main Loop etc
+; ==================================
+mainreset:
+display okcancel Hi, welcome to Yukkoman's Powerscribe, make sure you are within reach of your SECURE container or at BANK and have 2 bags setup within it.$
++1st bag for your resources, 2nd for produced scrolls/books, I will now setup bags for you. Note! TO small UO screensize can affect setup!$
+   if #dispRes = cancel
+      halt
+
+gosub setup
+gosub showPSMenu
+
+menuLoopReset:
+   set #menubutton N/A
+   set %spelltomake N/A
+   gosub UpdatePSMenu Ready 120
+menuloop:
+   if #menubutton = STARTSTOP
+      {
+         gosub mainscribesub
+         goto menuloopreset
+      }
+   if #menubutton = RESET
+      {
+         menu hide
+         gosub setupMenu
+         menu hide
+         goto mainreset
+      }
+   if #menubutton = EXIT
+      {
+         menu hide
+         halt
+      }
+   if #menubutton = SPELLBOOK
+      {
+          gosub SpellbookMaker
+          goto menuloopreset
+      }
+   if #menubutton = RUNEBOOK
+      {
+          display ok Option is delayed still, still tweaking main script!$
+          goto menuloopreset
+      }
+   if #menubutton = BODBOOK
+      {
+          display ok Option is delayed still, still tweaking main script!!$
+          goto menuloopreset
+      }
+   goto menuloop
+
+; ==================================
+; Main Scribe Sub
+; ==================================
+sub mainscribesub
+   set %time_start #scnt
+   menu get SPELLTOMAKE
+   set %spelltomake #menures
+   menu getnum DRAG
+   set %dragAmount #MENURES
+   menu getnum MAKE
+   set %makeAmount #MENURES
+   set %made 0
+   gosub spellCheck
+   set #menubutton N/A
+   gosub UpdatePSMenu Restocking 90
+   gosub regCheck
+   gosub scrollCheck
+   gosub currentCheck
+   gosub penCheck
+   gosub choseSpell
+   wait %wait
+   finditem %current C_ , %backpackID
+      if #findkind = -1
+         {
+         set %made 0
+         set %madeC 0
+         goto make
+         }
+      set %made 1
+      set %madeC 1
+      if %made = %makeAmount
+         {
+         gosub clearBackpack
+             return
+         }
+   gosub waitForSysVars contname = generic_gump contsize = 530_437 2
+   if %return
+      goto make
+
+penScan:
+   finditem %scribePen C_ , %backpackid
+      if #findkind = -1
+      {
+      gosub penCheck
+         goto penScan
+      }
+   set #lobjectid #findid
+   event macro 17
+
+stuffScan:
+   gosub UpdatePSMenu Scribing 110
+   if YOU_MUST_WAIT in #sysmsg
+   wait 30
+   finditem %blankScrolls C_ , %backpackid
+      if #findkind = -1
+         gosub scrollCheck
+   gosub regCheck2
+   if #menubutton = STARTSTOP
+   {
+      gosub clearbackpack
+         return
+   }
+   scanjournal 1
+   if you_have_worn in #journal
+      {
+         deleteJournal
+         goto penScan
+      }
+   set %y %circle * 20 + 120
+   click 80 %y
+   gosub waitForSysVars contname = generic_gump contsize = 530_437 2
+   finditem %current C_ , %backpackid
+   if #findkind = -1
+       goto make
+   if #findstack = %madeC + 1
+      {
+         set %madeC #findstack
+         set %made %made + 1
+         if %made = %makeAmount
+            {
+            gosub clearBackpack
+                return
+            }
+         goto make
+      }
+
+make:
+   if #mana < %mana
+      {
+      gosub MeditateFull
+      if %stop
+         return
+      }
+   click 330 460
+   gosub waitForSysVars contname <> generic_gump contsize <> 530_437
+      goto penScan
+
+; ================================== 
+sub showPSMenu
+	menu Clear
+	menu Window Title Yukkoman's PowerScribe v1.1
+	menu Window Color BtnHighlight
+	menu Window Size 312 221
+	menu Font Transparent #true
+	menu Font Align Right
+	menu Font Name MS Sans Serif
+	menu Font Size 8
+	menu Font Style
+	menu Font Color WindowText
+	menu Font Align Left
+	menu Font BGColor BtnHighlight
+	menu Text TIME 8 96 Time scribing : %time min
+	menu Font BGColor BtnHighlight
+	menu Text MADE 8 80 Scrolls Made : %made
+	menu Font BGColor BtnHighlight
+	menu Text AVERAGE 8 112 Scrolls per min : %average
+	menu Font BGColor BtnHighlight
+	menu Text AVERAGEH 8 128 Scrolls per hour : %averageH
+	menu Font Size 10
+	menu Font Transparent #false
+	menu Font BGColor BtnHighlight
+	menu Text MAKEAMOUNT 168 112 Scrolls to make :
+	menu Shape EUOShape1 40 8 233 41 2 7 1 Black 7 White
+	menu Font Size 16
+	menu Font Style b
+	menu Font Transparent #true
+	menu Font Align Center
+	menu Font BGColor BtnHighlight
+	menu Text ACTION 88 16 %actionmenu1
+	menu Font Size 10
+	menu Font Style
+	menu Font Transparent #false
+	menu Font Align Left
+	menu Font BGColor BtnHighlight
+	menu Text DRAGAMOUNT 168 136 Amount to drag :
+	menu Font Size 8
+	menu Font BGColor BtnHighlight
+	menu Text EUOLabel1 200 64 Pick a scroll to make :
+	menu Font Transparent #true
+	menu Font BGColor BtnHighlight
+	menu Text EUOLabel2 8 64 Current making : %makestr
+	menu Font Transparent #false
+	menu Font BGColor BtnHighlight
+	menu Text Books 8 152 Books to Make :
+	menu Font Size 10
+	menu Font Style b
+	menu Button STARTSTOP 96 168 123 49 Start / Stop
+	menu Font Size 8
+	menu Font Style
+	menu Button EXIT 232 192 75 25 Exit
+	menu Font Color None
+	menu Button SPELLBOOK 8 168 75 17 Spellbooks
+	menu Font Color WindowText
+	menu Button RUNEBOOK 8 184 75 17 Runebooks
+	menu Button BODBOOK 8 200 75 17 BOD Books
+	menu Button RESET 232 168 75 25 Settings
+	menu Edit MAKE 272 112 33 %makeAmount
+	menu Edit DRAG 272 136 33 %dragAmount
+	menu Combo Create SPELLTOMAKE 168 80 137
+	menu Combo Add SPELLTOMAKE 1-1 Clumsy
+	menu Combo Add SPELLTOMAKE 1-2 Create Food
+	menu Combo Add SPELLTOMAKE 1-3 Feeblemind
+	menu Combo Add SPELLTOMAKE 1-4 Heal
+	menu Combo Add SPELLTOMAKE 1-5 Magic Arrow
+	menu Combo Add SPELLTOMAKE 1-6 Night Sight
+	menu Combo Add SPELLTOMAKE 1-7 Reactive Armor
+	menu Combo Add SPELLTOMAKE 1-8 Weaken
+	menu Combo Add SPELLTOMAKE 2-1 Agility
+	menu Combo Add SPELLTOMAKE 2-2 Cunning
+	menu Combo Add SPELLTOMAKE 2-3 Cure
+	menu Combo Add SPELLTOMAKE 2-4 Harm
+	menu Combo Add SPELLTOMAKE 2-5 Magic Trap
+	menu Combo Add SPELLTOMAKE 2-6 Magic Untrap
+	menu Combo Add SPELLTOMAKE 2-7 Protection
+	menu Combo Add SPELLTOMAKE 2-8 Strength
+	menu Combo Add SPELLTOMAKE 3-1 Bless
+	menu Combo Add SPELLTOMAKE 3-2 Fireball
+	menu Combo Add SPELLTOMAKE 3-3 Magic Lock
+	menu Combo Add SPELLTOMAKE 3-4 Poison
+	menu Combo Add SPELLTOMAKE 3-5 Telekinesis
+	menu Combo Add SPELLTOMAKE 3-6 Teleport
+	menu Combo Add SPELLTOMAKE 3-7 Unlock
+	menu Combo Add SPELLTOMAKE 3-8 Wall of Stone
+	menu Combo Add SPELLTOMAKE 4-1 Arch Cure
+	menu Combo Add SPELLTOMAKE 4-2 Arch Protection
+	menu Combo Add SPELLTOMAKE 4-3 Curse
+	menu Combo Add SPELLTOMAKE 4-4 Fire Field
+	menu Combo Add SPELLTOMAKE 4-5 Greater Heal
+	menu Combo Add SPELLTOMAKE 4-6 Lighting
+	menu Combo Add SPELLTOMAKE 4-7 Mana Drain
+	menu Combo Add SPELLTOMAKE 4-8 Recall
+	menu Combo Add SPELLTOMAKE 5-1 Blade Spirits
+	menu Combo Add SPELLTOMAKE 5-2 Dispel Field
+	menu Combo Add SPELLTOMAKE 5-3 Incognito
+	menu Combo Add SPELLTOMAKE 5-4 Magic Reflection
+	menu Combo Add SPELLTOMAKE 5-5 Mind Blast
+	menu Combo Add SPELLTOMAKE 5-6 Paralyze
+	menu Combo Add SPELLTOMAKE 5-7 Poison Field
+	menu Combo Add SPELLTOMAKE 5-8 Summon Creature
+	menu Combo Add SPELLTOMAKE 6-1 Dispel
+	menu Combo Add SPELLTOMAKE 6-2 Energy Bolt
+	menu Combo Add SPELLTOMAKE 6-3 Explosion
+	menu Combo Add SPELLTOMAKE 6-4 Invisibility
+	menu Combo Add SPELLTOMAKE 6-5 Mark
+	menu Combo Add SPELLTOMAKE 6-6 Mass Curse
+	menu Combo Add SPELLTOMAKE 6-7 Paralyze Field
+	menu Combo Add SPELLTOMAKE 6-8 Reveal
+	menu Combo Add SPELLTOMAKE 7-1 Chain Lighting
+	menu Combo Add SPELLTOMAKE 7-2 Energy Field
+	menu Combo Add SPELLTOMAKE 7-3 Flamestrike
+	menu Combo Add SPELLTOMAKE 7-4 Gate Travel
+	menu Combo Add SPELLTOMAKE 7-5 Mana Vampire
+	menu Combo Add SPELLTOMAKE 7-6 Mass Dispel
+	menu Combo Add SPELLTOMAKE 7-7 Meteor Swarm
+	menu Combo Add SPELLTOMAKE 7-8 Polymorph
+	menu Combo Add SPELLTOMAKE 8-1 Earthquake
+	menu Combo Add SPELLTOMAKE 8-2 Energy Vortex
+	menu Combo Add SPELLTOMAKE 8-3 Resurrection
+	menu Combo Add SPELLTOMAKE 8-4 Summon Air
+	menu Combo Add SPELLTOMAKE 8-5 Summon Deamon
+	menu Combo Add SPELLTOMAKE 8-6 Summon Earth
+	menu Combo Add SPELLTOMAKE 8-7 Summon Fire
+	menu Combo Add SPELLTOMAKE 8-8 Summon Water
+	menu Show 20 590
+return
+; ================================== 
+sub UpdatePSMenu
+   set %Time ( #scnt - %time_start ) / 60
+   set %average %made / %Time
+   set %averageH %average * 60
+   set %spellGold %average * %spellEarnings * 60
+   set %worthHour %average * %spellSell * 60
+   set %actionmenu1 %1
+   set %actionmenu1X %2
+	menu Font Size 8
+	menu Font Style
+	menu Font Color WindowText
+	menu Font Transparent #true
+	menu Font Align Left
+	menu Font BGColor BtnFace
+
+	menu DELETE EUOLabel2
+	menu Text EUOLabel2 8 56 Current making : %makestr
+	menu Font BGColor BtnFace
+
+	menu DELETE MADE
+	menu Text MADE 8 72 Scrolls Made : %made
+	menu Font BGColor BtnFace
+
+	menu DELETE TIME
+	menu Text TIME 8 88 Time scribing : %time min
+	menu Font BGColor BtnFace
+
+	menu DELETE AVERAGE
+	menu Text AVERAGE 8 112 Scrolls per min : %average
+	menu Font BGColor BtnFace
+
+	menu DELETE AVERAGEH
+	menu Text AVERAGEH 8 128 Scrolls per hour : %averageH
+
+	menu DELETE EUOSHAPE1
+	menu Shape EUOShape1 40 8 233 41 2 7 1 Black 7 White
+	menu Font Size 16
+	menu Font Style b
+	menu Font Transparent #true
+	menu Font Align Center
+	menu Font BGColor BtnFace
+
+	menu DELETE ACTION
+	menu Text ACTION %actionmenu1X 16  %actionmenu1
+return
+
+; ================================== 
+sub choseSpell
+finditem %current C_ , %backpackID
+set %madeC #findstack
+choseSpell:
+   gosub UpdatePSMenu SetupCircle 90
+   finditem %scribePen C_ , %backpackID
+   if #findkind = -1
+   {
+      gosub penCheck
+      goto choseSpell
+   }
+   set #lobjectid #findid
+   event macro 17
+   if %CKmenu = N/A
+   {
+      wait %longWait
+      set %CKmenu #contkind
+   }
+   gosub waitFor contkind = %CKmenu
+   if ! %return
+      goto choseSpell
+;   wait %Wait 
+   set %y %circle * 20 + 120
+   click 80 %y
+   gosub UpdatePSMenu SetupSpell 95
+   wait %Wait
+   set %y %selection * 20 + 100
+   click 280 %y
+   wait %Wait
+return
+
+; ==================================
+sub clearBackpack
+   click 78 463
+   set #menubutton N/A
+   wait %wait
+   gosub UpdatePSMenu ClearBackpack 70
+   display okcancel %made scrolls made, OK to CLEAR backpack of current leftovers of pen regs/scrolls!$ CANCEL to NOT CLEAR BACKPACK!
+   if #dispRes = cancel
+      return
+clearBackpack0:
+   finditem %scribePen C_ , %backpackID
+   if #findkind <> -1
+   {
+   gosub MoveAnyItem #findid %backpackID %resourceBagID
+   goto clearBackpack0
+   }
+   finditem %blankScrolls C_ , %backpackID
+   if #findkind <> -1
+   gosub MoveAnyItem #findid %backpackID %resourceBagID #findstack
+clearBackpack1:
+   finditem %current C_ , %backpackID
+   if #findkind <> -1
+   {
+   gosub MoveAnyItem #findid %backpackID %productBagID #findstack
+   goto clearBackpack1
+   }
+clearBackpack2:
+   finditem %totalRegs C_ , %backpackID
+   if #findkind <> -1
+   {
+   gosub MoveAnyItem #findid %backpackID %resourceBagID #findstack
+   goto clearBackpack2
+   }
+   set %made 0
+   set %madeC 0
+return
+
+; ================================== 
+sub closeMenu
+   if #contsize = 230_204
+   {
+      click 78 463
+      wait 10
+   }
+return
+
+; ================================== 
+; %1 Current reg type 
+; ================================== 
+sub getReg
+   set %currReg %1
+   finditem %currReg C_ , %resourceBagID
+   if #findkind = -1
+   {
+      display ok Out of required regents, or you closed your RESOURCE container!$ Restock and restart script, halting
+      menu hide
+      halt
+   }
+   if #findstack < %dragAmount
+      gosub MoveAnyItem #findid %resourceBagID %backpackID #findstack
+   else
+      gosub MoveAnyItem #findid %resourceBagID %backpackID %dragAmount
+return
+
+; ================================== 
+sub MeditateFull
+   gosub UpdatePSMenu BeforeMedCheck 60
+   if %useMeditation = YES
+      {
+      set %meditating #false
+      set %manaMax #maxmana - 10
+      }
+      else
+      {
+      set %meditating #true
+      set %manaMax #maxmana - 5
+      gosub UpdatePSMenu Meditating_OFF 70
+      }
+   set %stop #false
+MeditateFull:
+   if #menubutton = STARTSTOP
+      {
+      gosub clearbackpack
+      set %stop #true
+         return
+      }
+   if #mana > %manaMax
+   {
+   finditem %scribePen C_ , %backpackid
+   set #lobjectid #findid
+   event macro 17
+   wait %wait
+   return
+   }
+   gosub regCheck
+   gosub scrollCheck
+   if %meditating
+       goto MeditateFull
+   gosub UpdatePSMenu MedFailed 99
+   if #mana < 11
+      goto MeditateFull
+   event macro 13 46
+   wait %Wait
+   if you_enter in #sysmsg
+   {
+      set %meditating #true
+      gosub UpdatePSMenu Meditating 95
+   }
+   if %meditating
+      goto MeditateFull
+   wait 5s
+      goto MeditateFull
+
+; ================================== 
+sub MoveAnyItem
+   gosub closeMenu
+   set %item %1
+   set %dragFrom %2
+   set %dragTo %3
+   set %ammt %4
+   finditem %item C_ , %dragFrom
+   event drag #findid
+   wait %shortwait
+   if #findstack > 1
+      {
+         gosub waitforsysvars contname = stack_gump contsize = 168_74
+         if %ammt <> N/A
+            msg %ammt
+         msg $
+      }
+   gosub waitforsysvars contname = drag_gump contkind = UUCC
+   wait %shortwait
+   finditem %dragTo
+   if %backpackID = %dragTo
+      {
+         finditem %backpackID C_ , #charid
+         set #findmod 136_221
+      }
+   else
+      set #findmod 20_10
+   click #findx #findy
+   wait %shortwait
+   gosub waitfor contname <> drag_gump contkind <> UUCC
+   wait %shortwait
+return
+
+; ================================== 
+sub regCheck
+   set %doneReg #false
+   for %i 1 %regCnt
+   {
+      finditem %reg . %i C_ , %backpackID
+      if #findstack < 10 || #findkind = -1
+         gosub getReg %reg . %i
+   }
+return
+
+; ================================== 
+sub regCheck2
+   set %doneReg #false
+   for %i 1 %regCnt
+   {
+      finditem %reg . %i C_ , %backpackID
+      if #findkind = -1
+         gosub getReg %reg . %i
+   }
+return
+
+; ================================== 
+sub currentCheck
+      wait %wait1
+      finditem %current C_ , %backpackID
+      if #findkind = -1
+         return
+      gosub MoveAnyItem #findid %backpackID %productBagID #findstack
+      set %madeC 0
+return
+
+; ================================== 
+sub penCheck
+aftertinker:
+   finditem %scribePen C_ , %backpackID
+   if #findkind = -1
+   {
+      finditem %scribePen C_ , %resourceBagID
+      if #findkind = -1
+         {
+            if %useTinker = YES
+               {
+               gosub tinkerpens
+                  goto aftertinker
+               }
+            display ok Out of Pens, or you accidently closed your RESOURCE container!!$ Restock and restart script, halting!
+            menu hide
+            halt
+         }
+         gosub MoveAnyItem #findid %resourceBagID %backpackID
+   }
+return
+
+; ================================== 
+sub TinkerPens
+IngotScan:
+   wait %wait
+   finditem %ironingots C_ , %backpackid
+   if #findstack < 10
+   {
+      finditem %ironingots C_ , %resourceBagID
+      if #findkind = -1
+      {
+         display ok ran out of ingots!$ halting
+         halt
+      }
+      if #findstack < %dragAmount
+         gosub MoveAnyItem #findid %resourceBagID %backpackID #findstack
+      else
+         gosub MoveAnyItem #findid %resourceBagID %backpackID %dragAmount
+         goto IngotScan
+   }
+TinkerToolScan:
+   finditem %tinkertools C_ , %backpackID
+   if #findkind = -1
+   {
+      finditem %tinkertools C_ , %resourceBagID
+      if #findkind = -1
+      {
+      display ok You have no tinker tool kits!$halting
+      halt
+      }
+      gosub MoveAnyItem #findid %resourceBagID %backpackID
+      goto TinkerToolScan
+   }
+   set #lobjectid #findid
+   event macro 17
+   if %ironset = #false
+      {
+         gosub waitForSysVars contsize = 530_437 contname = generic_gump
+         click 80 425
+         wait %shortwait
+         gosub waitForSysVars contsize = 530_437 contname = generic_gump
+         wait %shortwait
+         click 280 120
+         wait %shortwait
+         gosub waitForSysVars contsize = 530_437 contname = generic_gump
+         set %ironset #true
+      }
+TinkerMake:
+      if #findcnt > 1
+      {
+         wait 10
+         goto PenMake
+      }
+      click 80 160
+      wait 5
+      gosub waitForSysVars contsize = 530_437 contname = generic_gump
+      wait 5
+      click 280 180
+      gosub waitForSysVars contsize = 530_437 contname = generic_gump
+      wait 5
+      goto TinkerToolScan
+   }
+PenMake:
+   click  80  160
+   wait 5
+   for %a 1 2
+   {
+   gosub waitForSysVars contsize = 530_437 contname = generic_gump
+      wait 5
+      click 430 320
+      wait 5
+   }
+   gosub waitForSysVars contsize = 530_437 contname = generic_gump
+   wait %Wait
+   click 280 160
+   gosub waitForSysVars contsize = 530_437 contname = generic_gump
+   wait 5
+PenMakeLast:
+   if you_have_worn in #sysmsg
+      goto ingotScan
+   finditem %scribePen C_ , %backpackID
+      if #findkind = -1
+      {
+      click 330 460
+      gosub waitForSysVars contsize = 530_437 contname = generic_gump
+      wait 5
+      finditem %ironingots C_ , %backpackID
+      if #findkind = -1
+         goto IngotScan
+      goto PenMakeLast
+      }
+   wait %Wait
+   gosub closeMenu
+return
+
+; ================================== 
+sub scrollCheck
+   wait %wait1
+   finditem %blankScrolls C_ , %backpackID
+   if #findStack < 10
+   {
+      finditem %blankScrolls  C_ , %resourceBagID
+      if #findkind = -1
+         {
+            display Out of Blank Scrolls, or you accidently closed your RESOURCE container!$ Restock and restart script, halting
+            menu hide
+            halt
+         }
+      if #findstack < %dragAmount
+      gosub MoveAnyItem #findid %resourceBagID %backpackID #findstack
+      else
+      gosub MoveAnyItem #findid %resourceBagID %backpackID %dragAmount
+      finditem %current C_ , %backpackID
+      if #findkind = -1
+      return
+      gosub MoveAnyItem #findid %backpackID %productBagID #findstack
+      set %madeC 0
+   }
+return
+
+; ================================== 
+; %1 system variable without "#" 
+; %2 operation ie = <> in notin 
+; %3 to compare it with ie ABCDE or %blah 
+; %4 if applicable is timeout in seconds 
+; ================================== 
+sub waitfor
+   set %return #true
+   if %0 < 4
+      set %timeOut #scnt + 2
+   else
+      set %timeOut #scnt + %4
+waitForLoop:
+   if #scnt > %timeout
+   {
+      set %return #false
+      return
+   }
+   if ! ( # . %1 %2 %3 )
+      goto waitForLoop
+   return
+
+; ================================== 
+sub setup
+   set #menubutton N/A
+   set %time_start #scnt
+   set %Time 0
+   set %made 0
+   set %madeC 0
+   set %average 0
+   set %averageH 0
+   set %useBank NO
+   set %useTinker NO
+   set %spellGold 0
+   set %worthHour 0
+   set %longWait %wait * 3
+   set %useMeditation YES
+   set %dragAmount 100
+   set %makeAmount 1000
+   set %mana 10
+
+
+   gosub getGlobalVar 890 POWERSCRIBE #charid backpackID NOLOCK
+   gosub getGlobalVar 890 POWERSCRIBE #charid secureBagID NOLOCK
+   gosub getGlobalVar 890 POWERSCRIBE #charid resourceBagID NOLOCK
+   gosub getGlobalVar 890 POWERSCRIBE #charid productBagID NOLOCK
+   gosub getGlobalVar 890 POWERSCRIBE #charid useBank NOLOCK
+   gosub getGlobalVar 890 POWERSCRIBE #charid useTinker NOLOCK
+   gosub getGlobalVar 890 POWERSCRIBE #charid setupMade NOLOCK
+   gosub getGlobalVar 890 POWERSCRIBE #charid useMeditation NOLOCK
+
+; Contkinds last verified -  24 of mars 2004
+   set %CKmenu N/A
+   set %CSmenu 530_437
+   set %CNmenu generic_gump
+   set %CKdragamount QOSD
+   set %CKdrag UUCC
+   set %CKpaperdoll WTQD
+
+; Items
+   set %scribePen PBG
+   set %blankScrolls DPF
+   set %tinkertools JTL_GTL_KTL
+   set %ironingots ENK
+   set %ironset #false
+   set %blankRunes QWL
+   set %spellBooks MPF
+
+; item types for regs 
+   set %blackPearl KUF
+   set %bloodMoss JUF
+   set %garlic KZF
+   set %ginseng JZF
+   set %mandrakeRoot MZF
+   set %nightshade WZF
+   set %spiderSilk RZF
+   set %sulphurousAsh SZF
+   set %totalRegs %blackPearl , _ , %bloodMoss , _ , %garlic , _ , %ginseng  , _ ,  %mandrakeRoot  , _ ,  %nightshade  , _ ,  %spiderSilk  , _ ,   %sulphurousAsh
+
+; Various settings
+   event macro 31
+   wait %wait1
+   event macro 8 2
+   gosub waitForSysVars contname = status_gump contsize 432_184
+   contpos 350 570
+   wait %wait2
+   event macro 8 1
+   gosub waitForSysVars contname = paperdoll_gump contsize 262_324
+   contpos 615 -200
+   wait %wait2
+   event macro 8 7
+   nextCPos 650 125
+   gosub  waitForSysVars contname = container_gump contsize = 230_204
+   contpos 650 125
+   wait %wait2
+   if %setupMade = #true
+      {
+         if %useBank = yes
+            {
+            nextCPos 670 325
+            msg #smc bank$
+            gosub waitForSysVars contname = container_gump contsize = 180_240
+            wait %wait2
+            contpos 670 325
+            wait 5
+            }
+         else
+            {
+            nextCPos 650 325
+            set #lobjectid %secureBagID
+            event macro 17
+            wait %wait2
+            contpos 650 325
+            wait %wait2
+            }
+         nextCPos 650 525
+         set #lobjectid %resourceBagID
+         event macro 17
+         wait %wait2
+         contpos 650 525
+         wait %wait2
+         return
+      }
+   set %backpackID #contid
+   gosub putGlobalVar 890 POWERSCRIBE #charid backpackID
+   display yesno If you will be using Bank as your Secure container instead of a house Secure, that hold your resourcebag and productbag, press YES?$
+   if #dispres = yes
+   {
+      nextCpos 725 330
+      msg #smc bank$
+      set %useBank YES
+      gosub putGlobalVar 890 POWERSCRIBE #charid useBank
+      waitForSysVars contname = container_gump contsize = 230_204
+      set %secureBagID #contid
+      gosub putGlobalVar 890 POWERSCRIBE #charid secureBagID
+      goto afterSecure
+   }
+   display ok Target your SECURE container that holds your resourcebag and your productsbag!$
+   set #ltargetid null
+   set #targcurs 1
+setupSecure:
+   if #ltargetid = null
+      goto setupSecure
+   nextCPos 700 335
+   set %secureBagID #ltargetid
+   gosub putGlobalVar 890 POWERSCRIBE #charid secureBagID
+   set #lobjectid #ltargetid
+   event macro 17
+afterSecure:
+   display ok Target your RESOURCE bag that holds your blank scrolls, regents, ingots, backup pens, and empty spell books(for making of full Spellbooks), runes(for makin of Runebooks)
+   set #ltargetid null
+   set #targcurs 1
+setupResource:
+   if #ltargetid = null
+      goto setupResource
+   nextCPos 700 570
+   set %resourceBagID #ltargetid
+   gosub putGlobalVar 890 POWERSCRIBE #charid resourceBagID
+   set #lobjectid #ltargetid
+   event macro 17
+   display ok Target your PRODUCT bag where I will put all finnished products, scrolls, books etc
+   set #ltargetid null
+   set #targcurs 1
+setupProductbag:
+   if #ltargetid = null
+      goto setupProductbag
+   nextCPos 10 10
+   set %productBagID #ltargetid
+   gosub putGlobalVar 890 POWERSCRIBE #charid productBagID
+   set #lobjectid #ltargetid
+   event macro 17
+   wait %wait
+
+chooseSkill tink
+if #skill > 300
+   {
+      display yesno I see you have enoth tinkering skill to tinker your pens, You will need a tinker tool and ingots either in your Backpack$
+      +or in your Resource bag for this option to work! Do you want to tinker your pens?$
+      if #dispres = yes
+      {
+         set %useTinker YES
+         gosub putGlobalVar 890 POWERSCRIBE #charid useTinker
+      }
+   }
+
+   set %setupMade #true
+   gosub putGlobalVar 890 POWERSCRIBE #charid setupMade
+return
+
+; ================================== 
+sub spellCheck
+
+; This is your default spell
+if %spelltomake = 0
+   {
+      set %current WTL
+      set %recall WTL
+      set %makestr Recall
+      set %circle 4
+      set %selection 8
+      set %reg1 %blackPearl
+      set %reg2 %bloodMoss
+      set %reg3 %mandrakeRoot
+      set %regCnt 3
+         return
+   }
+
+if %spelltomake = 1
+   {
+   set %current QXL
+   set %clumsy QXL
+   set %makestr Clumsy
+   set %circle 1
+   set %selection 1
+   set %reg1 %bloodMoss
+   set %reg2 %nightshade
+   set %regCnt 2
+      return
+   }
+
+if %spelltomake = 2
+   {
+   set %current PXL
+   set %create_food PXL
+   set %makestr Create_Food
+   set %circle 1
+   set %selection 2
+   set %reg1 %garlic
+   set %reg2 %ginseng
+   set %reg3 %mandrakeRoot
+   set %regCnt 3
+      return
+   }
+
+if %spelltomake = 3
+   {
+   set %current AYL
+   set %feeblemind AYL
+   set %makestr Feeblemind
+   set %circle 1
+   set %selection 3
+   set %reg1 %ginseng
+   set %reg2 %nightshade
+   set %regCnt 2
+      return
+   }
+
+if %spelltomake = 4
+   {
+   set %current ZXL
+   set %heal ZXL
+   set %makestr Heal
+   set %circle 1
+   set %selection 4
+   set %reg1 %garlic
+   set %reg2 %ginseng
+   set %reg3 %spiderSilk
+   set %regCnt 3
+      return
+   }
+
+if %spelltomake = 5
+   {
+   set %current CYL
+   set %magic_arrow CYL
+   set %makestr magic_arrow
+   set %circle 1
+   set %selection 5
+   set %reg1 %sulphurousAsh
+   set %regCnt 1
+      return
+   }
+
+if %spelltomake = 6
+   {
+   set %current BYL
+   set %heal BYL
+   set %makestr Heal
+   set %circle 1
+   set %selection 6
+   set %reg1 %spiderSilk
+   set %reg2 %sulphurousAsh
+   set %regCnt 2
+      return
+   }
+
+if %spelltomake = 7
+   {
+   set %current NXL
+   set %reactive_armor NXL
+   set %makestr Reactive_armor
+   set %circle 1
+   set %selection 7
+   set %reg1 %garlic
+   set %reg2 %sulphurousAsh
+   set %reg3 %spiderSilk
+   set %regCnt 3
+      return
+   }
+
+if %spelltomake = 8
+   {
+   set %current WXL
+   set %weaken WXL
+   set %makestr Weaken
+   set %circle 1
+   set %selection 8
+   set %reg1 %spiderSilk
+   set %reg2 %sulphurousAsh
+   set %regCnt 2
+      return
+   }
+
+if %spelltomake = 9
+   {
+   set %current VXL
+   set %agility VXL
+   set %makestr Agility
+   set %circle 2
+   set %selection 1
+   set %reg1 %bloodMoss
+   set %reg2 %mandrakeRoot
+   set %regCnt 2
+      return
+   }
+
+if %spelltomake = 10
+   {
+   set %current YXL
+   set %cunning YXL
+   set %makestr Cunning
+   set %circle 2
+   set %selection 2
+   set %reg1 %mandrakeRoot
+   set %reg2 %nightshade
+   set %regCnt 2
+      return
+   }
+
+if %spelltomake = 11
+   {
+   set %current XXL
+   set %cure XXL
+   set %makestr Cure
+   set %circle 2
+   set %selection 3
+   set %reg1 %garlic
+   set %reg2 %ginseng
+   set %regCnt 2
+      return
+   }
+
+if %spelltomake = 12
+   {
+   set %current IYL
+   set %harm IYL
+   set %makestr Harm
+   set %circle 2
+   set %selection 4
+   set %reg1 %nightshade
+   set %reg2 %spiderSilk
+   set %regCnt 2
+      return
+   }
+
+if %spelltomake = 13
+   {
+   set %current HYL
+   set %magic_trap HYL
+   set %makestr Magic_trap
+   set %circle 2
+   set %selection 5
+   set %reg1 %garlic
+   set %reg2 %sulphurousAsh
+   set %reg3 %spiderSilk
+   set %regCnt 3
+      return
+   }
+
+if %spelltomake = 14
+   {
+   set %current KYL
+   set %magic_untrap KYL
+   set %makestr Magic_untrap
+   set %circle 2
+   set %selection 6
+   set %reg1 %bloodMoss
+   set %reg2 %sulphurousAsh
+   set %regCnt 2
+      return
+   }
+
+if %spelltomake = 15
+   {
+   set %current JYL
+   set %protection JYL
+   set %makestr Protection
+   set %circle 2
+   set %selection 7
+   set %reg1 %garlic
+   set %reg2 %ginseng
+   set %reg3 %sulphurousAsh
+   set %regCnt 3
+      return
+   }
+
+if %spelltomake = 16
+   {
+   set %current EYL
+   set %strength EYL
+   set %makestr Strength
+   set %circle 2
+   set %selection 8
+   set %reg1 %mandrakeRoot
+   set %reg2 %nightshade
+   set %regCnt 2
+      return
+   }
+
+if %spelltomake = 17
+   {
+   set %current DYL
+   set %bless DYL
+   set %makestr Bless
+   set %circle 3
+   set %selection 1
+   set %reg1 %garlic
+   set %reg2 %mandrakeRoot
+   set %regCnt 2
+   return
+   }
+
+if %spelltomake = 18
+   {
+   set %current GYL
+   set %fireball GYL
+   set %makestr Fireball
+   set %circle 3
+   set %selection 2
+   set %reg1 %blackPearl
+   set %regCnt 1
+   return
+   }
+
+if %spelltomake = 19
+   {
+   set %current FYL
+   set %magic_lock FYL
+   set %makestr Magic_lock
+   set %circle 3
+   set %selection 3
+   set %reg1 %sulphurousAsh
+   set %reg2 %bloodMoss
+   set %reg3 %garlic
+   set %regCnt 3
+      return
+   }
+
+if %spelltomake = 20
+   {
+   set %current STL
+   set %poison STL
+   set %makestr Poison
+   set %circle 3
+   set %selection 4
+   set %reg1 %nightshade
+   set %regCnt 1
+      return
+   }
+
+if %spelltomake = 21
+   {
+   set %current RTL
+   set %telekinesis RTL
+   set %makestr Telekinesis
+   set %circle 3
+   set %selection 5
+   set %reg1 %bloodMoss
+   set %reg2 %mandrakeRoot
+   set %regCnt 2
+      return
+   }
+
+if %spelltomake = 22
+   {
+   set %current UTL
+   set %teleport UTL
+   set %makestr Teleport
+   set %circle 3
+   set %selection 6
+   set %reg1 %bloodMoss
+   set %reg2 %mandrakeRoot
+   set %regCnt 2
+      return
+   }
+
+if %spelltomake = 23
+   {
+   set %current TTL
+   set %unlock TTL
+   set %makestr Unlock
+   set %circle 3
+   set %selection 7
+   set %reg1 %bloodMoss
+   set %reg2 %sulphurousAsh
+   set %regCnt 2
+      return
+   }
+
+if %spelltomake = 24
+   {
+   set %current OTL
+   set %wall_of_stone OTL
+   set %makestr Wall_of_stone
+   set %circle 3
+   set %selection 8
+   set %reg1 %bloodMoss
+   set %reg2 %garlic
+   set %regCnt 2
+      return
+   }
+
+if %spelltomake = 25
+   {
+   set %current NTL
+   set %arch_cure NTL
+   set %makestr Arch_cure
+   set %circle 4
+   set %selection 1
+   set %reg1 %garlic
+   set %reg2 %ginseng
+   set %reg3 %mandrakeRoot
+   set %regCnt 3
+      return
+   }
+
+if %spelltomake = 26
+   {
+   set %current QTL
+   set %arch_protection QTL
+   set %makestr Arch_protection
+   set %circle 4
+   set %selection 2
+   set %reg1 %garlic
+   set %reg2 %ginseng
+   set %reg3 %mandrakeRoot
+   set %reg4 %sulphurousAsh
+   set %regCnt 4
+      return
+   }
+
+if %spelltomake = 27
+   {
+   set %current PTL
+   set %curse PTL
+   set %makestr Curse
+   set %circle 4
+   set %selection 3
+   set %reg1 %garlic
+   set %reg2 %nightshade
+   set %reg3 %sulphurousAsh
+   set %regCnt 3
+      return
+   }
+
+if %spelltomake = 28
+   {
+   set %current AUL
+   set %firefield AUL
+   set %makestr Firefield
+   set %circle 4
+   set %selection 4
+   set %reg1 %blackPearl
+   set %reg2 %spiderSilk
+   set %reg3 %sulphurousAsh
+   set %regCnt 3
+      return
+   }
+
+if %spelltomake = 29
+   {
+   set %current ZTL
+   set %greater_heal ZTL
+   set %makestr Greater_heal
+   set %circle 4
+   set %selection 5
+   set %reg1 %garlic
+   set %reg2 %ginseng
+   set %reg3 %mandrakeRoot
+   set %reg4 %spiderSilk
+   set %regCnt 4
+      return
+   }
+
+if %spelltomake = 30
+   {
+      set %current CUL
+      set %lighting CUL
+      set %makestr Lighting
+      set %circle 4
+      set %selection 6
+      set %reg1 %mandrakeRoot
+      set %reg2 %sulphurousAsh
+      set %regCnt 2
+         return
+   }
+
+if %spelltomake = 31
+   {
+      set %current BUL
+      set %mana_drain BUL
+      set %makestr Mana_drain
+      set %circle 4
+      set %selection 7
+      set %reg1 %blackPearl
+      set %reg2 %mandrakeRoot
+      set %reg3 %spiderSilk
+      set %regCnt 3
+         return
+   }
+
+if %spelltomake = 32
+   {
+      set %current WTL
+      set %recall WTL
+      set %makestr Recall
+      set %circle 4
+      set %selection 8
+      set %reg1 %blackPearl
+      set %reg2 %bloodMoss
+      set %reg3 %mandrakeRoot
+      set %regCnt 3
+         return
+   }
+
+if %spelltomake = 33
+   {
+      set %current VTL
+      set %blade_spirits VTL
+      set %makestr Blade_spirits
+      set %circle 5
+      set %selection 1
+      set %reg1 %blackPearl
+      set %reg2 %mandrakeRoot
+      set %reg3 %nightshade
+      set %regCnt 3
+         return
+   }
+
+if %spelltomake = 34
+   {
+      set %current YTL
+      set %dispel_field YTL
+      set %makestr Dispel_field
+      set %circle 5
+      set %selection 2
+      set %reg1 %garlic
+      set %reg2 %blackPearl
+      set %reg3 %spiderSilk
+      set %reg4 %sulphurousAsh
+      set %regCnt 4
+         return
+   }
+
+if %spelltomake = 35
+   {
+      set %current XTL
+      set %Incognito XTL
+      set %makestr Incognito
+      set %circle 5
+      set %selection 3
+      set %reg1 %bloodMoss
+      set %reg2 %garlic
+      set %reg3 %nightshade
+      set %regCnt 3
+         return
+   }
+
+if %spelltomake = 36
+   {
+      set %current IUL
+      set %magic_reflection IUL
+      set %makestr Magic_reflection
+      set %circle 5
+      set %selection 4
+      set %reg1 %garlic
+      set %reg2 %mandrakeRoot
+      set %reg3 %spiderSilk
+      set %regCnt 3
+         return
+   }
+
+if %spelltomake = 37
+   {
+      set %current HUL
+      set %mind_blast HUL
+      set %makestr Mind_blast
+      set %circle 5
+      set %selection 5
+      set %reg1 %blackPearl
+      set %reg2 %mandrakeRoot
+      set %reg3 %nightshade
+      set %reg4 %sulphurousAsh
+      set %regCnt 4
+         return
+   }
+
+if %spelltomake = 38
+   {
+      set %current KUL
+      set %paralyze KUL
+      set %makestr Paralyze
+      set %circle 5
+      set %selection 6
+      set %reg1 %garlic
+      set %reg2 %mandrakeRoot
+      set %reg3 %spiderSilk
+      set %regCnt 3
+         return
+   }
+
+if %spelltomake = 39
+   {
+      set %current JUL
+      set %posion_field JUL
+      set %makestr Posion_field
+      set %circle 5
+      set %selection 7
+      set %reg1 %blackPearl
+      set %reg2 %nightshade
+      set %reg3 %spiderSilk
+      set %regCnt 3
+         return
+   }
+
+if %spelltomake = 40
+   {
+      set %current EUL
+      set %summon_creature EUL
+      set %makestr Summon_creature
+      set %circle 5
+      set %selection 8
+      set %reg1 %bloodMoss
+      set %reg2 %mandrakeRoot
+      set %reg3 %spiderSilk
+      set %regCnt 3
+         return
+   }
+
+if %spelltomake = 41
+   {
+      set %current DUL
+      set %dispel DUL
+      set %makestr Dispel
+      set %circle 6
+      set %selection 1
+      set %mana 20
+      set %reg1 %garlic
+      set %reg2 %mandrakeRoot
+      set %reg3 %sulphurousAsh
+      set %regCnt 3
+         return
+   }
+
+if %spelltomake = 42
+   {
+      set %current GUL
+      set %Energy_bolt GUL
+      set %makestr Energy_bolt
+      set %circle 6
+      set %selection 2
+      set %mana 20
+      set %reg1 %blackPearl
+      set %reg2 %nightshade
+       set %regCnt 2
+         return
+   }
+
+if %spelltomake = 43
+   {
+      set %current FUL
+      set %explosion FUL
+      set %makestr Explosion
+      set %circle 6
+      set %selection 3
+      set %mana 20
+      set %reg1 %bloodMoss
+      set %reg2 %mandrakeRoot
+      set %regCnt 2
+         return
+   }
+
+if %spelltomake = 44
+   {
+      set %current QUL
+      set %invisibility QUL
+      set %makestr Invisibility
+      set %circle 6
+      set %selection 4
+      set %mana 20
+      set %reg1 %bloodMoss
+      set %reg2 %nightshade
+      set %regCnt 2
+         return
+   }
+
+if %spelltomake = 45
+   {
+      set %current PUL
+      set %mark PUL
+      set %makestr Mark
+      set %circle 6
+      set %selection 5
+      set %mana 20
+      set %reg1 %blackPearl
+      set %reg2 %bloodMoss
+      set %reg3 %mandrakeRoot
+      set %regCnt 3
+         return
+   }
+
+if %spelltomake = 46
+   {
+      set %current SUL
+      set %mass_curse SUL
+      set %makestr Mass_curse
+      set %circle 6
+      set %selection 6
+      set %mana 20
+      set %reg1 %garlic
+      set %reg2 %mandrakeRoot
+      set %reg3 %nightshade
+      set %reg4 %sulphurousAsh
+      set %regCnt 4
+         return
+   }
+
+if %spelltomake = 47
+   {
+      set %current RUL
+      set %paralyze_field RUL
+      set %makestr Paralyze_field
+      set %circle 6
+      set %selection 7
+      set %mana 20
+      set %reg1 %blackPearl
+      set %reg2 %ginseng
+      set %reg3 %spiderSilk
+      set %regCnt 3
+         return
+   }
+
+if %spelltomake = 48
+   {
+      set %current MUL
+      set %reveal MUL
+      set %makestr Reveal
+      set %circle 6
+      set %selection 8
+      set %mana 20
+      set %reg1 %bloodMoss
+      set %reg2 %sulphurousAsh
+      set %regCnt 2
+         return
+   }
+
+if %spelltomake = 49
+   {
+      set %current LUL
+      set %chain_lighting LUL
+      set %makestr Chain_lighting
+      set %circle 7
+      set %selection 1
+      set %mana 40
+      set %reg1 %blackPearl
+      set %reg2 %mandrakeRoot
+      set %reg3 %bloodMoss
+      set %reg4 %sulphurousAsh
+      set %regCnt 4
+         return
+   }
+
+if %spelltomake = 50
+   {
+      set %current OUL
+      set %energy_field OUL
+      set %makestr Energy_field
+      set %circle 7
+      set %selection 2
+      set %mana 40
+      set %reg1 %blackPearl
+      set %reg2 %mandrakeRoot
+      set %reg3 %spiderSilk
+      set %reg4 %sulphurousAsh
+      set %regCnt 4
+         return
+   }
+
+if %spelltomake = 51
+   {
+      set %current NUL
+      set %flamestrike NUL
+      set %makestr Flamestrike
+      set %circle 7
+      set %selection 3
+      set %mana 40
+      set %reg1 %spiderSilk
+      set %reg2 %sulphurousAsh
+      set %regCnt 2
+         return
+   }
+
+if %spelltomake = 52
+   {
+      set %current YUL
+      set %Gate_travel YUL
+      set %makestr Gate_travel
+      set %circle 7
+      set %selection 4
+      set %mana 40
+      set %reg1 %blackPearl
+      set %reg2 %mandrakeRoot
+      set %reg3 %sulphurousAsh
+      set %regCnt 3
+         return
+   }
+
+if %spelltomake = 53
+   {
+      set %current XUL
+      set %mana_vampire XUL
+      set %makestr Mana_vampire
+      set %circle 7
+      set %selection 5
+      set %mana 40
+      set %reg1 %blackPearl
+      set %reg2 %bloodMoss
+      set %reg3 %mandrakeRoot
+      set %reg4 %spiderSilk
+      set %regCnt 4
+         return
+   }
+
+if %spelltomake = 54
+   {
+      set %current AVL
+      set %mass_dispell AVL
+      set %makestr Mass_dispell
+      set %circle 7
+      set %selection 6
+      set %mana 40
+      set %reg1 %blackPearl
+      set %reg2 %garlic
+      set %reg3 %mandrakeRoot
+      set %reg4 %sulphurousAsh
+      set %regCnt 4
+         return
+   }
+
+if %spelltomake = 55
+   {
+      set %current ZUL
+      set %meteor_swarm ZUL
+      set %makestr Meteor_swarm
+      set %circle 7
+      set %selection 7
+      set %mana 40
+      set %reg1 %bloodMoss
+      set %reg2 %spiderSilk
+      set %reg3 %mandrakeRoot
+      set %reg4 %sulphurousAsh
+      set %regCnt 4
+         return
+   }
+
+if %spelltomake = 56
+   {
+      set %current UUL
+      set %polymorph UUL
+      set %makestr Polymorph
+      set %circle 7
+      set %selection 8
+      set %mana 40
+      set %reg1 %bloodMoss
+      set %reg2 %mandrakeRoot
+      set %reg3 %spiderSilk
+      set %regCnt 3
+         return
+   }
+
+if %spelltomake = 57
+   {
+      set %current TUL
+      set %earthquake TUL
+      set %makestr Earthquake
+      set %circle 8
+      set %selection 1
+      set %mana 50
+      set %reg1 %bloodMoss
+      set %reg2 %ginseng
+      set %reg3 %mandrakeRoot
+      set %reg4 %sulphurousAsh
+      set %regCnt 4
+         return
+   }
+
+if %spelltomake = 58
+   {
+      set %current WUL
+      set %energy_vortex WUL
+      set %makestr Energy_vortex
+      set %circle 8
+      set %selection 2
+      set %mana 50
+      set %reg1 %blackPearl
+      set %reg2 %bloodMoss
+      set %reg3 %mandrakeRoot
+      set %reg4 %nightshade
+      set %regCnt 4
+         return
+   }
+
+if %spelltomake = 59
+   {
+      set %current VUL
+      set %resurrection VUL
+      set %makestr Resurrection
+      set %circle 8
+      set %selection 3
+      set %mana 50
+      set %reg1 %bloodMoss
+      set %reg2 %garlic
+      set %reg3 %ginseng
+      set %regCnt 3
+         return
+   }
+
+if %spelltomake = 60
+   {
+      set %current GVL
+      set %summon_air GVL
+      set %makestr Summon_air
+      set %circle 8
+      set %selection 4
+      set %mana 50
+      set %reg1 %bloodMoss
+      set %reg2 %mandrakeRoot
+      set %reg3 %spiderSilk
+      set %regCnt 3
+         return
+   }
+
+if %spelltomake = 61
+   {
+      set %current FVL
+      set %summon_deamon FVL
+      set %makestr Summon_deamon
+      set %circle 8
+      set %selection 5
+      set %mana 50
+      set %reg1 %bloodMoss
+      set %reg2 %mandrakeRoot
+      set %reg3 %spiderSilk
+      set %reg4 %sulphurousAsh
+      set %regCnt 4
+         return
+   }
+
+if %spelltomake = 62
+   {
+      set %current IVL
+      set %summon_earth IVL
+      set %makestr Summon_earth
+      set %circle 8
+      set %selection 6
+      set %mana 50
+      set %reg1 %bloodMoss
+      set %reg2 %mandrakeRoot
+      set %reg3 %spiderSilk
+       set %regCnt 3
+         return
+   }
+
+if %spelltomake = 63
+   {
+      set %current HVL
+      set %summon_fire HVL
+      set %makestr Summon_fire
+      set %circle 8
+      set %selection 7
+      set %mana 50
+      set %reg1 %bloodMoss
+      set %reg2 %mandrakeRoot
+      set %reg3 %spiderSilk
+      set %reg4 %sulphurousAsh
+      set %regCnt 4
+         return
+   }
+
+if %spelltomake = 64
+   {
+      set %current CVL
+      set %summon_water CVL
+      set %makestr Summon_Water
+      set %circle 8
+      set %selection 8
+      set %mana 50
+      set %reg1 %bloodMoss
+      set %reg2 %mandrakeRoot
+      set %reg3 %spiderSilk
+      set %regCnt 3
+         return
+   }
+
+if %spelltomake = 65
+   {
+      set %current
+      set %Runebook
+      set %makestr Runebook
+      set %circle 9
+      set %selection 1
+      set %reg1 %blackPearl
+      set %reg2 %bloodMoss
+      set %reg3 %mandrakeRoot
+      set %reg4 %sulphurousAsh
+      set %regCnt 4
+         return
+   }
+display OK Sorry, this spell or function are not implemented yet
+halt
+
+;================================== 
+; Script Name: sub waitForSysVars 
+; Author: Quintok / Raziel 
+; Version: 1.04 
+; Client Tested with: 4.0.2b 
+; EUO version tested with: 0078 
+; Shard OSI / FS: OSI / FS 
+; Revision Date: 21st March 2004 
+; Public Release: 20th March 2004 
+; Global Variables Used: none 
+; Purpose: same as waitForSysVar but for multiple inputs. 
+;================================== 
+sub waitForSysVars
+   set !cnt %0 / 3
+   if ( %0 % 3 = 1 )
+      set !timeOut #scnt + %0
+   else
+      set !timeOut #scnt + 5
+   for !i 1 !cnt
+   {
+      set !offset 3 * !i - 2
+      set !evaluation !offset + 1
+      set !value !offset + 2
+      if ! ( # . % . !offset % . !evaluation % . !value )
+         set !i 0
+      if #scnt > !timeout
+         return #false
+   }
+return #true
+
+; ================================== 
+sub SpellbookMaker
+if #weight > 200
+   {
+   display ok You need about 200 stones of free weight, clear out your backpack and retry!$
+      return
+   }
+
+   display yesno This option will let you target any spellbook that you want to fill up automaticly with spells, it will then scribe each scroll 1 at a time!$
+   +and put em into your chosed spellbook (NOTE, I will start at current scroll chosed in Menu), Target Spellbook you want filled! !$
+      if #dispRes = no
+         return
+   menu get SPELLTOMAKE
+   set %spelltomake #menures
+   if %spelltomake = 0
+      set %spelltomake 1
+   set #ltargetid null
+   set #targcurs 1
+pickSB:
+   if #ltargetid = null
+      goto pickSB
+   set %spellBook #ltargetid
+   set #lobjectid #ltargetid
+   event macro 17
+   wait %wait
+   click 400 280 r
+   set %time_start #scnt
+   set %made 0
+   set %makeAmount 1
+   set %dragAmount 10
+   set %reg1 %blackPearl
+   set %reg2 %bloodMoss
+   set %reg3 %garlic
+   set %reg4 %ginseng
+   set %reg5 %mandrakeRoot
+   set %reg6 %nightshade
+   set %reg7 %spiderSilk
+   set %reg8 %sulphurousAsh
+   set %regCnt 8
+   set %circleC N/A
+   set %circleMade #false
+   gosub scrollCheck
+   gosub regCheck
+
+SBmain:
+   gosub spellCheck
+
+SBpenScan:
+   gosub waitForSysVars contname = generic_gump contsize = 530_437
+      if #return
+         goto SBstuffScan
+   finditem %scribePen C_ , %backpackID
+   if #findkind = -1
+   {
+      gosub penCheck
+      goto SBpenScan
+   }
+   set #lobjectid #findid
+   if you_must_wait in #SYSMSG
+   wait %wait
+   event macro 17
+
+SBstuffScan:
+   finditem %blankScrolls C_ , %backpackID
+      if #findkind = -1
+         {
+         wait %wait
+         gosub scrollCheck
+         }
+   gosub regCheck2
+   if #menubutton = STARTSTOP
+   {
+      gosub clearbackpack
+         return
+   }
+   scanjournal 1
+   if you_have_worn in #journal
+      {
+      deleteJournal
+      goto SBpenScan
+      }
+   gosub waitForSysVars contname = generic_gump contsize = 530_437
+   if #result
+      goto SBcurrentspellmadecheck
+   goto SBpenScan
+
+SBcurrentspellmadecheck:
+   finditem %current C_ , %backpackID
+   if #findkind = -1
+       goto SBmake
+   gosub MoveAnyItem %current %backpackID %spellbook #findstack
+   wait %wait
+   scanjournal 1
+   if That_spell_is in #journal
+      {
+      wait %wait
+      gosub MoveAnyItem %current %backpackID %productBagID #findstack
+      deletejournal
+      }
+      set %made %made + 1
+      set %spelltomake %spelltomake + 1
+      if %spelltomake = 65
+         goto SBend
+         goto SBmain
+
+SBmake:
+   if #mana < %mana
+      {
+      gosub MeditateFull
+      if %stop
+         return
+      }
+   if %circleMade
+      goto SBmake1
+   gosub UpdatePSMenu SetupCircle 90
+   wait %Wait
+   set %y %circle * 20 + 120
+   click 80 %y
+   gosub UpdatePSMenu SetupSpell 90
+   gosub waitForSysVars contname = generic_gump contsize = 530_437
+   set %y %selection * 20 + 100
+   click 280 %y
+   gosub waitForSysVars contname <> generic_gump contsize <> 530_437
+      goto SBstuffScan
+
+SBend:
+   display OK Your spellbook should be FULL now!$
+   gosub clearbackpack
+      return
+
+; ================================== 
+sub RuneBookMaker
+chooseSkill insc
+if #skill < 451
+   {
+      display ok I see you have not enoth Inscription skill to make Runebooks yet, get atleast 45 or more in skill first, but I really recomend around 65 atleast before you try!$
+         return
+   }
+if #skill < 608
+   {
+      display okcancel I see you have not enoth Inscription skill to make Gate scrolls yet that is a component and needed to do Runebooks, minimum is 61 Inscription!$
+      +But if you have gate scrolls avail in resourcebag or backpack you can still do Runebooks, YES to make a try anyhow!$
+      if #dispRes = cancel
+         return
+   }
+
+   display yesno So you wanna make Runebooks, YES if you want me to start!$
+      if #dispRes = no
+         return
+
+   set %makeAmount 1
+   set %dragAmount 20
+
+   set %spelltomake 32
+
+;   set %spelltomake 52
+;   set %spelltomake 65
+
+RBmain:
+   gosub spellCheck
+
+RBpenScan:
+   finditem %scribePen C_ , %backpackID
+   if #findkind = -1
+   {
+      gosub penCheck
+      goto SBpenScan
+   }
+   set #lobjectid #findid
+   event macro 17
+
+RBstuffScan:
+   finditem %blankScrolls C_ , %backpackid
+      if #findkind = -1
+         gosub scrollCheck
+   gosub regCheck2
+   if #menubutton = STARTSTOP
+   {
+      gosub clearbackpack
+         return
+   }
+   scanjournal 1
+   if you_have_worn in #journal
+      goto SBpenScan
+   gosub waitForSysVars contname = generic_gump contsize = 530_437
+   if %return
+      goto SBcurrentspellmadecheck
+   goto SBpenScan
+
+RBcurrentspellmadecheck:
+   finditem %current C_ , %backpackid
+   if #findkind = -1
+       goto RBmake
+      {
+
+      }
+
+      set %made %spelltomake
+      set %spelltomake %spelltomake + 1
+
+         goto SBend
+         goto SBmain
+
+RBmake:
+   if #mana < %mana
+      {
+      gosub MeditateFull
+      if %stop
+         return
+      }
+
+   gosub UpdatePSMenu SetupCircle 80
+
+   wait %Wait
+   set %y %circle * 20 + 120
+   click 80 %y
+
+   gosub UpdatePSMenu SetupSpell 80
+
+   wait %Wait
+   set %y %selection * 20 + 100
+   click 280 %y
+   gosub waitForSysVars contname <> generic_gump contsize <> 530_437
+      goto SBpenScan
+
+RBend:
+   display OK New made runebook are now put in your ProductBag! enjoy!$
+   gosub clearbackpack
+      return
+return
+
+; =============================================
+sub setupMenu
+   display OK Loading Setup Menu!$
+   event macro 31
+   gosub showSetupMenu
+
+setupLoopReset:
+   set #menubutton N/A
+
+gosub updateSetupMenu
+
+setupLoop:
+   if #menubutton = setSECURE
+      {
+         gosub secure
+         goto setupLoopReset
+      }
+   if #menubutton = setRESOURCE
+      {
+         gosub resource
+         goto setupLoopReset
+      }
+   if #menubutton = setPRODUCT
+      {
+         gosub product
+         goto setupLoopReset
+      }
+   if #menubutton = openSECURE
+      {
+         gosub opensecure
+         goto setupLoopReset
+      }
+   if #menubutton = openRESOURCE
+      {
+         gosub openresource
+         goto setupLoopReset
+      }
+   if #menubutton = openPRODUCT
+      {
+         gosub openproduct
+         goto setupLoopReset
+      }
+   if #menubutton = toggleBANK
+      {
+         if %useBank = NO
+	{
+	set %useBank YES
+	goto setupLoopReset
+	}
+	set %useBank NO
+	goto setupLoopReset
+      }
+   if #menubutton = toggleTINKER
+      {
+          if %useTinker = NO
+	{
+	set %useTinker YES
+	goto setupLoopReset
+	}
+	set %useTinker NO
+	goto setupLoopReset
+      }
+   if #menubutton = toggleMEDITATION
+      {
+          if %useMeditation = NO
+	{
+                set %useMeditation YES
+	goto setupLoopReset
+	}
+	set %useMeditation NO
+	goto setupLoopReset
+      }
+   if #menubutton = SAVE
+      {
+	gosub putGlobalVar 890 POWERSCRIBE #charid secureBagID
+	gosub putGlobalVar 890 POWERSCRIBE #charid resourceBagID
+	gosub putGlobalVar 890 POWERSCRIBE #charid productBagID
+	gosub putGlobalVar 890 POWERSCRIBE #charid useBank
+	gosub putGlobalVar 890 POWERSCRIBE #charid useTinker
+	gosub putGlobalVar 890 POWERSCRIBE #charid useMeditation
+         goto setupLoopReset
+      }
+   if #menubutton = RESET
+      {
+         set %secureBagID N/A
+         set %resourceBagID N/A
+         set %productBagID N/A
+         set %useBank N/A
+         set %useTinker N/A
+         goto setupLoopReset
+      }
+   if #menubutton = setupEXIT
+      {
+         menu hide
+            return
+      }
+   goto setupLoop
+
+; =============================================
+sub updateSetupMenu
+	menu Font Size 8
+	menu Font Style
+	menu Font Color WindowText
+	menu Font Transparent #true
+	menu Font Align Left
+	menu Font BGColor BtnHighlight
+	              	menu DELETE EUOLabel1
+	menu Text EUOLabel1 176 32 %secureBagID
+	              	menu DELETE EUOLabel2
+	menu Text EUOLabel2 176 64 %resourceBagID
+	              	menu DELETE EUOLabel3
+	menu Text EUOLabel3 176 96 %productBagID
+	menu Font Style
+               	menu DELETE toggleBANK
+	menu Button toggleBANK 112 120 43 25 %useBank
+               	menu DELETE toggleTINKER
+	menu Button toggleTINKER 112 152 43 25 %useTinker
+               	menu DELETE toggleMeditation
+	menu Button toggleMeditation 112 184 43 25 %useMeditation
+return
+
+; =============================================
+sub showSetupMenu
+	menu Clear
+	menu Window Title PowerScribe Setup
+	menu Window Color BtnHighlight
+	menu Window Size 263 216
+	menu Font Transparent #true
+	menu Font Align Right
+	menu Font Name MS Sans Serif
+	menu Font Size 8
+	menu Font Style
+	menu Font Color WindowText
+	menu Font Transparent #false
+	menu Font Align Left
+	menu Font BGColor BtnHighlight
+	menu Text EUOLabel1 176 32 %secureBagID
+	menu Font BGColor BtnHighlight
+	menu Text EUOLabel2 176 64 %resourceBagID
+	menu Font BGColor BtnHighlight
+	menu Text EUOLabel3 176 96 %productBagID
+	menu Font BGColor BtnHighlight
+	menu Text EUOLabel4 8 32 Secure Bag :
+	menu Font BGColor BtnHighlight
+	menu Text EUOLabel5 8 64 Resource Bag :
+	menu Font BGColor BtnHighlight
+	menu Text EUOLabel6 8 96 Product Bag :
+	menu Font BGColor BtnHighlight
+	menu Text EUOLabel7 32 128 Use Bank :
+	menu Font BGColor BtnHighlight
+	menu Text EUOLabel8 32 160 Use Tinkering :
+	menu Font Style bu
+	menu Font BGColor BtnHighlight
+	menu Text EUOLabel9 8 0 Powerscribe Using CEO*filesystem * 890/891
+	menu Font Style
+	menu Font BGColor BtnHighlight
+	menu Text EUOLabel10 32 192 Use meditation :
+	menu Button setSECURE 96 24 35 25 SET
+	menu Button setRESOURCE 96 56 35 25 SET
+	menu Button setPRODUCT 96 88 35 25 SET
+	menu Button SAVE 184 184 35 25 SAVE
+	menu Button setupEXIT 224 184 27 25 EXIT
+	menu Button openSECURE 136 24 35 25 Open
+	menu Button openRESOURCE 136 56 35 25 Open
+	menu Button openPRODUCT 136 88 35 25 Open
+	menu Button toggleBANK 112 120 43 25 %useBank
+	menu Button toggleTINKER 112 152 43 25 %useTinker
+	menu Button RESET 184 152 67 25 RESET ALL
+	menu Button toggleMeditation 112 184 43 25 %useMeditation
+	menu Show 30 600
+return
+; =============================================
+sub secure
+   display ok Target your SECURE container that holds your resourcebag and your productbag!$
+   set #ltargetid null
+   set #targcurs 1
+menuSetupSecure:
+   if #ltargetid = null
+      goto menuSetupSecure
+   nextCPos 780 125
+   set %secureBagID #ltargetid
+   set #lobjectid #ltargetid
+   event macro 17
+return
+
+; =============================================
+sub resource
+   display ok Target your Resource Bag that holds your blank scrolls, regents, backup pens etc!$
+   set #ltargetid null
+   set #targcurs 1
+menuSetupResource:
+   if #ltargetid = null
+      goto menuSetupResource
+   nextCPos 780 335
+   set %resourceBagID #ltargetid
+   set #lobjectid #ltargetid
+   event macro 17
+return
+
+; =============================================
+sub product
+   display ok Target your Product Bag where I will put all scribed scrolls, books etc!$
+   set #ltargetid null
+   set #targcurs 1
+menuSetupProduct:
+   if #ltargetid = null
+      goto menuSetupProduct
+   nextCPos 780 545
+   set %productBagID #ltargetid
+   set #lobjectid #ltargetid
+   event macro 17
+return
+
+; =============================================
+sub opensecure
+   nextCPos 780 125
+   set  #lobjectid %secureBagID
+   event macro 17
+return
+
+; =============================================
+sub openresource
+   nextCPos 780 335
+   set  #lobjectid %resourceBagID
+   event macro 17
+return
+
+; =============================================
+sub openproduct
+   nextCPos 780 545
+   set  #lobjectid %productBagID
+   event macro 17
+return
+
+;================================== 
+; Script Name:  CEO's * variable management subs (pseudo filesystem) 
+; Author: CEO 
+; Version: 1.0 
+; Client Tested with: 4.0.1b 
+; EUO version tested with: 1_41_103 
+; Shard OSI / FS: OSI 
+; Revision Date: 040219 
+; Public Release: 040219 
+; Globals Used: User specified (2 total) 
+; Purpose: Allows you to use a * variable as a pseudo-filesystem 
+;======================================= 
+; CEO's global variable management subs: 
+;      getGlobalVar  . putGlobalVar  . delGlobalVar 
+;======================================= 
+Sub getGlobalVar
+;ver 1.0 posted 19Feb04 by CEO 
+;purpose: Allows you to store multiple variables in one global variable unique to 
+;             each player and script. getGlobaVar retrieves a value from a global variable. 
+;@returns: #result = #false if variable not found, #true if found 
+;            % . %3 contains variable value 
+;%1 is the global/persistant variable to use ( %1 + 1 is used for locking) 
+;%2 is the script identifer or pseudo filename 
+;%3 is #charid or pseudo filename 
+;%4 is the variable to search for and return in %. %3  
+;%5 is for lock control. By default getGlobalVar uses a lock to return a value. In some cases you may want to 
+;       retrieve a variable (mostly for speed) without needing a lock as long as you are aware of 
+      any potentional conflicts, that very rarely may occur. Set this param to NOLOCK to access
+      global storage without a lock.
+;sample usage: 
+;               gosub getGlobalVar 50 MyScript backpackid 
+; Using global var *50 finds the variable labeled MyScript#charidbackpackid and returns it in %backpackid 
+; 
+;               gosub getGlobalVar 50 MyScript clothstat NOLOCK 
+; Using global var *50 find the variable labeled MyScript#charidclothstat and returns it in %clothstat without using a lock 
+; Warning: do not use *1000. * %1 + 1 is used for locking and there is no *1001! 
+nameSpace push
+nameSpace local #systime , _ , %2 , _ , %3 , _ , %4 , _ , GET
+set !lpc #lpc
+set #lpc 1000
+set !lock %1 + 1
+if ( %0 = 5 ) && ( %5 = NOLOCK )
+   goto getGlobalVar_skiplock
+set !lockcount 0
+getGlobalVar_waitforlock:
+if * . !lock <> N/A && * . !lock <> #nsname
+{
+   wait 1 4
+   set !lockcount !lockcount + 1
+   if !lockcount < 10
+      goto getGlobalVar_waitforlock
+   if * . !lock <> N/A
+   {
+      set !currentlock * . !lock
+      if !currentlock = N/A
+         goto getGlobalVar_waitforlock
+      str pos !currentlock _
+      set !strres #strres - 1
+      str left !currentlock !strres
+      set !systime #systime - #strres
+      if !systime < 10000 ; if over 10 seconds assume a broken lock and take it 
+      {
+         set !lockcount 0
+         goto getGlobalVar_waitforlock
+      }
+   }
+}
+set * . !lock #nsname
+wait 3 2
+if  * . !lock <> #nsname
+{
+   set !lockcount 0
+   goto getGlobalVar_waitforlock
+}
+getGlobalVar_skiplock:
+set !global * . %1
+set !varName %2 , ^ , %3 , ^ , %4 , |
+str pos !global !varName
+set #result #strres <> 0
+if #result
+{
+   set !varNamePos #strres
+   str len !varName
+   set !delString !varNamePos + #strres - 1
+   str del !global 1 !delString
+   set !global #strres
+   str pos !global |
+   set !varNamePos #strres - 1
+   str left !global !varNamePos
+   set % . %4 #strres
+}
+if ( %0 < 5 || %5 <> NOLOCK ) && * . !lock = #nsname
+   set * . !lock N/A
+set #lpc !lpc
+nameSpace Clear
+nameSpace Pop
+return #result
+
+Sub putGlobalVar
+;ver 1.0 posted 19Feb04 by CEO 
+;purpose: Allows you to store multiple variables in one global variable unique to 
+;             each player and script. putGlobaVar stores a value into a global variable. 
+
+;@returns: #result = #false if variable not found, #true if found 
+;            % . %3 contains variable 
+;%1 is the global/persistant variable to use 
+;%2 is the script identifer or pseudo filename 
+;%3 #charid or other identifier 
+;%4 is the variable name of the variable to save into the* variable identified in %1 
+;sample usage: 
+;               gosub putGlovalVar 50 MyScript backpackid 
+; Using global var *50 stores/updates the variable labeled MyScript#charidbackpackid  with %backpackid 
+; Warning: do not use *1000. * %1 + 1 is used for locking and there is no *1001! 
+nameSpace push
+nameSpace local #systime , _ , %2 , _ , %3 , _ , %4 , _  , PUT
+set !lpc #lpc
+set #lpc 1000
+set !lock %1 + 1
+set !lockcount 0
+putGlobalVar_waitforlock:
+if * . !lock <> N/A && * . !lock <> #nsname
+{
+   wait 1 4
+   set !lockcount !lockcount + 1
+   if !lockcount < 10
+      goto putGlobalVar_waitforlock
+   if * . !lock <> N/A
+   {
+      set !currentlock * . !lock
+      if !currentlock = N/A
+         goto putGlobalVar_waitforlock
+      str pos !currentlock _
+      set !strres #strres - 1
+      str left !currentlock !strres
+      set !systime #systime - #strres
+      if !systime < 10000 ; if over 10 seconds assume a hung lock and take it 
+      {
+         set !lockcount 0
+         goto putGlobalVar_waitforlock
+      }
+   }
+}
+set * . !lock #nsname
+wait 4
+set !global * . %1
+set !varName %2 , ^ , %3 , ^ , %4 , |
+str pos !global !varName
+if #strres = 0
+{
+   if  * . !lock <> #nsname
+   {
+      set !lockcount 0
+      goto putGlobalVar_waitforlock
+   }
+   if  |CEO*FILESYSTEM| notin !global
+      set !global |CEO*FILESYSTEM|
+   set * . %1 !global , !varName , % . %4 , |
+   set * . !lock N/A
+   set #lpc !lpc
+   nameSpace clear
+   nameSpace pop
+   return #true
+}
+set !varNamePos #strres
+str len !varName
+set !splitString !varNamePos + #strres - 1
+str left !global !splitstring
+set !globalPart1 #strres
+str del !global 1 !splitString
+set !global #strres
+str len !global
+set !globalLen #strres
+str pos !global |
+set !splitString !globalLen - #strres + 1
+str right !global !splitstring
+set !global #strres
+if  * . !lock <> #nsname
+{
+   set !lockcount 0
+   goto putGlobalVar_waitforlock
+}
+set * . %1 !globalPart1 , % . %4 , !global
+set * . !lock N/A
+set #lpc !lpc
+nameSpace clear
+nameSpace pop
+return #true
+
+
+Sub delGlobalVar
+;ver 1.0 posted 19Feb04 by CEO 
+;purpose: Allows you to delete a variable out of the globalvar pool unique to 
+;             each player and script. delGlobaVar deletes a global variable in a * variable. 
+
+;@returns: #result = #false if variable not found, #true if  deleted 
+; 
+;%1 is the global/persistant variable to use 
+;%2 is the script identifer or pseudo filename 
+;%3 is #charid or other identifier 
+;%4 is the variable name of the variable to save into the* variable identified in %1 
+;sample usage: 
+;               gosub delGlovalVar 50 MyScript backpackid 
+; Using global var *50 deletes  the variable label MyScript#charidbackpackid  and it's associated value. 
+; Warning: do not use *1000. * %1 + 1 is used for locking and there is no *1001! 
+nameSpace push
+nameSpace local #systime , _ , %2 , _ , %3 , _ , %4 , _ , DEL
+set !lpc #lpc
+set #lpc 1000
+set !lock %1 + 1
+set !lockcount 0
+delGlobalVar_waitforlock:
+if * . !lock <> N/A && * . !lock <> #nsname
+{
+   wait 1 4
+   set !lockcount !lockcount + 1
+   if !lockcount <  10
+      goto delGlobalVar_waitforlock
+
+   if * . !lock <> N/A
+   {
+      set !currentlock * . !lock
+      if !currentlock = N/A
+         goto delGlobalVar_waitforlock
+      str pos !currentlock _
+      set !strres #strres - 1
+      str left !currentlock !strres
+      set !systime #systime - #strres
+      if !systime < 10000 ; if over 10 seconds assume a broken lock and take it 
+      {
+         set !lockcount 0
+         goto delGlobalVar_waitforlock
+      }
+   }
+
+}
+set * . !lock #nsname
+wait 4
+set !global * . %1
+set !varName %2 , ^ , %3 , ^ , %4 , |
+str pos !global !varName
+set #result #strres <> 0
+if #result
+{
+   set !varNamePos #strres
+   str len !varName
+   set !splitString !varNamePos + #strres - 1
+   set !delString !varNamePos - 1
+   str left !global !delString
+   set !globalPart1 #strres
+   str del !global 1 !splitString
+   set !global #strres
+   str pos !global |
+   set !delString #strres
+   str del !global 1 !delString
+   if  * . !lock <> #nsname
+   {
+      set !lockcount 0
+      goto delGlobalVar_waitforlock
+   }
+   set * . %1 !globalPart1 , #strres
+}
+if  * . !lock = #nsname
+   set * . !lock N/A
+set #lpc !lpc
+nameSpace clear
+nameSpace pop
+return #result
+
+

@@ -1,0 +1,921 @@
+;==================================
+; Script Name: Peragrins Recall Lumberjacker
+; Author: Peragrin
+; Version: 1.8
+; Client Tested with: 5.0.0b
+; EUO version tested with: 1.5 tv 64
+; Shard OSI / FS: OSI & Freeshard (tested on Alexandria)
+; Revision Date: 16/11/05
+; Public Release: 11/11/04
+; Purpose: recalls to trees and chops them for logs
+;============================================
+set *debug #false
+
+gosub time #time
+gosub setup
+gosub setup_runebooks
+gosub setup_opperation
+gosub setup_secure
+_MAIN_LOOP:
+gosub to_tree
+gosub find_tree
+if #result = #false
+   goto _main_loop
+_CHOPPING_LOOP:
+gosub stats
+gosub find_threat
+if #result = #true
+   {
+   if *debug = #true
+      {
+      event exmsg #charid 3 0 Argh, Guards!
+      event exmsg #findid 3 0 I'm gonna kill you!
+      }
+   if %use_invis = YES
+      gosub invis
+   if %use_hiding = YES && %use_invis = NO
+      gosub hide
+   if H notin #charstatus
+      {
+      set %rune %rune + 1
+      if %rune > 16
+         {
+         set %rune 1
+         set %book %book + 1
+         if %book > %number_of_tree_runebooks
+            set %book 1
+         }
+      goto _main_loop
+      }
+   }
+gosub check_weight
+if #result < 39 && #curskind = 0
+   {
+   gosub logs2boards
+   gosub check_weight
+   if #result < 80
+      goto _to_house
+   }
+gosub check_weight
+if #result < 19 && #curskind <> 0
+   {
+   gosub logs2boards
+   gosub check_weight
+   if #result < 40
+      goto _to_house
+   }
+gosub heal %method_of_travel
+gosub equip_axe
+gosub chop_tree
+if #result
+   goto _chopping_loop
+else
+    {
+    set %rune %rune + 1
+    if %rune > 16
+       {
+       set %rune 1
+       set %book %book + 1
+       if %book > %number_of_tree_runebooks
+          set %book 1
+       }
+    goto _main_loop
+    }
+_TO_HOUSE:
+gosub to_house
+gosub drop_off
+goto _main_loop
+;==================================
+sub stats
+finditem %logs C_ , #backpackid
+set %total_logs %no_logs + #findstack
+finditem %boards C_ , #backpackid
+set %total_boards %no_boards + #findstack
+set %secs #scnt - %start
+set %frame minute
+set %mins %secs / 60
+set %rate %total_boards / %mins
+if %rate < 1
+   {
+   set %frame hour
+   set %hours %min / 60
+   set %rate %total_boards / %hours
+   }
+set %title Ultima , #spc , Online , #spc , - , #spc , #charname , #spc , ( , #shard , )
+set %rate %rate , #spc , boards , #spc , per , #spc , %frame
+setuotitle %title Logs: %total_logs Boards: %total_boards Time started: %time Rate: %rate
+return
+;==================================
+sub move_to
+if *debug = #true
+   {
+   event exmsg #charid 3 0 Sub MOVE_TO
+   }
+namespace push
+namespace LOCAL move_to
+set !lpc #lpc
+set #lpc 100
+set !x %1
+set !y %2
+set !z %3
+set !at #scnt2 - 60
+while #charposx , #charposy <> !x , !y
+      {
+      set !j #jindex + 1
+      set !j1 #jindex
+      set !timeout #scnt + 5
+      while #scnt2 - !at < 60
+            {
+            if #charposx , #charposy = !x , !y
+               {
+               set #lpc !lpc
+               namespace pop
+               return #true
+               }
+            }
+      event pathfind !x !y !z
+      set !at #scnt2
+      while #jindex = !j1
+            {
+            }
+      for !line #jindex !j
+          {
+          scanjournal !line
+          if CAN'T_GET_THERE in #journal
+             {
+             set #lpc !lpc
+             namespace pop
+             return #false
+             }
+          }
+      }
+set #lpc !lpc
+namespace pop
+return #true
+;==================================
+sub logs2boards
+if *debug = #true
+   {
+   event exmsg #charid 3 0 Sub LOGS2BOARDS
+   }
+_LOGS2BOARDS:
+finditem %carp_tool_types C_ , #backpackid
+if #findkind = -1
+   return #false
+set #lobjectid #findid
+while #scnt2 - %at < 20
+      {
+      }
+event macro 17 0
+set %at #scnt2
+set %error #scnt2 + 40
+while #contsize <> %craft_gump
+      {
+      if #scnt2 > %error
+         goto _logs2boards
+      }
+set %x #contposx + 30
+set %y #contposy + 92
+set %error #scnt2 + 10
+while #contsize = %craft_gump
+      {
+      if #scnt2 > %error
+         goto _logs2boards
+      click %x %y f
+      wait 1
+      }
+set %error #scnt2 + 30
+while #contsize <> %craft_gump
+      {
+      if #scnt2 > %error
+         goto _logs2boards
+      }
+set %x #contposx + 234
+set %y #contposy + 71
+set %error #scnt2 + 30
+click %x %y f
+finditem #lobjectid C_ , #backpackid
+if #findkind = -1
+   return #true
+while #contsize <> %craft_gump
+      {
+      if #scnt2 > %error
+         break
+      }
+set %x #contposx + 30
+set %y #contposy + 414
+click %x %y f
+return #true
+;==================================
+sub heal
+if *debug = #true
+   {
+   event exmsg #charid 3 0 Sub HEAL %1
+   }
+if %1 <> MAGERY && %1 <> CHIVALRY
+   {
+   display OK Choose Chivalry or Magery, script halted
+   halt
+   }
+set %cure_method 10
+set %heal_method 28
+if %1 = CHIVALRY
+   {
+   set %cure_method 201
+   set %heal_method 202
+   }
+_CURE:
+while C in #charstatus
+   {
+   while #scnt2 - %at < 20
+         {
+         }
+   event macro 15 %cure_method
+   set %at #scnt2
+   set %error #scnt + 5
+   while #targcurs <> 1
+         {
+         if #scnt > %error
+            goto _cure
+         }
+   event macro 23 0
+   }
+_HEAL:
+set %maxhits #maxhits - 10
+while #hits < %maxhits
+   {
+   while #scnt2 - %at < 30
+      {
+      }
+   event macro 15 %heal_method
+   set %at #scnt2
+   set %error #scnt + 5
+   while #targcurs <> 1
+         {
+         if #scnt > %error
+            goto _heal
+         }
+   event macro 23 0
+   }
+return
+;==================================
+sub find_threat
+if *debug = #true
+   {
+   event exmsg #charid 3 0 Sub FIND_THREAT
+   }
+set %human HS_IS
+onhotkey F12
+         {
+         str len *peragrins_recall_lumberjacker_threats
+         set %number_of_threats_now #strres / 3
+         display OK There were 17 threats recognised at start,$
+                    + Now there are %number_of_threats_now
+         }
+if *peragrins_recall_lumberjacker_threats = N/A
+   set *peragrins_recall_lumberjacker_threats QE_BE_GD_TD_SE_SD_JD_QD_XF_VE_WE_ZC_YD_WD_EO_LD_PE
+finditem *peragrins_recall_lumberjacker_threats G
+if #findkind <> -1
+   return #true
+finditem #enemyid G
+if #findkind = -1
+   return #false
+if #findtype notin *peragrins_recall_lumberjacker_threats && #findtype notin %human
+   set *peragrins_recall_lumberjacker_threats *peragrins_recall_lumberjacker_threats , #findtype , _
+return #true
+;=====================================================
+sub setup_opperation
+; DEFAULT VALUES
+set %method_of_travel MAGERY
+set %use_invis NO
+set %use_hiding NO
+display YESNO Do you wish to use sacred journey rather than recalling?
+if #dispres = YES
+   set %method_of_travel CHIVALRY
+if %method_of_travel = MAGERY
+   {
+   display YESNO Do you wish to go invisible if a threat is detected?
+   if #dispres = YES
+      {
+         set %use_invis YES
+         return
+      }
+   }
+display YESNO Do you wish to hide if a threat is detected?
+if #dispres = YES
+   set %use_hiding YES
+return
+;=============================================================================
+sub hide
+if *debug = #true
+   {
+   event exmsg #charid 3 0 Sub HIDE
+   }
+if %use_hiding = NO
+	 return #true
+set %timer #scnt - 1
+set %error 0
+while H notin #charstatus
+   {
+   if %error > 1
+      return #false
+   if #scnt > %timer
+      {
+      while #scnt2 - %at < 20
+            {
+            }
+      event macro 13 21
+      set %at #scnt2
+      set %timer #scnt + 10
+      set %error %error + 1
+      }
+   }
+return #true
+;=============================================================================
+sub invis
+if *debug = #true
+   {
+   event exmsg #charid 3 0 Sub INVIS
+   }
+if %method <> Magery
+   return #false
+_INVIS:
+while H notin #charstatus
+      {
+      while #scnt2 - %at < 20
+            {
+            }
+      event macro 15 43
+      set %at #scnt2
+      set %error #scnt + 5
+      while #targcurs <> 1
+            {
+            if #scnt > %error
+               goto _invis
+            }
+      set %error #scnt + 3
+      event macro 23 0
+      while H notin #charstatus
+            {
+            if #scnt > %error
+               goto _invis
+            }
+      }
+return #true
+;=============================================================================
+sub time
+set %d1 %1 / 1 % 10
+set %d2 %1 / 10 % 10
+set %d3 %1 / 100 % 10
+set %d4 %1 / 1000 % 10
+set %d5 %1 / 10000 % 10
+set %d6 %1 / 100000 % 10
+set %time  %d6 , %d5 , : , %d4 , %d3 , : , %d2 , %d1
+return
+;=============================================================================
+sub check_weight
+if *debug = #true
+   {
+   event exmsg #charid 3 0 Sub CHECK_WEIGHT
+   }
+event property #backpackid
+str pos #property ,
+set %strres #strres + 1
+str del #property 1 %strres
+set %property #strres
+str pos %property #spc
+set %strres #strres - 1
+str left %property %strres
+set %weight_in_pack #strres
+set %weight_left 425 - %weight_in_pack
+if %weight_left > #maxweight - #weight
+   set %weight_left #maxweight - #weight
+return %weight_left
+;=============================================================================
+sub drop_off
+if *debug = #true
+   {
+   event exmsg #charid 3 0 Sub DROP_OFF
+   }
+finditem %logs C_ , #backpackid
+if ! #findkind
+   {
+   for %tmp 1 #findcnt
+       {
+       set #findindex %tmp
+       while #scnt2 - %at < 15
+             {
+             }
+       exevent drag #findid #findstack
+       set %at #scnt2
+       exevent dropc %secure
+       }
+   }
+set %no_logs %no_logs + #findstack
+finditem %boards C_ , #backpackid
+if ! #findkind
+   {
+   for %tmp 1 #findcnt
+       {
+       set #findindex %tmp
+       while #scnt2 - %at < 15
+             {
+             }
+       exevent drag #findid #findstack
+       set %at #scnt2
+       exevent dropc %secure
+       }
+   }
+set %no_boards %no_boards + #findstack
+return
+;=============================================================================
+sub to_tree
+if *debug = #true
+   {
+   event exmsg #charid 3 0 Sub TO_TREE
+   }
+_RETRY_TO_TREE:
+while #scnt2 - %at < 21
+      {
+      }
+gosub use_runebook %tree_runebook . %book %rune %method_of_travel
+set %at #scnt2
+set %rune %2
+if #result = #false
+   {
+   for %line #jindex %jindex
+       {
+       scanjournal %line
+       if THAT_LOCATION_IS_BLOCKED in #journal
+          {
+          set %rune %rune + 1
+          if %rune > 16
+             {
+             set %rune 1
+             set %book %book + 1
+             if %book > %number_of_tree_runebooks
+                set %book 1
+             }
+          }
+       }
+   goto _retry_to_tree
+   }
+return
+;=============================================================================
+sub use_runebook
+if *debug = #true
+   {
+   event exmsg #charid 3 0 Sub USE_RUNEBOOK %1 %2 %3
+   }
+namespace push
+namespace LOCAL use_runebook
+if %0 <> 3
+   {
+   display OK Error in USE_RUNEBOOK subroutine, incorrect arguments passed.
+   pause
+   halt
+   }
+if %2 < 1 || %2 > 16
+   {
+   display OK Error in USE_RUNEBOOK subroutine, rune number out of range.
+   pause
+   halt
+   }
+if %3 <> MAGERY && %3 notin CHIVALRY
+   {
+   display OK Error in USE_RUNEBOOK subroutine, method of travel not set properly.
+   pause
+   halt
+   }
+while #mana < 20
+      {
+      gosub meditate
+      }
+set !runebook %1
+set !rune %2
+set !method_of_travel %3
+set !gump_size 452_236
+if #contsize = !gump_size
+   {
+   set !x #contposx + 100
+   set !y #contposy + 100
+   click !x !y r
+   }
+finditem !runebook
+if #findkind || #finddist > 2
+   {
+   display OK Error in USE_RUNEBOOK subroutine, runebook not found.
+   halt
+   }
+set #lobjectid !runebook
+set !at #scnt2 - 20
+_OPEN_RUNEBOOK:
+while #scnt2 - !at < 20
+      {
+      }
+event macro 17 0
+set !at #scnt2
+set !error #scnt + 3
+while #contsize <> !gump_size
+      {
+      if #scnt > !error
+         goto _open_runebook
+      }
+if !rune = 1 || !rune = 2
+   set !page 1
+if !rune = 3 || !rune = 4
+   set !page 2
+if !rune = 5 || !rune = 6
+   set !page 3
+if !rune = 7 || !rune = 8
+   set !page 4
+if !rune = 9 || !rune = 10
+   set !page 5
+if !rune = 11 || !rune = 12
+   set !page 6
+if !rune = 13 || !rune = 14
+   set !page 7
+if !rune = 15 || !rune = 16
+   set !page 8
+set !x #contposx + 105
+set !x_offset 35
+set !x_offset !x_offset * !page
+if !page > 4
+   set !x_offset !x_offset + 30
+set !x !x + !x_offset
+set !y #contposy + 196
+click !x !y f
+set !error #scnt + 2
+while #contsize <> !gump_size
+      {
+      if #scnt > !error
+         goto _open_runebook
+      }
+set !page 2
+if !rune in 1_3_5_7_9_11_13_15
+   set !page 1
+set !x #contposx + 139
+if !page = 2
+   set !x #contposx + 299
+set !y #contposy + 181
+if !method_of_travel = MAGERY
+   set !y #contposy + 142
+set !position #charposx , #charposy , #charposz
+set !jindex #jindex + 1
+set !mana #mana
+click !x !y f
+set !error #scnt + 10
+if #contsize = !gump_size
+   {
+   set !x #contposx + 50
+   set !y #contposy + 50
+   click !x !y r
+   goto _open_runebook
+   }
+while #mana => !mana
+      {
+      if #charposx , #charposy , #charposz <> !position
+         {
+         namespace pop
+         return #true
+         }
+      for !line #jindex !jindex
+          {
+          scanjournal !line
+          if CONCENTRATION_IS_DISTURBED in #journal || FIZZLES in #journal
+             goto _open_runebook
+          if BLOCKED in #journal
+             {
+             namespace pop
+             return #false
+             }
+          }
+      if #scnt > !error
+         goto _open_runebook
+      }
+namespace pop
+return #true
+;=============================================================================
+sub to_house
+if *debug = #true
+   {
+   event exmsg #charid 3 0 Sub TO_HOUSE
+   }
+set %house_rune 1
+_RETRY_TO_HOUSE:
+while #scnt2 - %at < 20
+      {
+      }
+set %jindex #jindex + 1
+gosub use_runebook %HOUSE_RUNEBOOK_ID %house_rune %method_of_travel
+set %at #scnt2
+if #result = #false
+   {
+   for %line #jindex %jindex
+       {
+       scanjournal %line
+       if THAT_LOCATION_IS_BLOCKED in #journal
+          set %house_rune %house_rune + 1
+       }
+   goto _retry_to_house
+   }
+while %start_charposx , %start_charposy , %start_charposz <> #charposx , #charposy , #charposz
+      {
+      gosub move_to %start_charposx %start_charposy %start_charposz 2
+      }
+return
+;===================================================================
+sub equip_axe
+if *debug = #true
+   {
+   event exmsg #charid 3 0 Sub EQUIP_AXE
+   }
+_EQUIP_AXE:
+finditem %axe_types C_ , #charid
+if ! #findkind
+   {
+   set %axe #findid
+   return #true
+   }
+finditem %axe_types C_ , #backpackid
+if #findkind
+   {
+   display OK Error equiping axe, none found in backpack.
+   halt
+   }
+set %axe #findid
+while #scnt2 - %at < 20
+      {
+      }
+exevent drag %axe
+set %at #scnt2
+set %error #scnt + 3
+exevent droppd
+repeat
+        {
+        finditem %axe C_ , #charid
+        if #scnt > %error
+           goto _equip_axe
+        }
+until #findkind <> -1
+return #true
+;================================
+sub chop_tree
+if *debug = #true
+   {
+   event exmsg #charid 3 0 Sub CHOP_TREE
+   }
+_CHOP_TREE:
+set #lobjectid %axe
+while #scnt2 - %at < 20
+      {
+      }
+event macro 17 0
+set %at #scnt2
+set %error #scnt + 5
+while #targcurs <> 1
+      {
+      if #scnt > %error
+         goto _chop_tree
+      }
+set %error #scnt + 10
+set %jindex #jindex + 1
+event macro 22 0
+while #scnt < %error
+      {
+      for %line #jindex %jindex
+          {
+          scanjournal %line
+          if HACK in #journal || LOGS in #journal || FOUND in #journal
+             return #true
+          if CAN'T in #journal || HARVEST in #journal
+             return #false
+          }
+      }
+return #false
+;=====================================
+sub find_tree
+if *debug = #true
+   {
+   event exmsg #charid 3 0 Sub FIND_TREE
+   }
+set #lpc 1000
+set %start_x #charposx - 1
+set %start_y #charposy - 1
+set %end_x #charposx + 1
+set %end_y #charposy + 1
+for %x %start_x %end_x
+    {
+    for %y %start_y %end_y
+        {
+        tile cnt %x %y
+        for %tilekind 0 #tilecnt
+            {
+            tile get %x %y %tilekind
+            if TREE in #tilename
+               {
+               set #ltargetx %x
+               set #ltargety %y
+               set #ltargetz #tilez
+               set #ltargettile #tiletype
+               set #ltargetkind 3
+               set #lpc 100
+               if *debug = #true
+                  event exmsg #charid 3 0 tree found
+               return #true
+               }
+            }
+        }
+    }
+event exmsg #charid 3 0 tree not found
+set #lpc 100
+return #false
+;================================================================================
+sub setup_secure
+
+event sysmessage Now click on the secure container
+wait 5
+set #targcurs 1
+	SET_SECURE:
+if CLICK notin #sysmsg
+{
+	event sysmessage Now click on the secure container
+	wait 5
+}
+if #targcurs = 1
+	goto set_secure
+set %secure #ltargetid
+set %securex #cursorx
+set %securey #cursory
+
+return
+;================================================================================
+sub setup_runebooks
+set %house_runebook_id #false
+finditem ZBN C_ , #backpackid
+for %index 1 #findcnt
+    {
+    set #findindex %index
+    event property #findid
+    if HOUSE in #property || HOME in #property
+       {
+       set %house_runebook_id #findid
+       break
+       }
+    }
+if %house_runebook_id = #false
+   {
+   display OK No house runebook found, script halted.
+   halt
+   }
+set %tmp 0
+finditem ZBN C_ , #backpackid
+for %index 1 #findcnt
+    {
+    set #findindex %index
+    event property #findid
+    if TREE in #property
+       {
+       set %tmp %tmp + 1
+       set %tree_runebook . %tmp #findid
+       }
+    }
+set %number_of_tree_runebooks %tmp
+if %tmp = 0
+   {
+   display OK No tree runebooks found, script halted.
+   halt
+   }
+return
+;==================================
+; Script Name: Peragrins Meditate Subroutine
+; Author: Peragrin
+; Version: v1.0
+; Client Tested with: 5.0.0b
+; EUO version tested with: 1.5 tv 60
+; Shard OSI / FS: OSI
+; Revision Date: 24/09/05
+; Purpose: Subroutine to meditate character to
+;          full mana, will return #true when
+;          at full mana and retry if failed.
+;============================================
+sub meditate
+namespace push
+namespace LOCAL meditate
+set !lpc #lpc
+set #lpc 100
+_MEDITATE:
+set !jindex #jindex
+event macro 13 46
+while !jindex = #jindex
+      {
+      }
+for !line #jindex !jindex
+    {
+    scanjournal !line
+    set !timer #scnt + 11
+    if YOU_MUST_WAIT_A_FEW_MOMENTS in #journal || YOU_CANNOT_FOCUS_YOUR_CONCENTRATION in #journal
+       {
+       while #scnt < !timer
+             {
+             if #mana = #maxmana
+                {
+                set #lpc !lpc
+                namespace pop
+                return #true
+                }
+             }
+       goto _meditate
+       }
+    if YOU_ENTER_A_MEDITATIVE_TRANCE in #journal || YOU_ARE_AT_PEACE in #journal
+       {
+       while #mana < #maxmana
+             {
+             for !line #jindex !jindex
+                 {
+                 scanjournal !line
+                 if YOU_STOP_MEDITATING in #journal
+                    {
+                    while #scnt < !timer
+                          {
+                          if #mana = #maxmana
+                             {
+                             set #lpc !lpc
+                             namespace pop
+                             return #true
+                             }
+                          }
+                    goto _meditate
+                    }
+                 }
+             }
+       set #lpc !lpc
+       namespace pop
+       return #true
+       }
+    goto _meditate
+    }
+set #lpc !lpc
+namespace pop
+return #false
+
+;================================================================================
+sub setup
+
+set #lpc 100
+tile init
+if #euover <> 1_50_00
+   {
+   display OK This version of Recall Lumberjacker requires EasyUO version 1.5 test vesion 64 or better.
+   halt
+   }
+set %start #scnt
+set %at #scnt2 - 20
+set %logs ZLK_BWR_NWS_XWS_YWS_FXS
+set %boards TLK
+set %axe_types LSF_BSF_NSF_ZRF_RMH_LPH_UOH_FSF
+set %menu_set NO
+set %start_charposx #charposx
+set %start_charposy #charposy
+set %start_charposz #charposz
+set %book 1
+set %rune 1
+set %carp_tool_types IGG_KGG_WFG
+set %craft_gump 530_437
+set %no_boards 0
+set %no_logs 0
+event macro 31 0 ; CLOSES ALL GUMPS
+
+_OPEN_PAPERDOLL:
+set %error #scnt + 1
+event macro 8 1
+while #contname <> PAPERDOLL_GUMP
+      {
+      if #scnt > %error
+         goto _open_paperdoll
+      }
+wait 1
+contpos 643 -193
+_OPEN_STATUS:
+set %error #scnt + 1
+event macro 8 2
+while #contname <> STATUS_GUMP
+      {
+      if #scnt > %error
+         goto _open_status
+      }
+wait 5
+contpos -24 493
+_OPEN_BACKPACK:
+set %error #scnt + 1
+event macro 8 7
+set %at #scnt2
+while #contid <> #backpackid
+      {
+      if #scnt > %error
+         goto _open_backpack
+      }
+wait 1
+contpos 612 113
+return
+;==========================================================================

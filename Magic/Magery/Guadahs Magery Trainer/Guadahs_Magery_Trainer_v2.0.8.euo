@@ -1,0 +1,562 @@
+; ############################################
+; Script Name: Guadahs Magery Trainer 2.0
+; Author: Guadah
+; Version: 2.0.7
+; Client Tested with: EA 7.0.16.1 (Patch 53)
+; EUO version tested with: 1.5 Version 198
+; Shard OSI / FS: OSI Servers
+; Revision Date: 08-12-2011
+; Public Release: 10-08-2007
+; Purpose: To Train Magery from 25.0 to 120.0
+;
+; Special Thanks:
+;  - TrailMyx   Advanced Journal Scan Subs
+;  - Cake2      Support and Recommendations
+;  - Luser      Suit_Properties Sub
+; ############################################
+menu hideeuo
+Menu Window Title Guadah's Magery Trainer
+Menu Window Color Silver
+Menu Window Size 270 155
+Menu Font BGColor Silver
+Menu Font Color Maroon
+menu shape skillsbg 5 5 175 85 3 7 1 Black 7 Gray
+menu shape statsbg 185 5 80 85 3 7 1 Black 7 Gray
+menu shape statusbg 5 95 260 25 3 7 1 Black 7 Gray
+Menu Font Size 10
+Menu Font Align Right
+Menu Font Color Black
+menu font bgcolor gray
+Menu Text Titles 75 10 Magery:
+Menu Text Titles 75 30 Attempts:
+Menu Text Titles 75 50 Time:
+Menu Text Titles 75 70 Last Gain:
+Menu Text Titles 75 100 Status:
+menu text titles 220 10 FC:
+menu text titles 220 25 FCR:
+menu text titles 220 40 LRC:
+menu text titles 220 55 LMC:
+menu text titles 220 70 MR:
+Menu Font Align Left
+chooseskill mage real
+  set %startingskill #skill
+  set %currentskill #skill
+  str len %currentskill
+  str ins %currentskill #dot #strRes
+menu text currentskill 85 10 #strRes
+ set %totalgains %currentskill - %startingskill
+ str len %totalgains
+ str ins %totalgains #dot #strRes
+menu Text totalgains 130 10 + #strRes
+Set %Attempts 0
+Menu Text Attempts 85 30 %Attempts
+  Set %start_time #scnt
+  set %hours 00
+  set %mins 00
+  set %secs 00
+  Set %total_time %hours , : , %mins , : , %secs
+  Set %last_gain %hours , : , %mins , : , %secs , #spc , %ap
+menu Text TotalTime 85 50 %total_time
+menu Text LastGain 85 70 %last_gain
+menu text user_fc 228 10 %user_fc
+menu text user_fcr 228 25 %user_fcr
+menu text user_lrc 228 40 %user_lrc
+menu text user_lmc 228 55 %user_lmc
+menu text user_mr 228 70 %user_mr
+menu Font BGColor Silver
+menu Font Color Black
+menu Button Start 100 125 75 25 Start
+menu Font Color Maroon
+menu Button Link 5 125 75 25 Easy UO
+menu Font Color Black
+menu Button Quit 180 125 75 25 Quit
+Menu Show
+Menu Font Size 10
+Menu Font Color maroon
+menu font bgcolor gray
+menu text scriptstatus 85 100 Calculating Suit. Please Wait
+gosub suit_properties Faster Casting
+set %user_fc #result
+menu set user_fc %user_fc
+gosub suit_properties Faster Cast Recovery
+set %user_fcr #result
+menu set user_fcr %user_fcr
+gosub suit_properties Lower Reagent Cost
+set %user_lrc #result
+menu set user_lrc %user_lrc
+gosub suit_properties Lower Mana Cost
+set %user_lmc #result
+menu set user_lmc %user_lmc
+gosub suit_properties Mana Regeneration
+set %user_mr #result
+menu set user_mr %user_mr
+menu delete scriptstatus
+menu text scriptstatus 85 100 Click "Start" to begin.
+Set #menuButton N/A
+menuloop:
+if #menubutton = Link
+   {
+   set #menuButton N/A
+   execute http://www.easyuo.com
+   }
+if #menubutton = Start
+   {
+   menu Delete Start
+   menu font bgcolor silver
+   menu font color black
+   menu Button Pause 100 125 75 25 Pause
+   gosub MageTraining
+   }
+if #menuButton = Quit
+   {
+   display ok Thank you for using Guadah's Magery Trainer.$
+            +$
+            +Script is Halting$
+   menu hide
+   halt
+   }
+goto menuloop
+
+sub MageTraining
+chooseskill mage real
+if #skill = #skillcap
+   {
+   display You have reached your skill cap.$
+            +$Thank you for using Guadah's Magery Trainer.$
+            +$
+            +Script is Halting$
+            +$
+            + - Guadah$
+   halt
+   }
+if #skilllock <> up
+   {
+   set %skill_direction #skilllock
+   display yesno Your Magery skill is in the %skill_direction position. $
+                + I can correct your error for you.$
+                + Would you like me to do so?$
+   if #dispres = yes
+      exevent skilllock mage up
+   if #dispres = no 2
+      display OK... Script is Halting!$
+      halt
+   }
+if #skill < 250
+   {
+   display Your Magery is under 25.0!
+           + $$Go find the Mage Guildmaster NPC and train your Magery up to at least 25.0$
+           + $HINT:  If you go to Haven, the Mage NPC will train you to 40.0.$
+           + $Script is halting.
+   halt
+   }
+gosub ChooseSpell
+gosub CastSpell
+return
+
+sub Set_FCR_Delay
+if %user_fcr = 6
+   {
+   set %FCR_Delay 1
+   }
+if %user_fcr = 5
+   {
+   set %FCR_Delay 2
+   }
+if %user_fcr = 4
+   {
+   set %FCR_Delay 3
+   }
+If %user_fcr = 3
+   {
+   set %FCR_Delay 5
+   }
+If %user_fcr = 2
+   {
+   set %FCR_Delay 10
+   }
+If %user_fcr = 1
+   {
+   set %FCR_Delay 15
+   }
+If %user_fcr = 0
+   {
+   set %FCR_Delay 25
+   }
+return
+
+sub ChooseSpell
+chooseskill mage
+  if #skill <= 1200
+  {
+    set %spell 56  ; Earthquake
+    set %spell_name Earthquake
+    set %mana_required 50 - ( ( 50 * %user_lmc ) / 100 )
+  }
+  if #skill <= 950
+  {
+    set %spell 53  ; Mass Dispel
+    set %spell_name Mass , #spc , Dispel
+    set %mana_required 40 - ( ( 40 * %user_lmc ) / 100 )
+  }
+  if #skill <= 820
+  {
+    set %spell 43  ; Invisibility
+    set %spell_name Invisibility
+    set %mana_required 20 - ( ( 20 * %user_lmc ) / 100 )
+  }
+  if #skill <= 680
+  {
+    set %spell 33  ; Dispel Field
+    set %spell_name Dispel , #spc , Field
+    set %mana_required 14 - ( ( 14 * %user_lmc ) / 100 )
+  }
+  if #skill <= 550
+  {
+    set %spell 28  ; Greater Heal
+    set %spell_name Greater , #spc , Heal
+    set %mana_required 11 - ( ( 11 * %user_lmc ) / 100 )
+  }
+  if #skill <= 400
+  {
+    set %spell 16  ; Bless
+    set %spell_name Bless
+    set %mana_required 9 - ( ( 9 * %user_lmc ) / 100 )
+  }
+Return
+
+Sub CastSpell
+menu delete scriptstatus
+menu font size 10
+menu font bgcolor gray
+menu font color maroon
+menu Text scriptstatus 85 100 Casting %spell_name
+GoSub Set_FCR_Delay
+MageryCastSpellLoop:
+set %timeout #scnt + 5
+event macro 15 %spell
+ repeat
+  until ( #TargCurs = 1 ) || ( #scnt > %timeout )
+event macro 23 0  ; Target Self
+ wait %FCR_Delay
+GoSub AddAttempts
+GoSub CheckPause
+GoSub SkillCheck
+GoSub Calc_Time
+GoSub ChooseSpell
+if #mana < %mana_required
+	 {
+   gosub Meditate
+	 }
+Goto MageryCastSpellLoop
+Return
+; ########################################
+; ########### MEDITATE SUB ###############
+; ########################################
+sub Meditate
+gosub CheckPause
+gosub Calc_Time
+menu delete scriptstatus
+menu font color maroon
+menu text scriptstatus 85 100 Attempting to Meditate
+gosub TM_AdvJournalSync mana 100
+ event macro 13 46
+  wait 10
+gosub TM_AdvJournalScan mana VALID You_cannot_focus_your
+if #RESULT = #TRUE
+	 {
+	 set %med_wait #scnt + 11
+	 med_loop:
+   set %med_timeout #scnt + 1
+   if #scnt >= %med_wait
+      gosub meditate
+   repeat
+   until #scnt >= %med_timeout
+      {
+      gosub CheckPause
+      gosub Calc_Time
+      goto med_loop
+      }
+   }
+menu delete scriptstatus
+menu text scriptstatus 85 100 Meditating
+med_loop2:
+set %med_timeout #scnt + 1
+if #mana = #maxmana
+   gosub CastSpell
+repeat
+until #scnt >= %med_timeout
+      {
+      gosub CheckPause
+      gosub Calc_Time
+      goto med_loop2
+      }
+return
+; #########################################################
+; ################# CALCULATING TIME SUB ##################
+; #########################################################
+Sub Calc_Time
+Set %TT #Scnt - %start_time
+Set %hours %TT / 3600
+Set %mins ( %TT / 60 ) - ( %hours * 60 )
+Set %secs %TT % 60
+If %hours =< 9
+   Set %hours 0 , %hours
+If %mins =< 9
+   Set %mins 0 , %mins
+If %secs =< 9
+   Set %secs 0 , %secs
+Set %total_time %hours , : , %mins , : , %secs
+Menu Font Color Black
+Menu Font Size 10
+menu set TotalTime %total_time
+Return
+; XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+; XXXXXXXX 72's TIME SUB XXXXXXXXX
+; XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+sub time
+set %ap AM
+set %time #time
+str right %time 2
+set %sec #StrRes
+str left %time 2
+set %hr #StrRes
+str mid %time 3 2
+set %min #StrRes
+if %hr > 11 && %hr < 24
+  set %ap PM
+if %hr > 12
+  set %hr ( %hr - 12 )
+if %hr = 00
+  set %hr 12
+set %last_gain %hr , : , %min , : , %sec , #spc , %ap
+Menu Font Color Black
+Menu Font Size 10
+menu set LastGain %last_gain
+return
+; #################################################
+; ########        ADD ATTEMPTS SUB         ########
+; #################################################
+Sub AddAttempts
+Set %attempts %attempts + 1
+Menu Font Size 10
+Menu Font Color Black
+menu set Attempts %attempts
+Return
+; ############################
+; ##### SKILL CHECK SUB  #####
+; ############################
+Sub SkillCheck
+  chooseskill mage real
+  if #skill = #skillcap
+  {
+    set %currentskill #skill
+    menu set current %currentskill
+    wait 10
+    display You have reached your skill cap.$
+            +Thank you for using Guadah's Magery Trainer$
+            +$
+            +Script is Halting$
+            menu hide
+    halt
+  }
+  if #skill > %currentskill
+  {
+    Set %currentskill #skill
+    str len %currentskill
+    str ins %currentskill #dot #strRes
+    Menu Font Size 10
+    Menu Font Color Black
+    menu set currentskill #strRes
+    Set %totalgains %currentskill - %startingskill
+    str len %totalgains
+    str ins %totalgains #dot #strRes
+    menu set totalgains + #strRes
+    gosub time
+  }
+Return
+; #################################################
+; ########            PAUSE SUB            ########
+; #################################################
+Sub CheckPause
+if #menubutton = Pause
+{
+  set #menubutton N/A
+  Menu Delete Pause
+  Menu Font Color Maroon
+  menu font bgcolor silver
+  Menu Button Resume 100 125 75 25 Resume
+  menu delete scriptstatus
+  Menu Font Color Red
+  menu font bgcolor gray
+  menu text scriptstatus 85 100 Paused
+  GoSub PauseLoop
+}
+if #menubutton = Quit
+{
+  Display ok Thank you for using Guadah's Magery Trainer.$
+          +$
+          +Script is Halting$
+  Menu Hide
+  Halt
+}
+return
+
+Sub PauseLoop
+Pause_Loop:
+  If #menubutton = Resume
+  {
+    set #menubutton N/A
+    Menu Delete Resume
+    Menu Font Color Black
+    menu font bgcolor silver
+    Menu Button Pause 100 125 75 25 Pause
+    Menu Delete scriptstatus
+    Menu Font Color maroon
+    menu font bgcolor gray
+    Menu Text scriptstatus 85 100 Casting %spell_name
+    Return
+  }
+  if #menuButton = Quit
+  {
+    Display ok Thank you for using Guadah's Magery Trainer.$
+            +$
+            +Script is Halting$
+    Menu Hide
+    Halt
+  }
+  Goto Pause_Loop
+Return
+; XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+; XXXXXXXX SUIT PROPERTY SUB XXXXXXX
+; XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+sub suit_properties
+if %0 > 0 && %1 <> N/A
+   {
+   finditem * C_ , #charid
+   if #findkind = -1
+      return %total
+   set %oldlpc #LPC
+   set #LPC 10000
+   set %total 0
+   set %line % . %0
+   goto L , %0
+   L5:
+   set %line %4 , #spc , %line
+   L4:
+   set %line %3 , #spc , %line
+   L3:
+   set %line %2 , #spc , %line
+   L2:
+   set %line %1 , #spc , %line
+   L1:
+   set %line $ , %line , #spc
+   str len %line
+   set %len #strRes
+   for #findindex 1 #findcnt
+       {
+       event property #findid
+       if %line in #property
+          {
+          str pos #property %line
+          set %pos #strRes + %len
+          str mid #property %pos 5
+          set %prop #strRes
+          str pos %prop $
+          set %pos #strRes - 1
+          str left %prop %pos
+          set %tempval #strRes
+          str pos %tempval %
+          if #strRes > 1
+             {
+             set %pos #strRes - 1
+             str left %tempval %pos
+             set %tempval #strRes
+             }
+          set %total %total + %tempval
+          }
+       }
+       set #LPC %oldlpc
+       return %total
+   }
+return 0
+; XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+; XXX TM's Advanced Journal Subs XXX
+; XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+sub TM_AdvJournalSync
+  namespace push
+  namespace local TM_AdvJS_ , %1
+  set !_jindex #jindex + 1
+  if %0 > 1
+    set !lpc_set %2
+  namespace pop
+  set !TM_FunctionCalled #TRUE
+return
+sub TM_AdvJournalScan
+  namespace push
+  namespace local TM_AdvJS_ , %1
+  set !args %2
+  set !temp_lpc #LPC
+  if !lpc_set = N/A
+    set #LPC 1000
+  else
+    set #LPC !lpc_set
+  set !num_args %0
+  set !first_arg 3
+  if !_jindex = N/A
+    set !_jindex #jindex
+  if !charname = N/A
+  {
+    set !charname #CHARNAME
+    AdvJournalScan_loop1:
+      str pos !charname #SPC
+      if #STRRES <> 0
+      {
+        set !val #STRRES - 1
+        str left !charname !val
+        set !left #STRRES
+        set !val !val + 1
+        str del !charname 1 !val
+        set !charname !left , _ , #STRRES
+        goto AdvJournalScan_loop1
+      }
+  }
+  set !index !first_arg
+  repeat
+    set !temp_jindex !_jindex
+    set !text % . !index
+    while !temp_jindex <= #jindex
+    {
+      scanjournal !temp_jindex
+      str pos #JOURNAL !charname 1
+      set !namepos #STRRES
+      str count #JOURNAL !charname
+      set !namecnt #STRRES
+      str pos #JOURNAL :_ 1
+      set !smcpos #STRRES
+      str pos #JOURNAL !text 1
+      set !textpos #STRRES
+      if !textpos < !smcpos && !smcpos <> 0 || !smcpos = 1 || :_ notin #JOURNAL || VALID notin !args
+        set !pass #TRUE
+      else
+        set !pass #FALSE
+      if ( !text in #journal && ( ( !namepos = 1 && !namecnt <= 1 ) || !pass ) )
+      {
+        set !temp_jindex !temp_jindex + 1
+        if ADVANCE in !args
+          set !_jindex !temp_jindex
+        set #LPC !temp_lpc
+        namespace pop
+        set !TM_FunctionCalled #TRUE
+        return #TRUE
+      }
+      set !temp_jindex !temp_jindex + 1
+    }
+    set !index !index + 1
+  until !index - !first_arg > !num_args - !first_arg
+  set #LPC !temp_lpc
+  namespace pop
+  set !TM_FunctionCalled #TRUE
+return #FALSE
+
+
+; Fin

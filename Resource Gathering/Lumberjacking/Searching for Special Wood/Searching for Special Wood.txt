@@ -1,0 +1,769 @@
+;===================================================
+; Script Name:  Searching for Special Wood Trees
+; Author:  Zorgon
+; Version:  1.21a
+; Client Tested with:  5.0.1d
+; EUO version tested with:  1.50 TV 64
+; Shard OSI / FS:  OSI
+; Revision Date:  11-03-05
+; Public Release:  10-03-05
+; Global Variables Used:
+; Purpose:  Helps Search for Special Wood Trees
+;====================================================
+;
+; 1.00 - Initial release.
+; 1.10 - Added Menu as per suggestions and made use of
+;        the bag of sending optional.
+; 1.20 - Added a setup menu, the ability to use carpentry
+;        to make boards, the choice of which wood types
+;        to drop, and the ability to fully chop each tree
+;        or to search just for special wood.
+; 1.21 - Added additional check to see if the user is over
+;        weight and if so then excute the overweight
+;        subroutines.  Warning - this fix will kick in
+;        only when you backpack cannot hold any more
+;        weight, which if 550 stones.  If you have
+;        your status bar open then this option should
+;        not be necessary.  I also added in some code
+;        to move the carpentry menu to a default position
+;        so that making boards would work correctly even
+;        if the carpentry gump had been moved.
+; 1.21a - Added in a space on a line continance that was
+;        causing a logic problem and droping bloodwood and
+;        frostwood logs.  Oops!
+;
+;====================================================
+; Description:
+; This script is designed to help lumberjacks chop trees
+; and speed up the search for special wood trees.  The
+; user has the option of chopping every tree until there
+; is no more wood or just shopping the tree enough to
+; determine if there is any special wood (Yew or better).
+;
+; The user also has the option of dropping regular, oak
+; and/or ash logs; making boards out of the remaing logs;
+; and transmitting all logs, boards and special resources
+; to the bank using a bag of sending when they are above
+; their carry weight.
+;
+; *** You must have your status bar open for this script
+;     to work properly.
+;
+; Recommended equipment for this script:
+; Axe - Duh!
+; Bag of Sending and recharge powder if sending items to bank.
+; Carpentry tools if making boards.
+;
+; Note: You have to have lumberjacking of 95+ to
+;       find Yew and 100 to find Heartwood, Bloodwood
+;       and Frostwood.
+;
+;====================================================
+;
+;====================================================
+; Beginning of User choice variable section.
+;----------------------------------------------------------
+;
+; NOTE: - These setting are displayed in the User Settings
+;         Menu that the script displays on startup and can
+;         be changed there.
+ 
+set %axe XXXXXXX
+gosub targetaxe
+; If you know the id of your axe you may set it here and comment
+; out the gosub targetaxe line.
+ 
+set %usebagofsending #true
+; This setting will determine if you wish to use a bag of sending
+; to send logs, boards and special resources to the bank.
+ 
+set %specialsearch #true
+set %testchops 6
+; #true tells the script that you are searching for only
+; special wood types and to ignore trees with Oak and Ash
+; and to stop chopping trees that you have chopped %testchops
+; number of times without finding special wood.
+; #false tells the script to chop each tree until there is
+; no more wood left.
+ 
+set %pausetomark #true
+; This setting tells the script to ask the user if they want to
+; pause when Yew or better wood is found or if a "magical" tree
+; that allows more than 50 chops is found.
+ 
+set %makeboards #false
+; This setting tells the script if you want to use carpentry
+; to try to make boards out of all the logs that you do not drop.
+ 
+set %dropregularlogs #true
+set %dropoaklogs #true
+set %dropashlogs #true
+; This setting tells the script what type of logs, if any, that
+; are to be droped to the ground when you are either above your
+; carry weight or finished with that tree.
+ 
+set %specialitemcount 10
+; This setting tells the scrip how many special resource items (bark,
+; amber, etc) to have before they are sent to the bank if you
+; are using a bag of sending.
+ 
+; end of User choice variable section.
+;----------------------------------------------------------
+; Not responsible for any editing below this line.
+ 
+ 
+set %maxweight #maxweight
+finditem #charid
+if #findtype in HS_IS
+  set %maxweight %maxweight + 60
+set %maxcarryweight %maxweight - 25
+ 
+; Setup some of the variables used by this script
+set %logs ZLK
+set %boards TLK
+set %newtree #true
+set %bostype CKF
+set %chops 0
+set %firstmainmenu #true
+set %firstsettingmenu #true
+set %carptools EGG_YFG_ZHG_CIG_BIG_AGG_AIG_WFG_IGG_KGG_ZFG ; stolen from CEO
+ 
+if %usebagofsending
+{
+  finditem %bostype C_ , #backpackid
+  if #findkind = -1
+  {
+    display ok I cannot find a Bag of Sending - defalting to overweight message!
+    set %usebagofsending #false
+  }
+  set %bos #findid
+}
+ 
+set %choponetree #false
+set %chopmanytrees #false
+gosub showsettingsmenu
+gosub showmainmenu
+set #menubutton n/a
+mainmenuloop:
+  if #menubutton = mainsingle
+  {
+    set %action Searching , #spc , a , #spc , Single , #spc , Tree!
+    menu Edit mainmessage 55 55 175 %action
+    set %choponetree #true
+    gosub startchopping
+    set %action Idle
+    menu Edit mainmessage 55 55 175 %action
+    set #menubutton n/a
+    goto mainmenuoop
+  }
+  if #menubutton = mainmultiple
+  {
+    set %action Searching , #spc , Multiple , #spc , Trees!
+    menu Edit mainmessage 55 55 175 %action
+    set %chopmanytrees #true
+    gosub startchopping
+    set %action Idle
+    menu Edit mainmessage 55 55 175 %action
+    set #menubutton n/a
+    goto mainmenuloop
+  }
+  if #menubutton = mainsettings
+  {
+    menu hide
+    gosub showsettingsmenu
+    gosub showmainmenu
+    goto mainmenuloop
+  }
+  if #menubutton = mainend
+  {
+    menu hide
+    halt
+  }
+goto mainmenuloop
+halt
+ 
+ 
+; This is the main menu that drives this program.
+; Created with EasyUO Menu Designer by Scriptfellow
+;--------------------------------------------------
+sub showmainmenu
+  menu hideeuo
+        menu Clear
+        menu Window Title Searching for Special Wood Trees
+        menu Window Color Green
+        menu Window Size 280 170
+        menu Font Transparent #true
+        menu Font Align Right
+        menu Font Name MS Sans Serif
+        menu Font Size 8
+        menu Font Style
+        menu Font Color WindowText
+        menu Button mainsingle 15 15 120 25 Search a Single Tree
+        menu Button mainmultiple 150 15 120 25 Search Multiple Trees
+        menu Button mainend 85 135 120 25 End Script
+        menu Font Style b
+        menu Font BGColor Window
+        menu Edit mainmessage 55 55 175 Idle
+        menu Font Style
+        menu Font BGColor BtnFace
+        menu Button mainsettings 85 95 120 25 User Settings
+        if %firstmainmenu
+        {
+        menu Show 421 270
+        set %firstmainmenu #false
+  }
+  else
+  {
+    menu show
+  }
+return
+ 
+ 
+; This is the user settings menu.
+; Created with EasyUO Menu Designer by Scriptfellow
+;--------------------------------------------------
+sub showsettingsmenu
+ 
+  menu hideeuo
+        menu Clear
+        menu Window Title User Settings
+        menu Window Color Green
+        menu Window Size 175 290
+        menu Font Transparent #true
+        menu Font Align Right
+        menu Font Name MS Sans Serif
+        menu Font Size 8
+        menu Font Style
+        menu Font Color WindowText
+        menu Font Transparent #false
+        menu Font Align Left
+        menu Font BGColor Green
+        menu Text EUOLabel2 50 165 Drop Regular Logs
+        menu Text EUOLabel3 50 190 Drop Oak Logs
+        menu Text EUOLabel4 50 215 Drop Ash Logs
+        menu Text EUOLabel5 50 140 Make Boards
+        menu Text EUOLabel6 50 90 Use Bag of Sending
+        menu Text EUOLabel7 50 115 Pause at Special Trees
+        menu Text EUOLabel1 50 65 Special Wood Search
+        menu Font BGColor BtnFace
+        menu Button settingaxe 37 20 100 25 Retarget Axe
+        menu Font BGColor Green
+        menu Check settingsearch 25 65 15 15 %specialsearch SettingSearch
+        menu Check settingbos 25 90 15 15 %usebagofsending SettingBoS
+        menu Check settingpausespecial 25 115 15 15 %pausetomark SettingPauseSpecial
+        menu Check settingmakeboards 25 140 15 15 %makeboards SettingMakeBoards
+        menu Check settingdropregular 25 165 15 15 %dropregularlogs SettingDropRegular
+        menu Check settingdropoak 25 190 15 15 %dropoaklogs SettingDropOak
+        menu Check settingdropash 25 215 15 15 %dropashlogs SettingDropAsh
+        menu Font BGColor BtnFace
+        menu Button settingend 37 250 100 25 End Setup
+        if %firstsettingmenu
+        {
+        menu Show 421 270
+        set %firstsettingmenu #false
+  }
+  else
+  {
+    menu show
+  }
+        set %menubutton n/a
+        settingsmenuloop:
+    if #menubutton = settingaxe
+    {
+      gosub targetaxe
+      set #menubutton n/a
+      goto settingmenuloop
+    }
+    if #menubutton = settingend
+    {
+      menu get settingsearch
+      set %specialsearch #menures
+      menu get settingbos
+      set %usebagofsending #menures
+      menu get settingpausespecial
+      set %pausetomark #menures
+      menu get settingmakeboards
+      set %makeboards #menures
+      menu get settingdropregular
+      set %dropregularlogs #menures
+      menu get settingdropoak
+      set %dropoaklogs #menures
+      menu get settingdropash
+      set %dropashlogs #menures
+      menu hide
+      set #menubutton n/a
+      return
+    }
+        goto settingsmenuloop
+ 
+return
+ 
+ 
+; This subroutine allows the user to target their axe.
+;-----------------------------------------------------
+sub targetaxe
+  set #targcurs 1
+  display ok Please target your axe.
+  targetaxe:
+  if #targcurs = 1
+    goto targetaxe
+  set %axe #ltargetid
+return
+ 
+ 
+; This subroutine controls the tree chopping process of
+; this script.
+;------------------------------------------------------
+sub startchopping
+ 
+  display ok Please target a tree to chop or press F12 to cancel.
+  while %choponetree = #true || %chopmanytrees = #true
+  {
+    if %newtree = #false
+      gosub regularchopping
+    if %newtree
+      gosub firstchop
+    if %choponetree || %chopmanytrees
+      gosub checkresults
+  }
+return
+ 
+   
+; This subroutine will present a target cursor and ask the
+; user to target a tree to be chopped for the first time.
+;---------------------------------------------------------
+sub firstchop
+  set #lobjectid %axe
+  event macro 17 0
+  target 1s
+  targetloop:
+    if #targcurs = 1
+    {
+      onhotkey F12
+      {
+        set #targcurs 0
+        set %choponetree #false
+        set %chopmanytrees #false
+        return
+      }
+      goto targetloop
+    }
+  wait 10
+  set %targetid #ltargetid
+  set %targetx #ltargetx
+  set %targety #ltargety
+  set %newtree #false
+  set %specialwood #false
+  set %chops 0
+return
+ 
+ 
+; This subroutine will continue chopping a already targeted
+; tree until it is out of wood.
+;-----------------------------------------------------------
+sub regularchopping
+  set #lobjectid %axe
+  event macro 17 0
+  wait 10
+  set #ltargetkind 3
+  set #ltargetid %targetid
+  set #ltargetx %targetx
+  set #ltargety %targety
+  wait 10
+  event macro 22 0
+return
+ 
+ 
+; will check the journal for the result of the
+; chopping action and act accordingly.
+;---------------------------------------------
+sub checkresults
+ 
+  set %outofwood #false
+  set %problem #false
+  set %overweight #false
+  set %timer #scnt + 4
+  set %chops %chops + 1
+  scanforresults:
+  scanjournal 1
+  if you_found in #journal
+    scanjournal 2
+  if serious_wood_chopping in #journal
+  {
+    display ok Please equip your axe and press F12 to continue.
+    pauseloop1:
+      onhotkey f12
+        goto pauseloop1finished
+    goto pauseloop1
+    pauseloop1finished:
+    goto continuechopping
+  }
+  if harvest in #journal
+  {
+    set %outofwood #true
+    set %newtree #true
+    goto continuechopping
+  }
+  if %specialsearch && ( oak in #journal || ash in #journal )
+  {
+    set %outofwood #true
+    set %newtree #true
+    goto continuechopping
+  }
+  if %specialwood = #false && ( yew in #journal || heartwood in #journal || bloodwood in #journal || frostwood in #journal )
+  {
+    if %pausetomark
+    {
+      display yesno SPECIAL WOOD Tree - Do you want to pause?
+      if #dispres = yes
+      {
+        display ok Please press F12 to continue.
+        pauseloop2:
+          onhotkey f12
+            goto pauseloop2finished
+        goto pauseloop2
+        pauseloop2finished:
+      }
+    }
+    set %specialwood #true
+    goto continuechopping
+  }
+  if them_into_your_backpack in #journal || useable in #journal || %timer < #scnt
+  {
+    goto continuechopping
+  }
+  if too_far_away in #journal || You_can't_do_that in #journal || use_an_axe_on_that in #journal
+ {
+   set %problem #true
+   set %newtree #true
+   goto continuechopping
+ }
+ if place_any_wood in #journal
+ {
+   set %overweight #true
+   goto continuechopping
+ }
+ goto scanforresults
+ continuechopping:
+ if %chops >= %testchops && %specialwood = #false && %specialsearch
+ {
+   set %outofwood #true
+   set %newtree #true
+ }
+ if ( %outofwood || %overweight ) && ( %dropregularlogs || %dropoaklogs || %dropashlogs )
+   gosub droplogs
+ if ( #weight >= %maxcarryweight || %overweight ) && ( %dropregularlogs || %dropoaklogs || %dropashlogs )
+   gosub droplogs
+ if ( #weight >= %maxcarryweight || %overweight ) && %makeboards
+   gosub makeboards
+ if ( #weight >= %maxcarryweight || %overweight ) && %usebagofsending
+ {
+   set %specialitemtypes YWS
+   gosub sendspecialitemstobank
+   set %specialitemtypes NWS
+   gosub sendspecialitemstobank
+   set %specialitemtypes BWR
+   gosub sendspecialitemstobank
+   set %specialitemtypes XWS
+   gosub sendspecialitemstobank
+   set %specialitemtypes FXS
+   gosub sendspecialitemstobank
+   set %wood %logs
+   gosub sendwoodtobank
+   set %wood %boards
+   gosub sendwoodtobank
+ }
+ if ( #weight >= %maxcarryweight || %overweight ) && %usebagofsending = #false
+ {
+   display ok You are close to being overweight - chopping halted!
+   set %choponetree = #false
+   set %chopmanytrees = #false
+   set %newtree = #true
+   return
+ }
+ if %outofwood
+ {
+   if %choponetree
+   {
+     if %specialsearch
+       display ok Nothing worth harvesting here.
+     else
+       display ok No more wood here.
+   }
+   if %chopmanytrees
+   {
+     if %specialsearch
+       display ok Nothing worth harvensting here - Please target another tree or press F12 to cancel.
+     else
+       display ok No more wood here - Please target another tree or press F12 to cancel.
+   }
+   set %choponetree #false
+ }
+ if %problem
+   display ok Something is not working correctly.  Please target tree again.
+return
+ 
+ 
+; This subroutine will drop any regular, oak or ash
+; logs in your backpack to the ground.
+;---------------------------------------------------
+sub droplogs
+ finditem ZLK C_ , #backpackid
+ if #findkind = -1
+   goto nologs
+ set %items #findcnt
+ for %count 1 %items
+ {
+   finditem ZLK C_ , #backpackid
+   set %logstodrop #findid
+   event property %logstodrop
+   if yew notin #property && heartwood notin #property &&
+   + bloodwood notin #property && frostwood notin #property
+   {
+     for %x -1 1
+     {
+       for %y -1 1
+       {
+         if ( %dropoaklogs && oak in #property ) || ( %dropashlogs && ash in #property ) || ( %dropregularlogs && oak notin #property && ash notin #property )
+         {
+           set %logdropx #charposx + %x
+           set %logdropy #charposy + %y
+           exevent drag %logstodrop #findstack
+           wait 10
+           exevent dropg %logdropx %logdropy
+           wait 10
+           finditem %logstodrop C_ , #backpackid
+           if #findkind = -1
+           {
+             goto logsdropped
+           }
+         }
+       }
+     }
+     logsdropped:
+   }
+   ignoreitem %logstodrop 1
+ }
+ nologs:
+ ignoreitem reset 1
+return
+ 
+ 
+; Use carpentry to try to make boards out of all
+; of the log types in your backpack.
+;----------------------------------------
+sub makeboards
+ chooseskill carpentry
+ set %carpskill #skill
+ finditem %logs C_ , #backpackid
+ if #findkind = -1
+   goto noboards
+ set %items #findcnt
+ for %count 1 %items
+ {
+   finditem %logs C_ , #backpackid
+   set %logstack #findid
+   event property %logstack
+   set %woody 120
+   if oak in #property
+   {
+       set %woody 140
+     if %carpskill < 650
+       goto skiplogs
+   }
+   if ash in #property
+   {
+       set %woody 160
+     if %carpskill < 800
+       goto skiplogs
+   }
+   if yew in #property
+   {
+       set %woody 180
+     if %carpskill < 950
+       goto skiplogs
+   }
+   if heartwood in #property
+   {
+       set %woody 200
+     if %carpskill < 1000
+       goto skiplogs
+   }
+   if bloodwood in #property
+   {
+       set %woody 220
+     if %carpskill < 1000
+       goto skiplogs
+   }
+   if frostwood in #property
+   {
+     set %woody 240
+     if %carpskill < 1000
+       goto skiplogs
+   }
+;    if %dropregularlogs && %woody = 120
+;      goto skiplogs
+;
+   finditem %carptools C_ , #backpackid
+   if #findkind = -1
+   {
+     display ok No carpentry tools found - switching to not making boards.
+     set %makeboard #false
+     return
+   }
+   wait 15
+   set #ltargetkind 1
+   set #lobjectid #findid
+   wait 15
+ 
+; Find and put in code to position the carpentry menu
+; in the same place every time. or to read the position
+; and determine where to click from there.
+ 
+   event macro 17 0
+   wait 40
+   contpos 50 50
+   wait 20
+   click 75 425
+   wait 40
+   contpos 50 50
+   wait 20
+   click 285 %woody
+   wait 40
+   contpos 50 50
+   wait 20
+   click 75 140
+   wait 20
+   contpos 50 50
+   wait 20
+   click 285 120
+   wait 60
+   contpos 50 50
+   wait 20
+   click 75 465
+   wait 10
+   skiplogs:
+   ignoreitem %logstack 1
+ }
+ noboards:
+ ignoreitem reset 1
+return
+ 
+ 
+ 
+; Send special resource items with stacks over
+; %specialitemcount to the bank with a bag of sending.
+;--------------------------------------------------
+sub sendspecialitemstobank
+ 
+ finditem %specialitemtypes C_ , #backpackid
+ if #findkind = -1
+   goto nospecial
+ set %items #findcnt
+ for %count 1 %items
+ {
+   finditem %specialitemtypes C_ , #backpackid
+   set %founditem #findid
+   if #findstack >= %specialitemcount
+   {
+     sendspecial:
+     set #lobjectid %bos
+     set #ltargetid %founditem
+     set #ltargetkind 1
+     event macro 17 0
+     wait 2s
+     event macro 22 0
+     wait 1s
+     scanjournal 1
+     if out_of_charges in #journal
+     {
+       finditem EUO C_ , #backpackid
+       if #findkind = -1
+       {
+         display ok Your bag of sending is out of charges and you have no powder - defaulting to overweight check!
+         set %usebagofsending #false
+         return
+       }
+       set #lobjectid #findid
+       event macro 17 0
+       wait 2s
+       set #ltargetid %bos
+       set #ltargetkind 1
+       event macro 22 0
+       wait 2s
+       scanjournal 1
+       if no_longer_be_recharged in #journal
+       {
+         display ok Bag of Sending will not hold any more charges, please replace - defalting to overweight check!
+         set %usebagofsending #false
+         return
+       }
+       goto sendspecial
+     }
+     ignoreitem %founditem 1
+   }
+ }
+ nospecial:
+ ignoreitem reset 1
+return
+ 
+ 
+; Send all logs and boards to the bank with a bag of
+; sending.  Recharge bag of sending as necessary if
+; powder is available.  Halt script if still too
+; heavy after transmitting items.
+;--------------------------------------------------
+sub sendwoodtobank
+ finditem %wood C_ , #backpackid
+ if #findkind = -1
+   goto nomorelogs
+ set %items #findcnt
+ for %count 1 %items
+ {
+   finditem %wood c_ , #backpackid
+   set %founditem #findid
+   sendlogs:
+   set #lobjectid %bos
+   set #ltargetid %founditem
+   set #ltargetkind 1
+   event macro 17 0
+   wait 2s
+   event macro 22 0
+   wait 1s
+   scanjournal 1
+   if out_of_charges in #journal
+   {
+     finditem EUO C_ , #backpackid
+     if #findkind = -1
+     {
+       display ok Your bag of sending is out of charges and you have no powder - defaulting to overweight check!
+       set %usebagofsending #false
+       return
+     }
+     set #lobjectid #findid
+     event macro 17 0
+     wait 2s
+     set #ltargetid %bos
+     set #ltargetkind 1
+     event macro 22 0
+     wait 2s
+     scanjournal 1
+     if no_longer_be_recharged in #journal
+     {
+       display ok Bag of Sending will not hold any more charges, please replace - defalting to overweight check!
+       set %usebagofsending #false
+       return
+     }
+     goto sendlogs
+   }
+ }
+ nomorelogs:
+ if #weight > %maxcarryweight
+ {
+   display ok You at still overweight - please take a look - Halting!
+   halt
+ }
+return
+ 
+ 
+halt

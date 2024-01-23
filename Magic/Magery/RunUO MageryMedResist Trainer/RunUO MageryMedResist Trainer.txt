@@ -1,0 +1,408 @@
+;===============================================
+; Script Name:   RunUO Magery/Med/Resist Trainer
+; Author: adren
+; Version: 1.3
+; Client Tested with: 4.0.5b
+; EUO version tested with: 1.42.009B
+; Shard OSI / FS: FS
+; Revision Date: 11/03/04
+; Public Release: 11/01/04
+; Global Variables Used:
+; Purpose: Trains Magery/Med/Resist to GM on RunUO shards without 8x8. Auto heals, restocks regs/bandies from secure.
+;===============================================
+; Setup Instructions:
+; 1) Stand next to secure in house.
+; 2) Place regs in bag inside secure.
+; 3) Place bandages in top-level of secure.
+; 4) Open secure.
+; 5) Set %healathits and %healdelay variables.
+; 6) Leave %backpack %secure and %regsecure at 'menu' to target at start, or hard-code the values in.
+; 7) Press play.
+;===============================================
+; USER CONFIG
+set %healathits 40 ; hits at which to start healing
+set %healdelay 16s ; delay for bandages
+set %backpack menu ; menu or manually entered
+set %secure menu ; menu or manually entered
+set %regsecure menu ; menu or manually entered
+; Don't change anything below this line.
+;===============================================
+set %fizzle 0
+set %spellscast 0
+set %para 0
+deletejournal
+gosub showmenuMageResist
+gosub setspell
+gosub setmenu
+chooseskill mage
+menu set smage #skill
+ 
+chooseskill medi
+menu set smed #skill
+chooseskill resi
+menu set sresist #skill
+menu set txtspellscast 0
+menu set txtfizzle 0
+menu set txtheal 0
+ 
+gosub setbags
+ 
+loop:
+ 
+if #menubutton = bpause
+{
+set #menubutton n/a
+pauseloop:
+menu set txtstatus Paused...
+menu set bpause Start
+if #menubutton <> bpause
+goto pauseloop
+menu set bpause Pause
+set #menubutton n/a
+}
+ 
+ 
+gosub regcheck
+gosub setspell
+if %spell <> paralyze
+gosub checkhealth
+gosub checkmana
+gosub castspell
+if %spell = paralyze
+gosub checkpara
+ 
+ 
+ 
+goto loop
+ 
+;====================================
+sub setbags
+menu set txtstatus Settings Bags...
+if %backpack = menu
+{
+set #ltargetid X
+set #ltargetkind 1
+set #targcurs 1
+display ok Target backpack in paperdoll...
+r1:
+if #ltargetid = X
+goto r1
+set %backpack #ltargetid
+}
+set #lobjectid %backpack
+event macro 17 0
+wait 20
+contpos 1 1
+wait 20
+if %secure = menu
+{
+set #ltargetid X
+set #ltargetkind 1
+set #targcurs 1
+display ok Target Secure...
+r2:
+if #ltargetid = X
+goto r2
+set %secure #ltargetid
+}
+set #lobjectid %secure
+event macro 17 0
+wait 20
+contpos 1 200
+wait 20
+if %regsecure = menu
+{
+set #ltargetid X
+set #ltargetkind 1
+set #targcurs 1
+display ok Target reg bag in secure
+r3:
+if #ltargetid = X
+goto r3
+set %regsecure #ltargetid
+}
+set #lobjectid %regsecure
+event macro 17 0
+wait 20
+contpos 1 400
+wait 20
+return
+;====================================
+sub checkmana
+if #mana < %minmana
+{
+menu set txtstatus Meditating...
+event macro 13 46
+fullmed:
+gosub checkmed
+if #mana < #int
+goto fullmed
+}
+return
+;====================================
+sub castspell
+cast1:
+menu set txtstatus Casting %spell
+if %spell = fireball
+event macro 15 17
+if %spell = lightning
+event macro 15 29
+if %spell = paralyze
+event macro 15 37
+if %spell = ebolt
+event macro 15 41
+if %spell = flamestrike
+event macro 15 50
+target  
+event macro 23 0
+for %i 10 1
+{
+scanjournal %i
+if spell_fizzles in #journal
+{
+set %fizzle %fizzle + 1
+menu set txtfizzle %fizzle
+deletejournal
+goto cast1
+}
+}
+set %spellscast %spellscast + 1
+menu set txtspellscast %spellscast
+gosub setmenu
+deletejournal
+return
+;====================================
+sub checkpara
+parabreak:
+for %i 10 1
+{
+scanjournal %i
+if you_can_move in #journal
+{
+deletejournal
+return
+}
+}
+menu set txtstatus Paralyzed...
+wait 2s
+set %para %para + 1
+if %para > 10
+set %para 0
+goto parabreak
+;====================================
+sub setmenu
+chooseskill mage
+menu set cmage #skill
+chooseskill medi
+menu set cmed #skill
+chooseskill resi
+menu set cresist #skill
+return
+;====================================
+sub setspell
+chooseskill mage
+if #skill < 300
+{
+display Ok Buy Magery Skill to 30 and restart
+return
+}
+if #skill < 400
+{
+set %spell fireball
+set %minmana 9
+menu set txtspell Fireball
+return
+}
+if #skill < 500
+{
+set %spell lightning
+set %minmana 11
+menu set txtspell Lightning
+return
+}
+if #skill < 580
+{
+set %spell paralyze
+set %minmana 15
+menu set txtspell Paralyze
+return
+}
+if #skill < 750
+{
+set %spell ebolt
+set %minmana 20
+menu set txtspell Energy Bolt
+return
+}
+if #skill < 1000
+{
+set %spell flamestrike
+set %minmana 40
+menu set txtspell Flamestrike
+return
+}
+if #skill = 1000
+{
+menu set txtstatus GM Magery!
+halt
+}
+;====================================
+sub checkhealth
+menu set txtstatus Checking Health...
+if #hits < %healathits
+{
+healfull:
+finditem ZLF C_ , %backpack
+if #findkind = -1
+{
+finditem ZLF C_ , %secure
+if #findkind = -1
+{
+halt
+menu set txtstatus No bandages.. Halting.
+}
+menu set txtstatus Getting Bandages...
+event drag #findid
+key backspace
+msg 200$
+key enter
+click 400 250 p
+}
+menu set txtstatus Healing...
+set %bandages #findid
+set #lobjectid %bandages
+event macro 17
+target
+set #ltargetid %target
+set #ltargetkind 1
+event macro 22
+wait %healdelay
+if #hits < #maxhits
+goto healfull
+}
+return
+;====================================
+sub regcheck
+if %spell = fireball
+{
+set %regcount 1
+set %reg1 SZF
+}
+if %spell = lightning
+{
+set %regcount 2
+set %reg1 MZF
+set %reg2 SZF
+}
+if %spell = paralyze
+{
+set %regcount 3
+set %reg1 RZF
+set %reg2 KZF
+set %reg3 MZF
+}
+if %spell = ebolt
+{
+set %regcount 2
+set %reg1 KUF
+set %reg2 WZF
+}
+if %spell = flamestrike
+{
+set %regcount 2
+set %reg1 RZF
+set %reg2 SZF
+}
+for %i %regcount 1
+{
+finditem %reg . %i C_ , %backpack
+if #findstack < 2
+gosub getreg %reg . %i
+}
+return
+;====================================
+sub getreg
+menu set txtstatus Getting Regs...
+finditem %1 C_ , %regsecure
+if #findkind = -1
+{
+menu set txtstatus No Regs...Halted.
+halt
+}
+event drag #findid
+wait 15
+if #findstack < 200
+key enter
+wait 15
+if #findstack >= 200
+{
+key backspace
+wait 15
+msg 200$
+key enter
+wait 15
+}
+if #clixres = 800 && #cliyres = 600
+click 400 250 p
+if #clixres = 640 && #cliyres = 480
+click 320 200 p
+return
+;====================================
+sub checkmed
+for %i 10 1
+{
+scanjournal %i
+if you_cannot in #journal
+{
+wait 10s
+event macro 13 46
+deletejournal
+return
+}
+}
+return
+;====================================
+ 
+;--------- EasyUO Menu Designer Code Begin ---------
+sub showmenuMageResist
+  menu HideEUO
+  menu Clear
+  menu Window Title Magery/Resist Trainer v1.0
+  menu Window Color Black
+  menu Window Size 333 164
+  menu Font Transparent #true
+  menu Font Align Right
+  menu Font Name MS Sans Serif
+  menu Font Size 8
+  menu Font Style b
+  menu Font Color White
+  menu Font Transparent #false
+  menu Font Align Left
+  menu Font BGColor Black
+  menu Text lblmage 12 44 Magery:
+  menu Text lblresist 12 92 Resist:
+  menu Text lblmed 12 68 Meditation:
+  menu Text lblstart 104 20 Start
+  menu Text lblcurrent 160 20 Current
+  menu Text lblspell 212 44 Spell:
+  menu Text lblspellscast 212 68 Spells Cast:
+  menu Text lblfizzle 212 92 Fizzles:
+  menu Text lblstatus 12 128 Status:
+  menu Font Style  
+  menu Font Color Red
+  menu Text txtStatus 64 128 216
+  menu Text txtspell 256 44 Spell:
+  menu Text txtfizzle 292 92 Spell:
+  menu Text txtspellscast 292 68 Spell:
+  menu Text cresist 168 92 Spell:
+  menu Text sresist 108 92 Spell:
+  menu Text cmed 168 68 Spell:
+  menu Text smed 108 68 Spell:
+  menu Text cmage 168 44 Spell:
+  menu Text smage 108 44 Spell:
+  menu Font Color WindowText
+  menu Font BGColor BtnFace
+  menu Button bpause 208 128 109 21 Pause
+  menu Show 400 270
+return
+;--------- EasyUO Menu Designer Code End -------

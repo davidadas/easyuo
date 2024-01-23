@@ -1,0 +1,557 @@
+;==================================
+; Script Name: Peragrins Recall Lumberjacker
+; Author: Peragrin
+; Version: 1.7
+; Client Tested with: 5.0.0b
+; EUO version tested with: 1.5 tv 64
+; Shard OSI / FS: OSI & Freeshard (tested on Alexandria)
+; Revision Date: 13/11/05
+; Public Release: 11/11/04
+; Purpose: recalls to trees and chops them for logs
+;============================================
+if #euover <> 1_50_00
+   {
+   display OK This version of Recall Lumberjacker requires EasyUO version 1.5 test vesion 57 or better.
+   halt
+   }
+tile init
+set %axe_types LSF_BSF_NSF_ZRF_RMH_LPH_UOH_FSF
+set %starting_time #time
+set %start #scnt
+gosub setup
+gosub setup_runebooks
+gosub setup_opperation
+gosub setup_secure
+_MAIN_LOOP:
+gosub to_tree
+gosub find_threat
+if #result
+   {
+   wait 21
+   gosub invis
+   }
+gosub check_weight
+if ! #result
+   goto _to_house
+gosub find_tree
+if ! #result
+   goto _main_loop
+_CHOPPING_LOOP:
+gosub find_threat
+if #result
+   {
+   wait 21
+   gosub invis
+   }
+gosub check_weight
+if ! #result
+   goto _to_house
+gosub heal %method_of_travel
+gosub equip_axe
+gosub chop_tree
+if #result
+   goto _chopping_loop
+goto _main_loop
+_TO_HOUSE:
+gosub to_house
+gosub drop_off
+goto _main_loop
+
+;==================================
+sub heal
+if %1 <> MAGERY && %1 <> CHIVALRY
+   {
+   display OK Choose Chivalry or Magery, script halted
+   halt
+   }
+set %cure_method 10
+set %heal_method 28
+if %1 = CHIVALRY
+   {
+   set %cure_method 201
+   set %heal_method 202
+   }
+_CURE:
+while C in #charstatus
+   {
+   event macro 15 %cure_method
+   set %error #scnt + 5
+   while #targcurs <> 1
+         {
+         if #scnt > %error
+            goto _cure
+         }
+   event macro 23 0
+   wait 30
+   }
+_HEAL:
+set %maxhits #maxhits - 10
+while #hits < %maxhits
+   {
+   event macro 15 %heal_method
+   set %error #scnt + 5
+   while #targcurs <> 1
+         {
+         if #scnt > %error
+            goto _heal
+         }
+   event macro 23 0
+   wait 30
+   }
+return
+;==================================
+sub find_threat
+set %human HS_IS
+onhotkey F12
+         {
+         str len *peragrins_recall_lumberjacker_threats
+         set %number_of_threats_now #strres / 3
+         display OK There were 17 threats recognised at start,$
+                    + Now there are %number_of_threats_now
+         }
+if *peragrins_recall_lumberjacker_threats = N/A
+   set *peragrins_recall_lumberjacker_threats QE_BE_GD_TD_SE_SD_JD_WG_QD_XF_VE_WE_ZC_YD_WD_EO_LD
+finditem *peragrins_recall_lumberjacker_threats G
+if #findkind <> -1
+   return #true
+finditem #enemyid G
+if #findkind = -1
+   return #false
+if #findtype notin *peragrins_recall_lumberjacker_threats && #findtype notin %human
+   set *peragrins_recall_lumberjacker_threats *peragrins_recall_lumberjacker_threats , #findtype , _
+return #true
+;=====================================================
+sub setup_opperation
+; DEFAULT VALUES
+set %method_of_travel MAGERY
+set %use_invis NO
+set %use_hiding NO
+display YESNO Do you wish to use sacred journey rather than recalling?
+if #dispres = YES
+   set %method_of_travel CHIVALRY
+display YESNO Do you wish to go invisible if a threat is detected?
+if #dispres = YES
+   {
+   set %use_invis YES
+   return
+   }
+display YESNO Do you wish to hide if a threat is detected?
+if #dispres = YES
+   set %use_hiding YES
+return
+;=============================================================================
+sub invis
+if %method <> Magery
+   return #false
+_INVIS:
+set %error #scnt + 5
+while H notin #charstatus
+      {
+      event macro 15 43
+      while #targcurs <> 1
+            {
+            if #scnt > %error
+               goto _invis
+            }
+      set %error2 #scnt + 3
+      event macro 23 0
+      while H notin #charstatus
+            {
+            if #scnt > %error2
+               goto _invis
+            }
+      wait 30
+      }
+return #true
+;=============================================================================
+sub time
+
+set %d1 %1 / 1 % 10
+set %d2 %1 / 10 % 10
+set %d3 %1 / 100 % 10
+set %d4 %1 / 1000 % 10
+set %d5 %1 / 10000 % 10
+set %d6 %1 / 100000 % 10
+set %time  %d6 , %d5 , : , %d4 , %d3 , : , %d2 , %d1
+
+return
+;=============================================================================
+sub check_weight
+event property #backpackid
+str pos #property ,
+set %strres #strres + 1
+str del #property 1 %strres
+set %property #strres
+str pos %property #spc
+set %strres #strres - 1
+str left %property %strres
+set %weight_in_pack #strres
+if %weight_in_pack > 375 && #curskind = 0
+   return #false
+if %weight_in_pack > 395 && #curskind <> 0
+   return #false
+set %tmp #maxweight - #weight
+if %tmp < 20 && #curskind <> 0
+   return #false
+if %tmp < 40 && #curskind = 0
+   return #false
+return #true
+;=============================================================================
+sub drop_off
+finditem %logs C_ , #backpackid
+if ! #findkind
+   {
+   for %tmp 1 #findcnt
+       {
+       set #findindex %tmp
+       exevent drag #findid #findstack
+       wait 5
+       exevent dropc %secure
+       wait 1s
+       }
+   }
+return
+;=============================================================================
+sub to_tree
+_RETRY_TO_TREE:
+wait 1s
+gosub use_runebook %tree_runebook . %book %rune %method_of_travel
+set %rune %2 + 1
+if %rune > 16
+   {
+   set %rune 1
+   set %book %book + 1
+   if %book > %number_of_tree_runebooks
+      set %book 1
+   }
+if #result = #false
+   goto _retry_to_tree
+return
+;=============================================================================
+sub use_runebook
+namespace push
+namespace LOCAL use_runebook
+if %0 <> 3
+   {
+   display OK Error in USE_RUNEBOOK subroutine, incorrect arguments passed.
+   pause
+   halt
+   }
+if %2 < 1 || %2 > 16
+   {
+   display OK Error in USE_RUNEBOOK subroutine, rune number out of range.
+   pause
+   halt
+   }
+if %3 <> MAGERY && %3 notin CHIVALRY
+   {
+   display OK Error in USE_RUNEBOOK subroutine, method of travel not set properly.
+   pause
+   halt
+   }
+while #mana < 20
+      {
+      }
+set !runebook %1
+set !rune %2
+set !method_of_travel %3
+set !gump_size 452_236
+if #contsize = !gump_size
+   {
+   set !x #contposx + 100
+   set !y #contposy + 100
+   click !x !y r
+   }
+finditem !runebook
+if #findkind || #finddist > 2
+   {
+   display OK Error in USE_RUNEBOOK subroutine, runebook not found.
+   halt
+   }
+set #lobjectid !runebook
+_OPEN_RUNEBOOK:
+event macro 17 0
+set !error #scnt + 3
+while #contsize <> !gump_size
+      {
+      if #scnt > !error
+         goto _open_runebook
+      }
+if !rune = 1 || !rune = 2
+   set !page 1
+if !rune = 3 || !rune = 4
+   set !page 2
+if !rune = 5 || !rune = 6
+   set !page 3
+if !rune = 7 || !rune = 8
+   set !page 4
+if !rune = 9 || !rune = 10
+   set !page 5
+if !rune = 11 || !rune = 12
+   set !page 6
+if !rune = 13 || !rune = 14
+   set !page 7
+if !rune = 15 || !rune = 16
+   set !page 8
+set !x #contposx + 105
+set !x_offset 35
+set !x_offset !x_offset * !page
+if !page > 4
+   set !x_offset !x_offset + 30
+set !x !x + !x_offset
+set !y #contposy + 196
+click !x !y f
+set !error #scnt + 2
+while #contsize <> !gump_size
+      {
+      if #scnt > !error
+         goto _open_runebook
+      }
+set !page 2
+if !rune in 1_3_5_7_9_11_13_15
+   set !page 1
+set !x #contposx + 139
+if !page = 2
+   set !x #contposx + 299
+set !y #contposy + 181
+if !method_of_travel = MAGERY
+   set !y #contposy + 142
+set !error #scnt + 5
+set !position #charposx , #charposy , #charposz
+click !x !y f
+if #contsize = !gump_size
+   {
+   set !x #contposx + 50
+   set !y #contposy + 50
+   click !x !y r
+   goto _open_runebook
+   }
+while !position = #charposx , #charposy , #charposz
+      {
+      if #scnt > !error
+         {
+         namespace pop
+         return #false
+         }
+      }
+namespace pop
+return #true
+;=============================================================================
+sub to_house
+set %house_rune 0
+_RETRY_TO_HOUSE:
+wait 1s
+set %house_rune %house_rune + 1
+gosub use_runebook %HOUSE_RUNEBOOK_ID %house_rune %method_of_travel
+if #result = #false
+   goto _retry_to_house
+return
+;===================================================================
+sub equip_axe
+set %axe_types LSF_BSF_NSF_ZRF_RMH_LPH_UOH_FSF
+_EQUIP_AXE:
+finditem %axe_types C_ , #charid
+if ! #findkind
+   {
+   set %axe #findid
+   return #true
+   }
+finditem %axe_types C_ , #backpackid
+if #findkind
+   {
+   display OK Error equiping axe, none found in backpack.
+   halt
+   }
+set %axe #findid
+exevent drag %axe
+set %error #scnt + 3
+wait 10
+exevent droppd
+wait 10
+repeat
+        {
+        finditem %axe C_ , #charid
+        if #scnt > %error
+           {
+           wait 1s
+           goto _equip_axe
+           }
+        }
+until ! #findkind
+return #true
+;================================
+sub chop_tree
+_CHOP_TREE:
+wait 1s
+set #lobjectid %axe
+event macro 17 0
+set %error #scnt + 5
+while #targcurs <> 1
+      {
+      if #scnt > %error
+         goto _chop_tree
+      }
+set %error #scnt + 10
+set %jindex #jindex + 1
+event macro 22 0
+while #scnt < %error
+      {
+      for %line #jindex %jindex
+          {
+          scanjournal %line
+          if HACK in #journal || LOGS in #journal || FOUND in #journal
+             return #true
+          if CAN'T in #journal || HARVEST in #journal
+             return #false
+          }
+      }
+return #false
+;=====================================
+sub find_tree
+tile init
+set %start_x #charposx - 1
+set %start_y #charposy - 1
+set %end_x #charposx + 1
+set %end_y #charposy + 1
+for %x %start_x %end_x
+    {
+    for %y %start_y %end_y
+        {
+        tile cnt %x %y
+        for %tilekind 0 #tilecnt
+            {
+            tile get %x %y %tilekind
+            if TREE in #tilename
+               {
+               set #ltargetx %x
+               set #ltargety %y
+               set #ltargetz #tilez
+               set #ltargettile #tiletype
+               set #ltargetkind 3
+               return #true
+               }
+            }
+        }
+    }
+return #false
+;================================================================================
+sub setup_secure
+
+event sysmessage Now click on the secure container
+wait 5
+set #targcurs 1
+	SET_SECURE:
+if CLICK notin #sysmsg
+{
+	event sysmessage Now click on the secure container
+	wait 5
+}
+if #targcurs = 1
+	goto set_secure
+set %secure #ltargetid
+set %securex #cursorx
+set %securey #cursory
+
+return
+;================================================================================
+sub setup_runebooks
+set %house_runebook_id #false
+finditem ZBN C_ , #backpackid
+for %index 1 #findcnt
+    {
+    set #findindex %index
+    event property #findid
+    if HOUSE in #property || HOME in #property
+       {
+       set %house_runebook_id #findid
+       break
+       }
+    }
+if %house_runebook_id = #false
+   {
+   display OK No house runebook found, script halted.
+   halt
+   }
+set %tmp 0
+finditem ZBN C_ , #backpackid
+for %index 1 #findcnt
+    {
+    set #findindex %index
+    event property #findid
+    if TREE in #property
+       {
+       set %tmp %tmp + 1
+       set %tree_runebook . %tmp #findid
+       }
+    }
+set %number_of_tree_runebooks %tmp
+if %tmp = 0
+   {
+   display OK No tree runebooks found, script halted.
+   halt
+   }
+return
+;================================================================================
+sub setup
+
+set #lpc 100
+set %total_logs 0
+set %logs_in_pack 0
+set %logs ZLK_BWR_NWS_XWS_YWS_FXS
+set %chops 0
+set %recalls 0
+set %menu_set NO
+set %start_x #charposx
+set %start_y #charposy
+set %start_z #charposz
+
+set %book 1
+set %rune 1
+
+_CLOSE_GUMPS:
+set %error #scnt + 1
+event macro 31 0 ; CLOSES ALL GUMPS
+while #contname <> GameAreaEdgeGump
+      {
+      while #contname = spellicon_gump || #contname = skillicon_gump
+         {
+         set !x #contposx + 10
+         set !y #contposy + 10
+         click !x !y r
+         wait 2
+         }
+      if #scnt > %error
+         goto _close_gumps
+      }
+_OPEN_PAPERDOLL:
+set %error #scnt + 1
+event macro 8 1
+while #contname <> PAPERDOLL_GUMP
+      {
+      if #scnt > %error
+         goto _open_paperdoll
+      }
+wait 5
+contpos 643 -193
+_OPEN_STATUS:
+set %error #scnt + 1
+event macro 8 2
+while #contname <> STATUS_GUMP
+      {
+      if #scnt > %error
+         goto _open_status
+      }
+wait 5
+contpos -24 493
+_OPEN_BACKPACK:
+set %error #scnt + 1
+event macro 8 7
+while #contid <> #backpackid
+      {
+      if #scnt > %error
+         goto _open_backpack
+      }
+wait 5
+contpos 612 113
+return
+;==========================================================================

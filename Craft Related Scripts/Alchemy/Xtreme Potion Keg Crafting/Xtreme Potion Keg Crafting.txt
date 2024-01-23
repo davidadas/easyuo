@@ -1,0 +1,1477 @@
+;================================================================================
+; Script Name: Xtreme Potion Keg Crafting
+; Author:  Mr X
+; Version: 2.2.2
+; Client Tested with: 4.0.6a (patch 34)
+; EUO version tested with: 1.42.009D
+; Shard OSI / FS: OSI 
+; Revision Date: 12/04/2004
+; Public Release: 04/14/2004
+; Global Variables Used:
+;	*xtremeTimeoutCraftClick
+;	*xtremeTimeoutCraftItem
+;	*xtremeTimeoutAction
+;	*xtremeLoopWait
+;	*xtremeKegsToMake
+;	*xtremeIngotsToRestock
+;	*xtremeBoardsToRestock
+;	*xtremeBottlesToRestock
+;	*xtremeSecureResourceID
+;	*xtremeSecureKegID
+;	*xtremeWorkingBagID
+;	*xtremePotionKegCraftingLoaded
+; Description: Makes mass potion kegs effortlessly.
+;================================================================================
+
+;================================================================================
+; Revision history:
+; 04/14/2004
+;	Only created kegs based on what resources you have on your character.  Manual 
+;	intervention is required to stock your character with tools, resources and to move 
+;	the finished potion kegs from character.
+;
+; 04/17/2004
+;	Added dialogs to help through the setup.
+;	Added automation to refill resource bag on char with materials.
+;	Added automation to move finished potion kegs off char to secure.
+;
+; 05/16/2004
+;	Rewrite to account for several things (plus a bunch of minor stuff):
+;		Only makes parts as needed.
+;		Recovers for lag and failures and attempts to make as neccessary..
+;		Consolidate some of the subs.
+;	Added additional carpenter tools.
+;	Added additional tinker tools.
+;	Added logic to open the necessary secures instead of prompting if you supply the IDs in the
+;		initialization code below.
+;	Added logic to keep searching for ingots in the secure if other ingot types 
+;		are in the same secure.
+;	Added count of kegs made in the caption of UO window.
+;	Borrowed some code from Quintok & Raziel.
+;
+; 06/11/2004
+;	Added interface to enhance usability.
+;	Added more carp tools that I had missed before.
+;	Added links to provide feedback and ratings!  Thanks to SF for this one!
+;	Added checks to make sure item drops occur.
+;	Changed name from Make Potion Kegs to Xtreme Potion Keg Crafting
+;	Readded code to only retrieve iron ingots from the resource secure and ingore all other
+;		ingot types during the execution of the script.
+;	Added code that makes sure iron ingots are selected in the tinkering gump.
+;	Made all input variables (via the interface) persistent so they are retained each time the script
+;		is ran.
+;	Added logic to load menu in center of game play area but only the first time the script is ran.
+;		Otherwise it defaults to the location where it was closed at last (EUO default).
+;
+; 06/21/2004
+;	Updated contKind values (I will eventually eliminate the use of those!).
+;
+; 07/18/2004
+;	Converted use of #contKind to #contName.  No more need to update with new patches.
+;	Replaced all WaitForGump calls to direct calls to WaitForSysVars.
+;	Added calls at various points to WaitForSysVars in order to wait for crafting gumps to close.
+;		This should help with some of the random (yet seldom!) crafting issues encountered 
+;		(made wrong item, keep making same item over and over, etc).
+;	Fixed CheckResource sub that used an undefined variable in it's temporary ignore list.
+;	Corrected the make last functionalty so that it truely made the last item attempted to be made.
+;	Consolidated code that used tools into one sub.
+;	Removed use of #contSize checks in favor of  other system variables.
+;	Added logic to reset variables under certain "looping" conditions in order for the script to recover
+;		and continue on and keep making kegs.
+;	Overall, made more robust while increasing through put (I make 1 full keg on the average of
+;		every 28 seconds).
+;	Added journal checks at various places to account for waiting to perform actions, containers
+;		not being able to hold more information (including house being at lockdown limit).
+;	Added display of the average seconds it takes to make the kegs.
+;
+; 10/29/2004
+;	Added making saws when needed.  No need to stock up on them anymore.
+;	Added making tinker tools when needed.  No need to stock up on them anymore.
+;	Fixed menu locations that changed due to UO:SE.
+;
+; 11/30/2004
+;	Fixed bug where I left pause in script - OOPS!!
+;	Added code to error out if secure for holding completed kegs is not found.
+;
+; 12/04/2004
+;	Fixed bug not finding the completed keg secure.
+;
+; TODO
+;	Add ability to dye kegs.
+;================================================================================
+
+;================================================================================
+; Begin script initialization
+;================================================================================
+ignoreItem Reset
+menu HideEUO
+
+set #lpc 1000 ;raise the lpc setting to zip through all the beginning stuff.
+
+; Defaults for user input.
+set %_defaultKegsToMake 0
+set %_defaultIngotsToRestock 7
+set %_defaultBoardsToRestock 23
+set %_defaultbottlesToRestock 10
+set %_defaultTimeoutCraftClick 5
+set %_defaultTimeoutCraftItem 15
+set %_defaultTimeoutAction 25
+set %_defaultLoopWait 1
+
+; Coords for the containers required for this script.
+set %_secureResourceX 570
+set %_secureResourceY 0
+set %_secureKegX 570
+set %_secureKegY 200
+set %_workingBagX 570
+set %_workingBagY 400
+
+set %_version 2.2.2
+set %_kegsMade
+
+if *xtremeKegsToMake = N/A
+	set *xtremeKegsToMake %_defaultKegsToMake
+if *xtremeIngotsToRestock = N/A
+	set *xtremeIngotsToRestock %_defaultIngotsToRestock
+if *xtremeBoardsToRestock = N/A
+	set *xtremeBoardsToRestock %_defaultBoardsToRestock
+if *xtremeBottlesToRestock = N/A
+	set *xtremeBottlesToRestock %_defaultBottlesToRestock
+if *xtremeTimeoutCraftClick = N/A
+	set *xtremeTimeoutCraftClick %_defaultTimeoutCraftClick
+if *xtremeTimeoutCraftItem = N/A
+	set *xtremeTimeoutCraftItem %_defaultTimeoutCraftItem
+if *xtremeTimeoutAction = N/A
+	set *xtremeTimeoutAction %_defaultTimeoutAction
+if *xtremeLoopWait = N/A
+	set *xtremeLoopWait %_defaultLoopWait
+
+; Carpenter tools
+set %_carpenterTools BIG_AIG_EGG_AGG_ZHG_CGG_CIG_IGG_WFG_KGG_YFG
+; Tinker tools
+set %_tinkerTools GTL_JTL
+
+; Used to id backpacks.
+set %_backpackType ZJF
+
+; Object types for the various parts that will be made.
+set %_hoopType DIG
+set %_tapType IEG
+set %_staveType BTL
+set %_lidType OJL
+set %_kegType JKF
+set %_potionKegType QMJ
+set %_boardType TLK
+set %_ingotType ENK
+set %_bottleType WUF
+set %_tinkerToolType GTL
+set %_sawType EGG
+
+; Descriptor variables for types referenced in this script that are displayed to user.
+set %_itemType , %_hoopType HOOP
+set %_itemType , %_tapType TAP
+set %_itemType , %_staveType STAVE
+set %_itemType , %_lidType LID
+set %_itemType , %_kegType KEG
+set %_itemType , %_potionKegType POTION , #spc , KEG
+set %_itemType , %_boardType BOARD
+set %_itemType , %_ingotType INGOT
+set %_itemType , %_bottleType BOTTLE
+set %_itemType , %_carpenterTools CARPENTRY
+set %_itemType , %_tinkerTools TINKER
+set %_itemType , %_tinkerToolType TINKER , #spc , TOOL
+set %_itemType , %_sawType SAW
+
+; Counts of resources needed for each component.
+set %_hoopResourceIngot 5
+set %_tapResourceIngot 2
+set %_staveResourceBoard 5
+set %_lidResourceBoard 4
+set %_kegResourceStave 3
+set %_kegResourceHoop 1
+set %_kegResourceLid 1
+set %_potionKegResourceBottle 10
+set %_potionKegResourceKeg 1
+set %_potionKegResourceLid 1
+set %_potionKegResourceTap 1
+set %_craftingResourceTinkerTool 2
+set %_craftingResourceSaw 1
+set %_tinkerResourceIngot 2
+set %_sawResourceIngot 4
+
+;set %_commentLink www.easyuo.com/T.PHP?T=5931
+;set %_rateLink www.easyuo.com/R.PHP?T=5931
+set %_commentLink http://www.easyuo.com/forum/posting.php?mode=reply&t=11340
+set %_rateLink http://www.easyuo.com/rate.php?id=887
+
+; Working variables to maintain last tools and such.
+set %_lastToolID
+set %_lastToolType
+set %_startTime
+set %_lastTime
+set %_lastJournalIndex
+set %_lastCraftedItem
+
+;================================================================================
+; End script initialization
+;================================================================================
+
+;================================================================================
+; Begin script execution
+;================================================================================
+gosub ShowMenu
+set #lpc 10
+gosub LoopMenu
+halt
+;================================================================================
+; End script execution
+;================================================================================
+
+;================================================================================
+; Displays the menu for the script.
+;================================================================================
+Sub ShowMenu
+
+	menu Clear
+
+	menu Window Title Xtreme Potion Keg Crafting v , %_version
+	menu Window Color Black
+	menu Window Size 401 215
+	menu Font Transparent #true
+
+	menu Shape shpGroup1 5 5 240 102 3 1 1 Black 7 White
+	menu Shape shpGroup2 247 5 150 102 3 1 1 Black 7 White
+	menu Shape shpGroup3 5 110 240 77 3 1 1 Black 7 White
+	menu Shape shpGroup4 247 110 150 77 3 1 1 Black 7 White
+	menu Shape shpGroup5 5 190 392 20 3 1 1 Black 7 Red
+
+	menu Font Name MS Sans Serif
+	menu Font Size 8
+	menu Font Transparent #true
+
+	gosub SetupLabelAttributes
+	menu Text lblKegsToMake 10 13 Potion Kegs To Make:
+	gosub SetupTextAttributes
+	menu Edit txtKegsToMake 132 8 35 *xtremeKegsToMake
+	gosub SetupLabelAttributes
+	menu Text lblKegsMade 170 13 0 Made
+
+	gosub SetupLabelAttributes
+	menu Text lblIngotsToRestock 10 37 Ingots To Restock:
+	gosub SetupTextAttributes
+	menu Edit txtIngotsToRestock 132 32 35 *xtremeIngotsToRestock
+
+	gosub SetupLabelAttributes
+	menu Text lblBoardsToRestock 10 61 Boards To Restock:
+	gosub SetupTextAttributes
+	menu Edit txtBoardsToRestock 132 56 35 *xtremeBoardsToRestock
+
+	gosub SetupLabelAttributes
+	menu Text lblBottlesToRestock 10 85 Bottles To Restock:
+	gosub SetupTextAttributes
+	menu Edit txtBottlesToRestock 132 80 35 *xtremeBottlesToRestock
+
+	gosub SetupLabelAttributes
+	menu Text lblAvgTime 170 37 0 / SPK
+
+	gosub SetupLabelAttributes
+	menu Text lblResourceSecureID 10 118 Resource Secure:
+	gosub SetupTextAttributes
+	menu Edit txtResourceSecureID 107 113 60 *xtremeSecureResourceID
+	gosub SetupButtonAttributes
+	menu Button btnResourceSecureIDSet 170 113 71 21 Set Secure
+
+	gosub SetupLabelAttributes
+	menu Text lblKegSecureID 10 142 Keg Secure:
+	gosub SetupTextAttributes
+	menu Edit txtKegSecureID 107 137 60 *xtremeSecureKegID
+	gosub SetupButtonAttributes
+	menu Button btnKegSecureIDSet 170 137 71 21 Set Secure
+
+	gosub SetupLabelAttributes
+	menu Text lblWorkingBagID 10 166 Working Bag:
+	gosub SetupTextAttributes
+	menu Edit txtWorkingBagID 107 161 60 *xtremeWorkingBagID
+	gosub SetupButtonAttributes
+	menu Button btnWorkingBagIDSet 170 161 71 21 Set Bag
+
+	gosub SetupLabelAttributes
+	menu Text lblCraftClickTimeout 252 13 Craft Click Wait:
+	gosub SetupTextAttributes
+	menu Edit txtCraftingClickTimeout 367 8 25 *xtremeTimeoutCraftClick
+
+	gosub SetupLabelAttributes
+	menu Text lblCraftItemTimeout 252 37 Craft Item Wait:
+	gosub SetupTextAttributes
+	menu Edit txtCraftItemTimeout 367 32 25 *xtremeTimeoutCraftItem
+
+	gosub SetupLabelAttributes
+	menu Text lblActionTimeout 252 61 Action Wait:
+	gosub SetupTextAttributes
+	menu Edit txtActionTimeout 367 56 25 *xtremeTimeoutAction
+
+	gosub SetupLabelAttributes
+	menu Text lblMenuLoopWait 252 85 Menu Loop Wait:
+	gosub SetupTextAttributes
+	menu Edit txtMenuLoopWait 367 80 25 *xtremeLoopWait
+
+	gosub SetupButtonAttributes
+	menu Button btnBuildKegs 262 113 120 21 Build Potion Kegs
+	menu Button btnPostFeedback 262 138 120 21 Post Feedback!
+	menu Button btnPostRating 262 163 120 21 Rate This Script!
+
+	gosub SetupLabelAttributes White b
+	menu Font Size 8
+	menu Text lblStatus 10 193 Look at that!  Buttons for providing feedback and rating this script!
+
+	if *xtremePotionKegCraftingLoaded
+	{
+		menu Show
+	}
+	else
+	{
+		; Show the menu in the center of the client.
+		set %showX ( #cliXRes - 401 ) / 2
+		set %showY ( #cliYRes - 230 ) / 2
+		menu Show %showX %showY
+		set *xtremePotionKegCraftingLoaded #true
+	}
+
+Return
+
+;================================================================================
+; Helper sub used to set the attributes used for new labels.
+;================================================================================
+Sub SetupLabelAttributes
+
+	namespace Push
+	namespace Local SetupLabelAttributes , _ , #time , #random
+
+	set !color %1
+	set !bold %2
+
+	if !color = N/A
+		set !color Blue
+	if !bold = N/A
+		set !bold
+
+	menu Font Color !color
+	menu Font Style !bold
+	menu Font Align Left
+
+	namespace Clear
+	namespace Pop
+
+Return
+
+;================================================================================
+; Helper sub used to set the attributes used for new text boxes.
+;================================================================================
+Sub SetupTextAttributes
+
+	namespace Push
+	namespace Local SetupTextAttributes , _ , #time , #random
+
+	menu Font Color WindowText
+	menu Font BGColor White
+
+	namespace Clear
+	namespace Pop
+
+Return
+
+;================================================================================
+; Helper sub used to set the attributes used for new buttons.
+;================================================================================
+Sub SetupButtonAttributes
+
+	namespace Push
+	namespace Local SetupButtonAttributes , _ , #time , #random
+
+	menu Font BGColor btnFace
+
+	namespace Clear
+	namespace Pop
+
+Return
+
+;================================================================================
+; Stays in a loop capturing the actions triggered via the menus.
+;================================================================================
+Sub LoopMenu
+
+	namespace Push
+	namespace Local LoopMenu , _ , #time , #random
+
+	set !quitMenu #false
+	set #menuButton N/A
+
+	_LoopMenu:
+		if ! !quitMenu
+		{
+			; Capture change events first.
+			menu GetNum txtKegsToMake *xtremeKegsToMake
+			if #menuRes <> *xtremeKegsToMake
+				set *xtremeKegsToMake #menuRes
+			menu Get txtKegsToMake
+			if #menuRes <> *xtremeKegsToMake
+				menu Set txtKegsToMake *xtremeKegsToMake
+
+			menu GetNum txtIngotsToRestock *xtremeIngotsToRestock
+			if #menuRes <> *xtremeIngotsToRestock
+				set *xtremeIngotsToRestock #menuRes
+			menu Get txtIngotsToRestock
+			if #menuRes <> *xtremeIngotsToRestock
+				menu Set txtIngotsToRestock *xtremeIngotsToRestock
+
+			menu GetNum txtBoardsToRestock *xtremeBoardsToRestock
+			if #menuRes <> *xtremeBoardsToRestock
+				set *xtremeBoardsToRestock #menuRes
+			menu Get txtBoardsToRestock
+			if #menuRes <> *xtremeBoardsToRestock
+				menu Set txtBoardsToRestock *xtremeBoardsToRestock
+
+			menu GetNum txtBottlesToRestock *xtremeBottlesToRestock
+			if #menuRes <> *xtremeBottlesToRestock
+				set *xtremeBottlesToRestock #menuRes
+			menu Get txtBottlesToRestock
+			if #menuRes <> *xtremeBottlesToRestock
+				menu Set txtBottlesToRestock *xtremeBottlesToRestock
+
+			menu Get txtResourceSecureID
+			if #menuRes <> *xtremeSecureResourceID
+				menu Set txtResourceSecureID *xtremeSecureResourceID
+
+			menu Get txtKegSecureID
+			if #menuRes <> *xtremeSecureKegID
+				menu Set txtKegSecureID *xtremeSecureKegID
+
+			menu Get txtWorkingBagID
+			if #menuRes <> *xtremeWorkingBagID
+				menu Set txtWorkingBagID *xtremeWorkingBagID
+
+			menu GetNum txtActionTimeout *xtremeTimeoutAction
+			if #menuRes <> *xtremeTimeoutAction
+				set *xtremeTimeoutAction #menuRes
+			menu Get txtActionTimeout
+			if #menuRes <> *xtremeTimeoutAction
+				menu Set txtActionTimeout *xtremeTimeoutAction
+
+			menu GetNum txtCraftingClickTimeout *xtremeTimeoutCraftClick
+			if #menuRes <> *xtremeTimeoutCraftClick
+				set *xtremeTimeoutCraftClick #menuRes
+			menu Get txtCraftingClickTimeout
+			if #menuRes <> *xtremeTimeoutCraftClick
+				menu Set txtCraftingClickTimeout *xtremeTimeoutCraftClick
+
+			menu GetNum txtCraftItemTimeout *xtremeTimeoutCraftItem
+			if #menuRes <> *xtremeTimeoutCraftItem
+				set *xtremeTimeoutCraftItem #menuRes
+
+			menu Get txtCraftItemTimeout
+			if #menuRes <> *xtremeTimeoutCraftItem
+				menu Set txtCraftItemTimeout *xtremeTimeoutCraftItem
+
+			menu GetNum txtMenuLoopWait *xtremeLoopWait
+			if #menuRes <> *xtremeLoopWait
+				set *xtremeLoopWait #menuRes
+			menu Get txtMenuLoopWait
+			if #menuRes <> *xtremeLoopWait
+				menu Set txtMenuLoopWait *xtremeLoopWait
+
+			; Capture button events.
+			if #menuButton <> N/A
+			{
+				; Check to see if we are closing.
+				if #menuButton = CLOSED
+				{
+					set !quitMenu #true
+					set #menuButton N/A
+					goto _LoopMenu
+				}
+
+				if #menuButton = btnBuildKegs
+				{
+					gosub ValidateInput
+					if #result
+					{
+						gosub OpenContainer *xtremeSecureResourceID %_secureResourceX %_secureResourceY
+						gosub OpenContainer *xtremeSecureKegID %_secureKegX %_secureKegY
+						gosub OpenContainer *xtremeWorkingBagID %_workingBagX %_workingBagY
+						gosub ResetMaterial %_tinkerTools *xtremeWorkingBagID
+						gosub MakePotionKeg
+					}
+
+					set #menuButton N/A
+					goto _LoopMenu
+				}
+
+				if #menuButton = btnResourceSecureIDSet
+				{
+					menu Set lblStatus Target the secure that holds the iron ingots, boards and bottles.
+					gosub TargetContainer txtResourceSecureID xtremeSecureResourceID
+					set #menuButton N/A
+					goto _LoopMenu
+				}
+
+				if #menuButton = btnKegSecureIDSet
+				{
+					menu Set lblStatus Target the secure that will store the completed potion kegs.
+					gosub TargetContainer txtKegSecureID xtremeSecureKegID
+					set #menuButton N/A
+					goto _LoopMenu
+				}
+
+				if #menuButton = btnWorkingBagIDSet
+				{
+					menu Set lblStatus Target the container on your character that will hold all the tools and resources.
+					gosub TargetContainer txtWorkingBagID xtremeWorkingBagID
+					set #menuButton N/A
+					goto _LoopMenu
+				}
+
+				if #menuButton = btnPostFeedback
+				{
+					gosub ExecuteLink %_commentLink
+					set #menuButton N/A
+					goto _LoopMenu
+				}
+
+				if #menuButton = btnPostRating
+				{
+					gosub ExecuteLink %_rateLink
+					set #menuButton N/A
+					goto _LoopMenu
+				}
+
+				set #menuButton N/A
+			}
+			; Enable a slight pause so we don't eat all the cpu cycles.
+			wait *xtremeLoopWait
+			goto _LoopMenu
+		}
+
+	namespace Clear
+	namespace Pop
+
+Return
+
+;================================================================================
+; Prompts and stores the ID for the requested container.
+; %1 = edit control to store results in.
+; %2 = variable name to store the results in.
+;================================================================================
+Sub TargetContainer
+
+	namespace Push
+	namespace Local TargetContainer , _ , #time , #random
+
+	set !menuName %1
+	set !variableName %2
+
+StartTargetContainer:
+	set #targCurs 1
+	set #targetKind 1
+	set #lTargetID NULL
+
+	TargetContainerLoop:
+		if #targCurs = 1
+		{
+			wait *xtremeLoopWait
+			goto TargetContainerLoop
+		}
+
+		if #lTargetID = NULL
+		{
+			menu Set lblStatus Target not acquired.
+		}
+		else
+		{
+			findItem #lTargetID
+			if #findType = %_backpackType
+			{
+				menu Set lblStatus Target acquired.
+				set * . !variableName #lTargetID
+				menu Set !menuName #lTargetID
+			}
+			else
+			{
+				menu Set lblStatus Select a backpack.  This script only works with backpacks (for now).
+				goto StartTargetContainer
+			}
+		}
+
+	namespace Clear
+	namespace Pop
+
+Return
+
+;================================================================================
+; Executes a link or displays the url if Allow Execute is off.
+;================================================================================
+Sub ExecuteLink
+
+	menu Set lblStatus Launching link...
+
+	namespace Push
+	namespace Local ExecuteLink , _ , #time , #random
+
+	set !link %1
+
+
+	if EXEC notin #opts
+	{
+		display ok Since you do not have the Allow Execute option turned on, this script can not take you to the website directly.  Please type the url !link in your browser window or turn this option on.
+	}
+	else
+	{
+		execute !link
+	}
+
+	namespace Clear
+	namespace Pop
+
+	menu Set lblStatus Ready...
+
+Return
+
+;================================================================================
+; Validates all input is specified.
+;================================================================================
+Sub ValidateInput
+
+	namespace Push
+	namespace Local ValidateInput , _ , #time , #random
+
+	if *xtremeKegsToMake = N/A || *xtremeIngotsToRestock = N/A || *xtremeBoardsToRestock = N/A || *xtremeBottlesToRestock = N/A || *xtremeSecureResourceID = N/A || *xtremeSecureKegID = N/A || *xtremeWorkingBagID = N/A
+	{
+		menu Set lblStatus Enter all input values required to run this script...
+		return #false
+	}
+	else
+	{
+		return #true
+	}
+
+	namespace Clear
+	namespace Pop
+
+Return
+
+;================================================================================
+; Makes a potion keg.
+;================================================================================
+Sub MakePotionKeg
+
+	menu Set lblStatus Making potion keg...
+
+	namespace Push
+	namespace Local MakePotionKeg , _ , #time , #random
+
+	gosub MovePotionKeg
+
+	set %_kegsMade 0
+	set %_startTime #sCnt
+
+	for !i 1 1
+	{
+		; Check to see if all resources are in pack.  If not then create or get them.
+		gosub CheckResource %_potionKegResourceKeg %_kegType *xtremeWorkingBagID MakeKeg
+		gosub CheckResource %_potionKegResourceBottle %_bottleType *xtremeWorkingBagID GetBottle
+		gosub CheckResource %_potionKegResourceLid %_lidType *xtremeWorkingBagID MakeLid
+		gosub CheckResource %_potionKegResourceTap %_tapType *xtremeWorkingBagID MakeTap
+
+		; Make sure we have a tool.
+		gosub CheckResource %_craftingResourceTinkerTool %_tinkerTools *xtremeWorkingBagID MakeTinkerTool
+		; Make the item.
+		gosub CraftItem %_tinkerTools *xtremeWorkingBagID 1 80 260 280 260 %_potionKegType
+
+		; Check to see if a potion keg was made.  If not then retry it from the top
+		; before we increment the overall count.  We can't just retry to assemble the
+		; potion keg itself since a failure can break or use some of the components.
+		findItem %_potionKegType C_ , *xtremeWorkingBagID
+		if ( #findKind = 0 )
+		{
+			; At this point the potion keg is made.  Move to secure and increment progress.
+			gosub MovePotionKeg
+			gosub DisplayCount
+		}
+
+		; Stay in loop until all kegs are made that have been requested.
+		set !i ( ! ( ( *xtremeKegsToMake = 0 ) || ( %_kegsMade < *xtremeKegsToMake ) ) ) abs
+	}
+
+	namespace Clear
+	namespace Pop
+
+	menu Set lblStatus Completed
+
+Return
+
+;================================================================================
+; Changes the material to iron in the tinkering gump.
+; %1 = tool type to use.
+; %2 = bag tool is in.
+;================================================================================
+Sub ResetMaterial
+
+	menu Set lblStatus Resetting materials to iron...
+
+	namespace Push
+	namespace Local ResetMaterial , _ , #time , #random
+
+	set !toolType %1
+	set !resourceBagID %2
+
+	gosub UseTool !toolType !resourceBagID
+
+	click 80 420 f
+	gosub WaitForCraftingGumpToClose *xtremeTimeoutCraftClick
+	gosub WaitForCraftingGumpToOpen *xtremeTimeoutCraftClick
+
+	click 280 120 f
+	gosub WaitForCraftingGumpToClose *xtremeTimeoutCraftClick
+	gosub WaitForCraftingGumpToOpen *xtremeTimeoutCraftClick
+
+	namespace Clear
+	namespace Pop
+
+Return
+
+;================================================================================
+; Will make sure a container is opened and positioned at specified coordinates.
+; %1 = ID of container.
+; %2 = X coords for container.
+; %3 = Y coords for container.
+;================================================================================
+Sub OpenContainer
+
+	menu Set lblStatus Opening container...
+
+	namespace Push
+	namespace Local OpenContainer , _ , #time , #random
+
+	set !containerID %1
+	set !containerX %2
+	set !containerY %3
+
+	findItem !containerID
+	if ( #findKind = -1 )
+	{
+		display ok Container ID !containerID is not found.  Halting.
+		gosub HaltScript
+	}
+	set #nextCPosX !containerX
+	set #nextCPosY !containerY
+
+ReopenContainer:
+	set #lObjectID !containerID
+
+	set !jStart #jIndex
+	set !waitUntil #sCnt2 + *xtremeTimeoutAction
+
+	event Macro 17 0
+	gosub WaitForSysVars contName = container_gump contID = !containerID sCnt2 > !waitUntil
+
+	gosub SearchJournal !jStart must_wait_to_perform
+	if #result
+	{
+		wait *xtremeTimeoutAction
+		goto ReopenContainer
+	}
+
+	; Make sure the requested container is the active gump.
+	if #contID <> !containerID
+		goto ReopenContainer
+
+	; If the container is already at the requested coords then don't move it.
+	if #contPosX <> !containerX || #contPosY <> !containerY
+		contPos !containerX !containerY
+
+	namespace Clear
+	namespace Pop
+
+Return
+
+;================================================================================
+; Makes a keg.
+;================================================================================
+Sub MakeKeg
+
+	menu Set lblStatus Making keg...
+
+	namespace Push
+	namespace Local MakeKeg , _ , #time , #random
+
+	; Make sure enough resources are in bag.
+	gosub CheckResource %_kegResourceStave %_staveType *xtremeWorkingBagID MakeStave
+	gosub CheckResource %_kegResourceHoop %_hoopType *xtremeWorkingBagID MakeHoop
+	gosub CheckResource %_kegResourceLid %_lidType *xtremeWorkingBagID MakeLid
+
+	; Make sure we have a tool.
+	gosub CheckResource %_craftingResourceSaw %_carpenterTools *xtremeWorkingBagID MakeSaw
+	; Make the item.
+	gosub CraftItem %_carpenterTools *xtremeWorkingBagID 2 80 180 280 300 %_kegType
+
+	namespace Clear
+	namespace Pop
+
+Return
+
+;================================================================================
+; Makes a stave.
+;================================================================================
+Sub MakeStave
+
+	menu Set lblStatus Making stave...
+
+	namespace Push
+	namespace Local MakeStave , _ , #time , #random
+
+	; Make sure enough resources are in bag.
+	gosub CheckResource %_staveResourceBoard %_boardType *xtremeWorkingBagID GetBoard
+
+	; Make sure we have a tool.
+	gosub CheckResource %_craftingResourceSaw %_carpenterTools *xtremeWorkingBagID MakeSaw
+	; Make the item.
+	gosub CraftItem %_carpenterTools *xtremeWorkingBagID 1 80 140 280 140 %_staveType
+
+	namespace Clear
+	namespace Pop
+
+Return
+
+;================================================================================
+; Makes a lid.
+;================================================================================
+Sub MakeLid
+
+	menu Set lblStatus Making lid...
+
+	namespace Push
+	namespace Local MakeLid , _ , #time , #random
+
+	; Make sure enough resources are in bag.
+	gosub CheckResource %_lidResourceBoard %_boardType *xtremeWorkingBagID GetBoard
+
+	; Make sure we have a tool.
+	gosub CheckResource %_craftingResourceSaw %_carpenterTools *xtremeWorkingBagID MakeSaw
+	; Make the item.
+	gosub CraftItem %_carpenterTools *xtremeWorkingBagID 1 80 140 280 160 %_lidType
+
+	namespace Clear
+	namespace Pop
+
+Return
+
+;================================================================================
+; Makes a hoop.
+;================================================================================
+Sub MakeHoop
+
+	menu Set lblStatus Making hoop...
+
+	namespace Push
+	namespace Local MakeHoop , _ , #time , #random
+
+	; Make sure enough resources are in bag.
+	gosub CheckResource %_hoopResourceIngot %_ingotType *xtremeWorkingBagID GetIngot
+
+	; Make sure we have a tool.
+	gosub CheckResource %_craftingResourceTinkerTool %_tinkerTools *xtremeWorkingBagID MakeTinkerTool
+	; Make the item.
+	gosub CraftItem %_tinkerTools *xtremeWorkingBagID 1 80 180 280 220 %_hoopType
+
+	namespace Clear
+	namespace Pop
+
+Return
+
+;================================================================================
+; Makes a tap.
+;================================================================================
+Sub MakeTap
+
+	menu Set lblStatus Making tap...
+
+	namespace Push
+	namespace Local MakeTap , _ , #time , #random
+
+	; Make sure enough resources are in bag.
+	gosub CheckResource %_tapResourceIngot %_ingotType *xtremeWorkingBagID GetIngot
+
+	; Make sure we have a tool.
+	gosub CheckResource %_craftingResourceTinkerTool %_tinkerTools *xtremeWorkingBagID MakeTinkerTool
+	; Make the item.
+	gosub CraftItem %_tinkerTools *xtremeWorkingBagID 1 80 180 280 160 %_tapType
+
+	namespace Clear
+	namespace Pop
+
+Return
+
+;================================================================================
+; Moves all potion kegs from *xtremeWorkingBagID to *xtremeSecureKegID.
+;================================================================================
+Sub MovePotionKeg
+
+	menu Set lblStatus Moving potion keg(s)...
+
+	namespace Push
+	namespace Local MovePotionKeg , _ , #time , #random
+
+StartMovePotionKeg:
+	findItem %_potionKegType C_ , *xtremeWorkingBagID
+	if ( #findKind = 0 )
+	{
+		set !dragID #findID
+		set #findMod 23_12
+		findItem *xtremeSecureKegID C
+		if ( #findKind = -1 )
+		{
+			display ok Unable to find the secure container to hold finished kegs.  Halting.
+			gosub HaltScript
+		}
+
+		set !dropX #findX
+		set !dropY #findY
+
+		event Drag !dragID
+		gosub WaitForSysVars lLiftedKind = 1 contName = drag_gump
+
+		set !jStart #jIndex
+		set !waitUntil #sCnt2 + *xtremeTimeoutAction
+
+		click !dropX !dropY f
+		gosub WaitForSysVars lLiftedKind = 0 contName <> drag_gump sCnt2 >= !waitUntil
+
+		gosub SearchJournal !jStart container_cannot_hold exceed_the_secure_storage
+		if #result
+		{
+			display ok The secure to hold the finished kegs can not hold anymore.  Halting.
+			gosub HaltScript
+		}
+
+		goto StartMovePotionKeg
+	}
+
+	namespace Clear
+	namespace Pop
+
+Return
+
+;================================================================================
+; Crafts a tinker tool.
+;================================================================================
+Sub MakeTinkerTool
+
+	namespace Push
+	namespace Local MakeTinkerTool , _ , #time , #random
+
+	; Make sure enough resources are in bag.
+	gosub CheckResource %_tinkerResourceIngot %_ingotType *xtremeWorkingBagID GetIngot
+
+	; Make the item.
+	gosub CraftItem %_tinkerTools *xtremeWorkingBagID 1 80 160 280 180 %_tinkerToolType
+
+	namespace Clear
+	namespace Pop
+
+Return
+
+;================================================================================
+; Crafts a saw.
+;================================================================================
+Sub MakeSaw
+
+	namespace Push
+	namespace Local MakeSaw , _ , #time , #random
+
+	; Make sure enough resources are in bag.
+	gosub CheckResource %_sawResourceIngot %_ingotType *xtremeWorkingBagID GetIngot
+
+	; Make the item.
+	gosub CraftItem %_tinkerTools *xtremeWorkingBagID 1 80 160 280 260 %_sawType
+
+	namespace Clear
+	namespace Pop
+
+Return
+
+;================================================================================
+; Gets iron ingots from *xtremeSecureResourceID and puts into *xtremeWorkingBagID.  Note it ignores all other
+; types of ingots during the execution of the script.
+;================================================================================
+Sub GetIngot
+
+	namespace Push
+	namespace Local GetIngot , _ , #time , #random
+
+	gosub RestockResource *xtremeIngotsToRestock %_ingotType *xtremeSecureResourceID 650 450 #true 0
+
+	namespace Clear
+	namespace Pop
+
+Return
+
+;================================================================================
+; Gets boards from *xtremeSecureResourceID and puts into *xtremeWorkingBagID.
+;================================================================================
+Sub GetBoard
+
+	namespace Push
+	namespace Local GetBoard , _ , #time , #random
+
+	gosub RestockResource *xtremeBoardsToRestock %_boardType *xtremeSecureResourceID 700 450 #true N/A
+
+	namespace Clear
+	namespace Pop
+
+Return
+
+;================================================================================
+; Gets bottles from *xtremeSecureResourceID and puts into *xtremeWorkingBagID.
+;================================================================================
+Sub GetBottle
+
+	namespace Push
+	namespace Local GetBottle , _ , #time , #random
+
+	gosub RestockResource *xtremeBottlesToRestock %_bottleType *xtremeSecureResourceID 750 450 #true N/A
+
+	namespace Clear
+	namespace Pop
+
+Return
+
+;================================================================================
+; Crafts a specific item.  Has built in make last functionality that will work as long as this sub is always
+; called to make an item.
+; TODO: add page selector parameter.  Not needed for this atm since all items are on first page :).
+; %1 = item type of tool to use.
+; %2 = bag to search in
+; %3 = page of item to make
+; %4 = X coord of item menu.
+; %5 = Y coord of item menu
+; %6 = X coord of item on menu
+; %7 = Y coord of item on menu
+; %8 = item type to make (used by the make last functionality)
+;================================================================================
+Sub CraftItem
+
+	namespace Push
+	namespace Local CraftItem , _ , #time , #random
+
+	set !toolType %1
+	set !resourceBagID %2
+	set !page %3
+	set !menuX1 %4
+	set !menuY1 %5
+	set !menuX2 %6
+	set !menuY2 %7
+	set !itemType %8
+
+	menu Set lblStatus Crafting item %_itemType . !itemType , ...
+
+	gosub UseTool !toolType !resourceBagID
+
+	if ( !itemType = %_lastCraftedItem )
+	{
+		; Click on make last.
+		click 335 465 f
+		gosub WaitForCraftingGumpToClose *xtremeTimeoutCraftClick
+		gosub WaitForCraftingGumpToOpen *xtremeTimeoutCraftItem
+	}
+	else
+	{
+		; Click the item menu.
+		click !menuX1 !menuY1 f
+		gosub WaitForCraftingGumpToClose *xtremeTimeoutCraftClick
+		gosub WaitForCraftingGumpToOpen *xtremeTimeoutCraftClick
+
+		; Get to the correct page.
+		set !pageIndex 1
+		set !pageTurns !page - 1
+		if ( !page > 1 )
+		{
+			for !pageIndex 1 !pageTurns
+			{
+				click 435 320 f
+				gosub WaitForCraftingGumpToClose *xtremeTimeoutCraftClick
+				gosub WaitForCraftingGumpToOpen *xtremeTimeoutCraftItem
+			}
+		}
+
+		; Click the item.
+		click !menuX2 !menuY2 f
+		gosub WaitForCraftingGumpToClose *xtremeTimeoutCraftClick
+		gosub WaitForCraftingGumpToOpen *xtremeTimeoutCraftItem
+	}
+
+	; Now see if an item was made in order to determine if we can set the last item made.
+	findItem !itemType C_ , !resourceBagID
+	if ( #findKind = 0 )
+	{
+		set %_lastCraftedItem !itemType
+	{
+	else
+	{
+		; Reset to blank if not found to avoid erroneous make last requests.
+		set %_lastCraftedItem
+	}
+
+	namespace Clear
+	namespace Pop
+
+Return
+
+;================================================================================
+; Restocks an item.
+; %1 = # of resource to retrieve.
+; %2 = item type to look for
+; %3 = ID of bag to look in
+; %4 = X coords to drop at
+; %5 = Y coords to drop at
+; %6 = True/False value (#true if stackable, #false if not stackable).
+; %7 = #FindCol value to look for (pass N/A if not required).
+;================================================================================
+Sub RestockResource
+
+	menu Set lblStatus Restocking resource...
+
+	namespace Push
+	namespace Local RestockResource , _ , #time , #random
+
+	set !resourceToGet %1
+	set !resourceType %2
+	set !resourceBagID %3
+	set !dropX %4
+	set !dropY %5
+	set !stackable %6
+	set !findCol %7
+
+	menu Set lblStatus Restocking item %_itemType . !resourceType , ...
+
+StartRestockResource:
+	findItem !resourceType C_ , !resourceBagID
+	if ( #findKind = -1 )
+	{
+		display ok Unable to find item type %_itemType . !resourceType to restock.  Halting.
+		gosub HaltScript
+	}
+
+	if ( #findCol <> !findCol ) && ( !findCol <> N/A )
+	{
+		ignoreItem #findID
+		goto StartRestockResource
+	}
+
+	if ( ( #findStack < !resourceToGet ) && ( !stackable ) ) || ( ( #findCnt < !resourceToGet ) && ( ! !stackable ) )
+	{
+		display ok Unable to find enough item type %_itemType . !resourceType to restock.  Halting.
+		gosub HaltScript
+	}
+
+	set !dragID #findID
+
+	event Drag !dragID
+	if ( !stackable )
+	{
+		gosub WaitForSysVars contID = !dragID contType = !resourceType contName = stack_gump
+		msg !resourceToGet $
+	}
+	gosub WaitForSysVars lLiftedKind = 1 contName = drag_gump
+
+	set !jStart #jIndex
+	set !waitUntil #sCnt2 + *xtremeTimeoutAction
+
+	click !dropX !dropY f
+	gosub WaitForSysVars lLiftedKind = 0 contID = *xtremeWorkingBagID contName = container_gump sCnt2 > !waitUntil
+
+	gosub SearchJournal !jStart container_cannot_hold
+	if #result
+	{
+		display ok The bag to hold the resources on your character can not hold anymore.  Halting.
+		gosub HaltScript
+	}
+
+	namespace Clear
+	namespace Pop
+
+Return
+
+;================================================================================
+; Looks for a resource in the bag specified.
+; %1 = # of resource needed
+; %2 = item type to look for
+; %3 = ID of bag to look in
+; %4 = sub to call if not enough resources are found
+;================================================================================
+Sub CheckResource
+
+	namespace Push
+	namespace Local CheckResource , _ , #time , #random
+
+	set !resourceCount 0
+	set !resourceRequired %1
+	set !resourceType %2
+	set !resourceBagID %3
+	set !gosub %4
+	set !resetCount 0
+	set !ignoreList #time , #random
+
+	menu Set lblStatus Checking for resource %_itemType . !resourceType , ...
+
+StartCheckResource:
+	findItem !resourceType C_ , !resourceBagID
+	if ( #findKind = 0 )
+	{
+		if ( #findStack <> 0 )
+		{
+			set !resourceCount !resourceCount + #findStack
+			ignoreItem #findID !ignoreList
+			goto StartCheckResource
+		}
+		else
+		{
+			set !resourceCount #findCnt
+		}
+	}
+
+	if ( !resourceCount < !resourceRequired )
+	{
+		; Added to prevent infinite looping in some situations.  
+		; Resetting these variables will  force tools to be used.
+		if ( !resetCount > !resourceRequired )
+		{
+			set !resetCount 0
+			set %_lastToolID
+			set %_lastToolType
+			set %_lastCraftedItem
+		}
+		set !resetCount !resetCount + 1
+
+		; Now attempt to do what was requested.
+		gosub !gosub
+		ignoreItem Reset !ignoreList
+		goto StartCheckResource
+	}
+
+	ignoreItem Reset !ignoreList
+	namespace Clear
+	namespace Pop
+
+Return
+
+;================================================================================
+; Finds a tool for use and stores the id.  Uses the ID until the ID can not be found.  The assumption is
+; it can be found until all the charges are used up.   This sub will create variable names based on the
+; tool type.  Also assume that once a tool is used, a gump will be open until the tool can no longer be
+; found since this script never closes a gump.  The only exception is when switching tools.
+; %1 = tool type
+; %2 = ID of bag to look in
+;================================================================================
+Sub UseTool
+
+	namespace Push
+	namespace Local UseTool , _ , #time , #random
+
+	set !toolType %1
+	set !resourceBagID %2
+	set !useTool
+
+RestartUseTool:
+	; First see if the tool to use is the same as the previous tool.
+	set !useTool ( !toolType <> %_lastToolType )
+	; If it is then look to see if the last tool used is found.
+	if ( ! !useTool )
+	{
+		findItem %_lastToolID C_ , !resourceBagID
+		set !useTool ( #findKind <> 0 )
+	}
+
+	; Use tool if needed.
+	if ( !useTool )
+	{
+		findItem !toolType C_ , !resourceBagID
+		if ( #findKind = -1 )
+		{
+			display ok This script does not make tools.  Place more %_itemType . !toolType tool(s) in your work bag and restart script.
+			gosub HaltScript
+		}
+
+		; Close menu in case one is open.
+		set #lObjectID #findID
+
+		set !jStart #jIndex
+
+		event Macro 17 0
+		gosub WaitForCraftingGumpToClose *xtremeTimeoutCraftClick
+		gosub WaitForCraftingGumpToOpen *xtremeTimeoutCraftClick
+
+		gosub SearchJournal !jStart must_wait_to_perform
+		if #result
+			goto RestartUseTool
+
+		set %_lastToolID #findID
+		set %_lastToolType !toolType
+	}
+
+	namespace Clear
+	namespace Pop
+
+Return
+
+;================================================================================
+; Searches your journal for a phrase.
+; %1 = journal index to start searching at.
+; %2-n = word(s) to search for.
+;================================================================================
+Sub SearchJournal
+
+	namespace Push
+	namespace Local SearchJournal , _ , #time , #random
+
+	set !lpc #lpc
+	set #lpc 1000
+
+	set !params %0 - 1
+	set !jStart %1
+
+	; In case the last entry we tried to search is the same as this one (no journal entries made between attempts).
+	if ( !jStart = %_lastJournalIndex )
+	{
+		set !jStart !jStart + 1
+	}
+	set %_lastJournalIndex !jStart
+
+	if ( !jStart <= #jIndex )
+	{
+		for !jLoop !jStart #jIndex
+		{
+			scanJournal !jLoop
+			for !pLoop 1 !params
+			{
+				set !paramPos !pLoop + 1
+				set !criteria % . !paramPos
+				if !criteria in #journal
+				{
+					set #lpc !lpc
+					namespace Clear
+					namespace Pop
+					return #true
+				}
+			}
+		}
+	}
+
+	set #lpc !lpc
+	namespace Clear
+	namespace Pop
+
+Return #false
+
+;================================================================================
+; Increments and displays how many kegs have been made.
+;================================================================================
+Sub DisplayCount
+
+	set %_lastTime #sCnt
+	set %_kegsMade %_kegsMade + 1
+	set %_kegAvg ( ( %_lastTime - %_startTime ) / %_kegsMade )
+
+	menu Set lblKegsMade %_kegsMade , #spc , Made
+	menu Set lblAvgTime %_kegAvg / SPK
+
+	namespace Clear
+	namespace Pop
+
+Return
+
+;================================================================================
+; Halts the script and displays message to user in status area.
+;================================================================================
+Sub HaltScript
+
+	menu Set lblStatus Script is halted.  Will need to close menu and restart script.
+	halt
+
+Return
+
+;================================================================================
+; Waits for the crafting gump to close.
+; %1 = timeout to use.
+;================================================================================
+Sub WaitForCraftingGumpToClose
+
+	namespace Push
+	namespace Local WaitForCraftingGumpToClose , _ , #time , #random
+
+	set !timeout %1
+	gosub WaitForSysVars contSize <> 530_437 contName <> generic_gump !timeout
+
+	namespace Clear
+	namespace Pop
+
+Return
+
+;================================================================================
+; Waits for the crafting gump to open.
+; %1 = timeout to use.
+;================================================================================
+Sub WaitForCraftingGumpToOpen
+
+	namespace Push
+	namespace Local WaitForCraftingGumpToOpen , _ , #time , #random
+
+	set !timeout %1
+	set !waitUntil #sCnt2 + !timeout
+	gosub WaitForSysVars contSize = 530_437 contName = generic_gump sCnt2 > !waitUntil
+
+	namespace Clear
+	namespace Pop
+
+Return
+
+;================================================================================
+; Compares system variables to value passed based on operator supplied.
+; %1 (and every 3rd) = variable name for comparison
+; %2 (and every 3rd) = operator for comparison
+; %3 (and every 3rd) = value for comparison
+; last param = timeout (optional - defaults to 5 seconds if not supplied).
+;================================================================================
+; Original authors: Quintok & Raziel 
+;================================================================================
+Sub WaitForSysVars
+
+	namespace Push
+	namespace Local WaitForSysVars , _ , #time , #random
+
+	set !groupCount %0 / 3
+
+	if ( %0 % 3 = 1 )
+		set !timeout #sCnt2 + % . %0
+	else
+		set !timeout #sCnt2 + 50
+
+	for !count 1 !groupCount
+	{
+		set !variable 3 * !count - 2
+		set !operator !variable + 1
+		set !value !variable + 2
+
+		if ! ( # . % . !variable % . !operator % . !value )
+			set !count 0
+
+		if ( #sCnt2 > !timeout )
+		{
+			namespace Clear
+			namespace Pop
+			return #false
+		}
+	}
+
+	namespace Clear
+	namespace Pop
+
+Return #true

@@ -1,0 +1,35 @@
+; 1. Make one potion of the same type for each keg you wish to fill
+; 2. Put one potion inside each keg (kegs must be in your bag)
+; 3. Make sure there is an empty bottle in your bag, but no potions
+ 
+initevents
+ 
+NEWTOOL:
+finditem RQF
+if #findkind = -1
+{
+DISPLAY ok out of tools$
+HALT
+}
+set #LOBJECTID #findid
+wait 5
+event macro 17
+wait 5
+ 
+MAKELAST:
+click 330 460
+wait 28
+ 
+if have_worn_out in #sysmsg
+{
+msg getting a new tool$
+wait 5
+goto NEWTOOL
+}
+finditem ZUF_YUF_OUF_UUF_XUF_AVF_NUF_TUF
+if #findkind = 0
+{
+DISPLAY ok keg(s) filled$
+HALT
+}
+goto MAKELAST

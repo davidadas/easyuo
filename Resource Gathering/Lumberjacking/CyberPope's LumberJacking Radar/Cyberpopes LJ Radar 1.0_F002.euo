@@ -1,0 +1,5993 @@
+;==================================
+; Script Name: CyberPope's LumberJacking Radar
+; Author: CyberPope
+; Modder/menufixer: Orngrimm
+; Version: 1.0t
+; Client Tested with: 5.0.1j
+; EUO version tested with: 1.5 build 69
+; Shard OSI / FS:  OSI & Most Freeshards
+; Revision Date: 9/11/06
+; Public Release: 3/14/06
+; Global Variables Used:
+; *LJSetup
+; *LJColor_SHARDNAME_GridArea_Facet#
+; *LJLoc_SHARDNAME , Index#
+; *LJDBW_SHARDNAME , Facet#
+; *CPLR_Export
+; *CPLR_Import
+; *CPLR_Drop
+; *CPLR_Stats_SHARDNAME
+; *CPLR_WOODS_SHARDNAME
+; *CPLR_Axes_SHARDNAME  (only used if changed from Default)
+; *CPLR_Tiles_SHARDNAME  (only used if changed from Default)
+; Purpose: To select by tile where you want to Chop,
+; record wood types for LJ locations, and to write
+; UOAutoMap .map files
+; Copyright: 2006/3/14 CyberPope
+;==================================
+gosub getGlobalVar LJSetup CPLR SAME LPC NOLOCK
+if ! #result
+	{
+	set %LPC 1000
+	gosub putGlobalVar LJSetup CPLR SAME LPC NOLOCK
+	}
+set #lpc %lpc
+
+menu window title CP's LJ Radar
+set #menubutton n/a
+menu clear
+if ! %chop_all
+	;menu hideeuo
+menu window size 225 80
+menu window color btnface
+menu font bgcolor btnface
+menu font transparent #true
+menu font color blue
+menu font style b
+menu font size 12
+menu text m1 20 20 Loading Settings....
+menu font color red
+menu text save 20 45 -
+menu show
+;***********User Defined Variables**************
+;If you want to be able to attempt to chop any tile, set this
+;to true. You can use this to test noname and others to
+;see if they are chopable. this is also a sort of debug
+;option for identifying nonamed tiles.
+	set %chop_all #false
+
+;Set this to #false if you do not want the script to check
+;Your UOAM path for bad characters
+	set %PathCheck #true
+
+;These are the Default recognized Axe types that can be use for LJing
+	set %Defaultaxes ZRF_CSF_BSF_MSF_LSF_OSF_NSF_ISF_JOH_UOH_
+		+SMH_RMH_MPH_LPH_FSF_ASF_QCO_OFR_SFR
+
+;************Error Messages**********************
+;use these to help customize the chopping error messages for
+;your freeshard if needed.
+;cannot see location
+	set %cantsee_error you_cannot_see_that_location
+	set %cantsee_error2 target_cannot_be_seen
+	set %cantsee_error3 you_have_moved_too_far_away
+;too far away
+	set %too_far_error that_is_too_far_away
+;UnChopable tile type (please inform me if these appear)
+	set %unchopable_error you_can't_use_an_axe_on_that.
+;Out of Wood
+	set %NoWood_error there's_not_enough_wood_here_to_harvest.
+;Backpack full messages
+	set %Full1_error can't_place_any_wood_into_your_backpack!
+	set %Full2_error your_backpack_can't_hold
+;Unequipped Axe
+  set %Unequip_error the_axe_must_be_equipped_for_any_serious_wood_chopping.
+
+;**Cosmetic Variables**
+	;TILE COLORS
+	set %badTileNames |void!!!!!|2017|2028|
+	set %center_tile lime
+	set %noname_color purple
+	set %dirt $13458b
+	set %rock gray
+	set %wooden_floor $13458b
+	set %nodraw black
+	set %stone $696969
+	set %furrows $13458b
+	set %cave $20a5da
+	set %marble white
+	set %snow white
+	set %sand_stone $8cb4d2
+	set %water blue
+	set %flagstone $696969
+	set %brick maroon
+	set %cave_exit black
+	set %planks $13458b
+	set %void black
+	set %tile black
+	set %embank $13458b
+	set %lava maroon
+	set %sand $8cb4d2
+	set %grass green
+	set %forest green
+	set %jungle green
+	set %cobblestones $696969
+	set %noname blue
+
+;**Unknown Location
+  set %NameWoodType0 Unknown_Wood
+	set %TextWoodType0 ?
+	set %ColorWoodType0 %cave
+	set %TextColorWoodType0 blue
+
+;**FACETS***
+	set %facet1 Felucca
+	set %facet2 Trammel
+	set %facet3 Ilshenar
+	set %facet4 Malas
+	set %facet5 Tokuno_Islands
+
+;**Misc Dropable Item Types**
+  	set %MiscDropItem1 BWR
+  	set %MiscDropItem2 NWS
+  	set %MiscDropItem3 XWS
+  	set %MiscDropItem4 YWS
+  	set %MiscDropItem5 FXS
+
+;** Chopable Tiletypes (for wood) If you find a new one, please PM me with
+;the type and/or coords ****
+set %DefaultChopable |3274|3275|3276|3277|3278|3279|3280|3281|3282|3283|3284|3285|3286|
++3287|3288|3289|3290|3291|3292|3293|3294|3295|3296|3297|3298|3299|
++3300|3301|3302|3304|3320|3321|3322|3323|3324|3325|3326|3327|3328|
++3329|3330|3331|3393|3394|3395|3396|3397|3398|3399|3400|3401|3402|
++3403|3404|3405|3406|3407|3408|3409|3410|3411|3415|3416|3417|3418|
++3419|3420|3421|3422|3423|3424|3425|3426|3427|3428|3429|3430|3431|
++3432|3433|3438|3439|3440|3441|3442|3443|3444|3445|3446|3447|3448|
++3449|3450|3451|3452|3453|3454|3455|3460|3461|3462|3463|3464|3465|
++3466|3467|3468|3469|3470|3471|3472|3477|3478|3479|3481|3482|3483|
++3485|3486|3487|3489|3490|3491|3493|3494|3495|3497|3498|3499|4789|
++4790|4791|4792|4793|4794|4795|4796|4797|4798|4799|4801|4802|4803|
++4804|4805|4806|4807|8781|8778|3496|8780|8779|3230|3220|3221|3222|
++3492|3484|3488|3480|
+
+;these are noname tiles that should be the same color as the
+;variable name would suggest
+set %noname1 |16337|1946|
+set %ColNoname1 $13458b
+set %noname2 |100|97|93|89|85|81|77|78|86|98|90|96|95|88|84|76|83|
++91|87|99|79|82|94|92|80|
+set %ColNoName2 blue
+set %noname3 |15855|15856|15854|15853|2506|2501|2511|2508|2500|
++2510|2502|2507|15809|15844|15842|15849|15851|15852|15850|
++15843|15839|15846|15836|15845|15835|2509|2504|2503|2505|
++15838|15810|15848|
+set %colNoName3 green
+set %noname4 |580|
+set %colNoName4 black
+
+;*******End User Defined Variables**************
+;======================================
+;**Edit below this point, only if you know what you are doing**
+;======================================
+
+tile init noOverrides
+gosub ShardCheck
+set %lcharposx n/a
+set %lcharposy n/a
+set %space #spc , #spc , #spc , #spc , #spc , #spc , #spc , #spc , #spc , #spc , #spc , #spc , #spc , #spc ,  #spc , #spc , #spc
+set %Boffsetx 5
+set %Boffsety 5
+set %wait #scnt + %delay
+if %record
+	set %recorded_tiles |
+set %WoodtoSave |
+for %temp 1 %Number_of_WoodTypes
+	{
+    	if ! %drop . %temp
+       		{
+       		set %WoodtoSave %WoodtoSave , %WoodFindCol . %temp , |
+       		}
+    	}
+set %MiscDropTypes _
+for %temp 1 5
+    	{
+    	If %MiscDrop . %temp
+       		set %MiscDropTypes %MiscDropTypes , %MiscDropItem . %temp , _
+    	}
+
+gosub string exp #EUOVER _ vEUO
+gosub drawgrid
+
+;*** Start Main Script ***************************
+MainLoop:
+wait 1
+if #menubutton <> n/a
+	{
+	if #menubutton = options
+		{
+		gosub Options
+		set #menubutton n/a
+		goto MainLoop
+		}
+	if %record && #menubutton = reset && %recorded_tile <> |
+		{
+		set %recorded_tiles |
+		gosub ClearGrid
+		gosub DrawGrid
+		set #menubutton n/a
+		goto mainloop
+		}
+	if #menubutton = closed
+		gosub ending
+	if button in #menubutton
+		gosub chop
+	if chop in #menubutton
+		gosub ChopAllTileInfo
+	if ! %chop_all
+		{
+		menu set ChopX -
+		menu set ChopY -
+		menu set ChopZ -
+		menu set TileT -
+		menu set LTK -
+		}
+	set #menubutton n/a
+	}
+if %lcharposy <> #charposy || %lcharposx <> #charposx
+	{
+ 	set %lcharposx #charposx
+ 	set %lcharposy #charposy
+	menu set CurX #charposx
+	menu set CurY #charposy
+	set %wait #scnt + %delay
+	goto mainloop
+	}
+if #scnt < %wait
+	goto mainloop
+if %currentgrid = #charposx , _ , #charposy
+	{
+	set %wait #scnt + %delay
+	goto mainloop
+	}
+else
+	{
+	gosub ShardCheck
+	gosub ClearGrid
+	if ! %chop_all
+		set %button 0
+	gosub DrawGrid
+	}
+set %wait #scnt + %delay
+goto MainLoop
+;********End Main Script ****************************
+
+
+;*****************
+;*****SUBS*****
+;*****************
+
+
+;*****SUB INITMENU*****
+sub initmenu
+menu window title CP's LJ Radar
+set #menubutton n/a
+menu clear
+if ! %chop_all
+	;menu hideeuo
+menu window size 225 285
+menu window color btnface
+menu font bgcolor btnface
+menu font transparent #true
+menu font color black
+menu font style b
+menu font size 8
+menu text m1 5 210 Status:
+menu text m1 5 221 Cur-X:
+menu text m1 5 234 Cur-Y:
+menu text m1 85 221 Chop-X:
+menu text m1 85 234 Chop-Y:
+menu text m1 85 247 Chop-Z:
+menu text m1 94 260 Tile-T:
+menu text m1 90 271 lt-Kind:
+
+if %TrackWoodTypes
+	{
+	menu font color red
+	menu text prospect 5 270 +Track Wood+
+	}
+menu font color blue
+menu text status 49 210 -
+menu text CurX 44 221 #charposx
+menu text CurY 44 234 #charposy
+menu text ChopX 134 221 -
+menu text ChopY 134 234 -
+menu text ChopZ 134 247 -
+menu text TileT 134 260 -
+menu text LTK 134 271 -
+menu font color black
+if %record
+	menu button reset 172 240 50 20 Reset
+menu button options 172 262 50 20 Options
+menu show
+return
+
+;*****SUB DRAWGRID*****
+Sub DrawGrid
+menu set status Drawing Grid
+set %gTime #systime
+set %startx #charposx - 4
+set %starty #charposy - 4
+set %currentgrid #charposx , _ , #charposy
+set %facet #curskind + 1
+if %chop_all
+	set %ButChop 0
+for %x 0 8
+	{
+  if %currentgrid <> #charposx , _ , #charposy
+     {
+     menu set status You Moved, Drawing Halted!
+     gosub cleargrid
+     Return
+     }
+	set %coordx %startx + %x
+	if ( %coordx % %shardtypeX ) = 0 && %shardtypeX <> 1
+		{
+		set %lineX %x * 23 + 8
+		;menu shape line %lineX 3 2 208 3 7 5 red 3 red
+		;menu shape line1 %lineX 3 2 208 3 7 5 red 3 red
+		}
+	for %y 0 8
+		{
+		set %coordy %starty + %y
+		if ( %coordy % %shardtypeY ) = 0 && %x = 8 && %shardtypeY <> 1
+			{
+			set %lineY %y * 23 + 3
+			;menu shape line 8 %lineY 208 2 3 7 5 red 3 red
+			;menu shape line2 8 %lineY 208 2 3 7 5 red 3 red
+			}
+		set %gridx %x * 23 + 5
+		set %gridy %y * 23
+		tile get %coordx %coordy 1 #curskind
+		tile cnt %coordx %coordy #curskind
+		if %chop_all
+			{
+			str len #tilename
+			if | , #tilename , | in %badTileNames || #strres = 0
+				set %color gray
+			else
+				set %color % . #tilename
+			if %coordx = #charposx && %coordy = #charposy
+				set %color %center_tile
+			set %temp black
+			if ( % . #tilename = %void || % . #tilename = %dirt || % . #tilename = %water || % . #tilename = %lava ) && %color <> %center_tile
+				set %temp white
+			set %butChop %butchop + 1
+			set %butChop . %butChop %coordx , | , %coordy
+			gosub DrawObjectOnGrid button %coordx %coordy %color %temp #tilecnt butChop . %butchop
+			goto endofdrawloop
+			}
+		set %coordz #tilez
+		set %Chophere #false
+		gosub colorcheck
+		if %Chophere
+			{
+			if %record || %TrackWoodTypes || %DisplayColorOnTile || %DisplayTextOnTile
+				{
+				gosub convertXxX %coordx %coordy %shardtypeX %shardtypeY
+				set %tileArea #result
+				}
+			if %record
+				{
+				if | , %tileArea , _ , %facet , |  in %recorded_tiles
+					{
+					set %color %record_color
+					set %Chophere #false
+					goto nochophere
+					}
+				}
+			if ( %TrackWoodTypes || %DisplayColorOnTile || %DisplayTextOnTile )
+				{
+				set %currentLoc %tileArea , _ , %facet
+				if % . %currentLoc = n/a
+					{
+					gosub DBArea %coordx %coordy %facet
+					gosub getGlobalVar LJColor_ , #result CPLR SAME %currentLoc NOLOCK
+					if ! #result
+						{
+						set % . %currentloc 0
+						set %currentcolor 0
+						}
+					}
+				set %currentColor % . %currentLoc
+				if _ in % . %currentLoc
+					set %currentcolor 1
+				if %DisplayColorOnTile
+					set %color %ColorWoodType . %currentColor
+				}
+			displaycolor:
+			if %TestZAxis && %Chophere
+				{
+				set %temp %coordz - #charposz abs
+				if %temp > 19
+					{
+					set %Chophere #false
+					set %drawtxt #true
+					goto nochophere
+					}
+				}
+			set %temp %coordx - #charposx abs
+			if %temp > %MaxChopRange
+				{
+				set %chophere #false
+				set %drawtxt #true
+				goto nochophere
+				}
+			set %temp %coordy - #charposy abs
+			if %temp > %maxChopRange
+				{
+				set %chophere #false
+				set %drawtxt #true
+				goto nochophere
+				}
+			if %coordx = #charposx && %coordy = #charposy
+				set %color %center_tile
+			menu font bgcolor %color
+			menu font color %color
+			set %button %button + 1
+			set %button . %button %coordx , | , %coordy , | , %coordz , | , #tiletype , | , 3
+			set %buttonx %gridx + %Boffsetx
+			set %buttony %gridy + %Boffsety
+			if %DisplayTextOnTile && %color <> %center_tile
+				{
+				if ! %DisplayColorOnTile
+					{
+					menu font color black
+					menu font bgcolor gray
+					}
+				if %DisplayColorOnTile
+					menu font color %TextColorWoodType . %currentcolor
+				menu button button , %button %buttonx %buttony 22 22 %TextWoodType . %currentcolor
+				}
+			if ! %DisplayTextOnTile
+				{
+				if ! %DisplayColorOnTile
+					{
+					menu font color gray
+					menu font bgcolor gray
+					}
+				else
+					{
+					menu font color %color
+					menu font bgcolor %color
+					}
+				menu button button , %button %buttonx %buttony 22 22 -
+				}
+			}
+		nochophere:
+		if %coordx = #charposx && %coordy = #charposy
+				set %color %center_tile
+		if ! %Chophere
+     {
+     set !edgex %gridx + 5
+     set !edgey %gridy + 5
+		 menu shape m2 , %x , %y !edgex !edgey 22 22 6 6 10 %color 7 %color
+		 }
+		if %drawtxt
+			gosub DrawObjectOnGrid letter %coordx %coordy %ColorWoodType . %currentColor %TextColorWoodType . %currentColor %TextWoodType . %currentcolor
+		endOfDrawLoop:
+		}
+	}
+menu shape line1 %lineX 3 3 208 3 7 5 red 3 red
+menu shape line2 8 %lineY 208 3 3 7 5 red 3 red
+set %gTime #systime - %gTime
+str len %gtime
+set #result #strres - 2
+str del %gtime #strres 1
+str ins #strres #dot #result
+menu set status Grid Drawn in #strres , #spc , seconds
+Return
+
+;*****SUB DRAWOBJECTONGRID****
+sub DrawObjectOnGrid
+; %1 Button, Square or Letter
+; %2 World X
+; %3 World Y
+; %4 ObjectColor
+; %5 Text Color
+; %6 Button Text
+; %7+ Object Name for button
+namespace push
+namespace local DOoG
+set !gridx ( %2 - ( #charposx - 4 ) ) * 23 + 5
+set !gridy ( %3 - ( #charposy - 4 ) ) * 23
+if %1 = button
+	{
+	set !gridx !gridx + %boffsetx
+	set !gridy !gridy + %boffsety
+	}
+if %1 = square
+	{
+  set !name m2t , %gridx , %gridy
+	set !edgex %gridx + 5
+	set !edgey %gridy + 5
+;	menu shape !name !gridx !gridy 30 30 6 6 10 %4 7 %4
+	menu shape !name !edgex !edgeyy 22 22 6 6 10 %4 7 %4
+	goto endDOoG
+	}
+if %1 = letter
+	{
+	menu font bgcolor %4
+	menu font color %5
+	set !gridx !gridx + 12
+	set !gridy !gridy + 9
+	set !name m2t_ , %x , _ , %y
+	menu text !name !gridx !gridy %6
+	menu font color black
+	menu font bgcolor btnface
+	goto endDOoG
+	}
+if %0 > 7
+	{
+	for !button 8 %0
+		{
+		set %7 %7 , % . !button
+		}
+	}
+menu font bgcolor %4
+menu font color %5
+menu button %7 !gridx !gridy 21 21 %6
+menu font color black
+menu font bgcolor btnface
+endDOoG:
+set %drawtxt %false
+namespace clear
+namespace Pop
+Return
+
+;*****SUB CONVERTXxX******
+sub ConvertXxX
+set %1 %1 / %3 * %3
+set %2 %2 / %4 * %4
+return %1 , _ , %2
+
+;*****SUB COLORCHECK*****
+sub colorcheck
+if | , #tiletype , | notin %Chopable
+	{
+	str len #tilename
+	if #strres = 0
+		{
+		set %color %noname_color
+		for %temp 1 4
+			{
+			if | , #tiletype , | in %noname . %temp
+				{
+				set %color %ColNoName . %temp
+				goto ContColorCheck
+				}
+			}
+		goto ContColorCheck
+		}
+	if | , #tilename , | in %badTileNames
+		{
+		set %color black
+		goto ContColorCheck
+		}
+	set %color % . #tilename
+	}
+if | , #tiletype , | in %Chopable
+	set %Chophere #true
+ContColorCheck:
+if #tilecnt > 1
+	{
+	for %cnt 2 #tilecnt
+		{
+		tile get %coordx %coordy %cnt
+		if | , #tiletype , | in %Chopable
+			{
+			set %coordz #tilez
+			set %color %cave
+			set %Chophere #true
+			goto ContColorCheck
+			}
+		}
+	}
+ContColorCheck:
+if %coordx < 0 || %coordy < 0
+	set %color btnface
+;gosub SpecialCases
+return
+
+;*****SUB DROPITEMS*****
+sub DropItems
+_DropItems:
+set %Itemdropped #false
+finditem %MiscDropTypes c_ , #backpackid
+if #findkind <> -1
+   	{
+    set %Itemdropped #true
+   	menu set status Dropping Item
+   	set %temp #findid
+   	gosub FindItemOnGround #findtype
+   	if ! #result
+        	gosub s7DropG %temp
+   	else
+        	gosub moveitem %temp #backpackid #findid #findstack
+   	finditem %MiscDropTypes c_ , #backpackid
+   	if #findkind <> -1
+          {
+          wait 28
+        	goto _DropItems
+          }
+   	}
+finditem ZLK c_ , #backpackid
+if #findkind <> -1
+  	{
+  	if | , #findcol , | in %WoodToSave
+     		ignoreitem #findid LogsToSave
+  	else
+     		{
+     		set %Itemdropped #true
+     		menu set status Dropping Item
+     		set %temp #findid
+     		gosub FindItemOnGround ZLK #findcol
+     		if ! #result
+        		gosub s7DropG %temp
+     		else
+        	gosub moveitem %temp #backpackid #findid #findstack
+     		}
+  	finditem ZLK c_ , #backpackid
+  	if #findkind <> -1
+         {
+         wait 28
+         goto _DropItems
+         }
+  	}
+if %itemDropped
+   wait 28
+ignoreitem reset LogsToSave
+Return
+
+;*****SUB CHOP*****
+sub chop
+if %record
+	menu delete reset
+menu delete options
+menu font bgcolor red
+menu font color yellow
+menu button stop 172 240 50 20 Stop
+menu font bgcolor btnface
+menu font color black
+gosub string exp % . #menubutton | chop
+menu set ChopX %Chop1
+menu set ChopY %Chop2
+menu set ChopZ %Chop3
+menu set tileT %Chop4
+menu set LTK %Chop5
+gosub ShardCheck
+if %TrackWoodTypes
+	{
+	set %CurrentWoodType 0
+	set %TrackThisSpot #false
+	set %facet #curskind + 1
+	gosub convertXxX %Chop1 %Chop2 %shardtypeX %shardtypeY
+	set %currentLoc #result , _ , %facet
+	if % . %currentLoc = 0
+		{
+		gosub DBarea %Chop1 %Chop2 %facet
+		gosub getGlobalVar LJColor_ , #result CPLR SAME %currentLoc NOLOCK
+		if ! #result
+			set % . %currentloc 0
+		}
+	if _ notin % . %currentloc && % . %currentLoc <> 0
+		set %CurrentWoodType % . %currentLoc
+	if % . %currentLoc <= 1
+		set %TrackThisSpot #true
+	if _ in % . %currentloc
+		set %CurrentWoodType 1
+	}
+OpenStatusChop:
+if #weight = n/a
+	{
+	event macro 8 2
+	wait 20
+	if #weight = n/a
+		goto OpenStatusChop
+	}
+set %Jstart #jindex
+chop:
+if %DropStyle = 1 && %vEUO2 >= 50
+   	gosub DropItems
+if %weightcheck && #weight > %MaxChopWeight
+	{
+	if %TrackWoodTypes && %TrackThisSpot && %CurrentWoodType > 1
+				{
+				gosub TrackWoodColor
+				set %TrackThisSpot #false
+				gosub cleargrid
+				gosub drawgrid
+				}
+	if %DropStyle = 2 && %vEUO2 >= 50
+    		{
+    		gosub DropItems
+    		goto _ContChop
+    		}
+	menu set status Max Weight Allowed Reached
+	menu delete stop
+	if %record
+		menu button reset 172 240 50 20 Reset
+	menu button options 172 262 50 20 Options
+	Return
+	}
+_ContChop:
+
+finditem %axes c_ , #charid
+if #findkind = -1
+	{
+	finditem %axes c_ , #backpackid
+	if #findkind = -1
+		{
+		menu delete stop
+		menu font color black
+		menu font bgcolor btnface
+		if %TrackWoodTypes && %TrackThisSpot && %CurrentWoodType > 1
+				{
+				if %record
+					menu button reset 172 240 50 20 Reset
+				gosub TrackWoodColor
+				gosub cleargrid
+				gosub drawgrid
+				}
+		menu set status NO CHOPPING TOOL FOUND
+		menu button options 172 262 50 20 Options
+		display ok You do not have any chopping tools,
+			+$please get some and continue.
+		return
+		}
+  gosub EquipAxe
+	}
+Menu set status Chopping...
+set #lobjectid #findid
+set #ltargetkind %Chop5
+set #ltargetx %Chop1
+set #ltargety %Chop2
+set #ltargetz %Chop3
+set #ltargettile %Chop4
+event macro 17
+target
+event macro 22
+wait %chop_delay
+gosub journalcheck %jstart
+if #menubutton = stop
+	{
+	menu set status Chopping Halted
+	if %TrackWoodTypes && %TrackThisSpot && %CurrentWoodType > 1
+		{
+		gosub TrackWoodColor
+		if ! %chop_all
+     			{
+		 	    gosub cleargrid
+		 	    gosub drawgrid
+     			}
+		}
+  if %DepleteDrop && %vEUO2 >= 50 && %DropStyle <> 3
+       {
+       gosub DropItems
+       menu set status -
+       }
+	menu delete stop
+	menu font color black
+	menu font bgcolor btnface
+	if %record
+		menu button reset 172 240 50 20 Reset
+	menu button options 172 262 50 20 Options
+	Return
+	}
+if #result
+	goto chop
+else
+	{
+	menu font bgcolor btnface
+	menu font color black
+	menu delete stop
+	if %record
+		menu button reset 172 240 50 20 Reset
+	menu button options 172 262 50 20 Options
+	return
+	}
+
+;*****SUB DEFAULTWOODS****
+sub DefaultWoods
+namespace push
+namespace local DefaultWoods
+if %0 = 0
+   set !1 %shard
+else
+    {
+    set !1 %1
+    set !Number_of_WoodTypes %Number_of_WoodTypes
+    for !temp 1 7
+        {
+        set !NameWoodType . !temp %NameWoodType . !temp
+        set !TextWoodType . !temp %TextWoodType . !temp
+        set !ColorWoodType . !temp %ColorWoodType . !temp
+        set !TextColorWoodType . !temp %TextColorWoodType . !temp
+        set !WoodFindCol . !temp %WoodFindCol . !temp
+        }
+    }
+	set %Number_of_WoodTypes 7
+	set %NameWoodType0 Unknown_Wood
+	set %TextWoodType0 ?
+	set %ColorWoodType0 %cave
+	set %TextColorWoodType0 blue
+	set %NameWoodType1 Ordinary
+	set %ColorWoodType1 $1e69d2
+	set %TextWoodType1 L
+	set %TextColorWoodType1 white
+  set %WoodFindCol1 0
+	set %NameWoodType2 Oak
+	set %ColorWoodType2  $0b86b8
+	set %TextWoodType2 O
+	set %TextColorWoodType2 white
+	set %WoodFindCol2 2010
+	set %NameWoodType3 Yew
+	set %ColorWoodType3 $12458b
+	set %TextWoodType3 Y
+	set %TextColorWoodType3 white
+	set %WoodFindCol3 1192
+	set %NameWoodType4 Ash
+	set %ColorWoodType4 $8cd4d2
+	set %TextWoodType4 A
+	set %TextColorWoodType4 black
+	set %WoodFindCol4 1191
+	set %NameWoodType5 Heartwood
+	set %ColorWoodType5 $006400
+	set %TextWoodType5 H
+	set %TextColorWoodType5 white
+	set %WoodFindCol5 1193
+	set %NameWoodType6 Frostwood
+	set %ColorWoodType6 $dec4b0
+	set %TextWoodType6 F
+	set %TextColorWoodType6 black
+	set %WoodFindCol6 1194
+	set %NameWoodType7 Bloodwood
+	set %ColorWoodType7 $00008b
+	set %TextWoodType7 B
+	set %TextColorWoodType7 white
+  set %WoodFindCol7 1151
+  set *CPLR_WOODS_ . !1 n/a
+  gosub putGlobalVar CPLR_WOODS_ , !1 CPLR CPLR Number_of_WoodTypes NOLOCK
+  for !temp 1 7
+      {
+      gosub putGlobalVar CPLR_WOODS_ , !1 CPLR CPLR NameWoodType , !temp NOLOCK
+      gosub putGlobalVar CPLR_WOODS_ , !1 CPLR CPLR ColorWoodType , !temp NOLOCK
+      gosub putGlobalVar CPLR_WOODS_ , !1 CPLR CPLR TextWoodType , !temp NOLOCK
+      gosub putGlobalVar CPLR_WOODS_ , !1 CPLR CPLR TextColorWoodType , !temp NOLOCK
+      gosub putGlobalVar CPLR_WOODS_ , !1 CPLR CPLR WoodFindcol , !temp NOLOCK
+      if !1 <> %shard
+         {
+         if !temp = 1
+            set %Number_of_WoodTypes !Number_of_WoodTypes
+         set %NameWoodType . !temp !NameWoodType . !temp
+         set %TextWoodType . !temp !TextWoodType . !temp
+         set %ColorWoodType . !temp !ColorWoodType . !temp
+         set %TextColorWoodType . !temp !TextColorWoodType . !temp
+         set %WoodFindCol . !temp !WoodFindCol . !temp
+         }
+      }
+namespace clear
+namespace pop
+Return
+
+;*****SUB FINDITEMONGROUND****
+sub FindItemOnGround
+FWoGLoop:
+finditem %1 G_1
+if #findkind = -1
+   	Return #false
+if #findcol <> %2 && %0 > 1
+   	{
+   	Ignoreitem #findid GroundLogs
+   	goto FWoGLoop
+   	}
+ignoreitem reset GroundLogs
+Return #true
+
+;*****SUB CHOPALLTILEINFO*****
+sub ChopAllTileInfo
+namespace push
+namespace local ChopAllTileInfo
+if %button > 0
+	{
+	for !temp 1 %button
+		{
+		menu delete button . !temp
+		}
+	menu delete c1
+	}
+gosub string exp % . #menubutton | coord #true
+menu text c1_0 5 290 Tile Info for coords:
+menu text c1_1 5 300 X:
+menu text c1_2 60 300 Y:
+menu font color blue
+menu text c1_3 20 300 !coord1
+menu text c1_4 75 300 !coord2
+menu font color black
+tile cnt !coord1 !coord2 #curskind
+set !menuy #tilecnt * 30 + 315
+menu window size 225 !menuy
+set %button 0
+for !loop 1 #tilecnt
+	{
+	tile get !coord1 !coord2 !loop #curskind
+	set !buttony !loop * 30 + 290
+	set !TnameY !loop * 30 + 288
+	set !TtypeY !loop * 30 + 298
+	menu text c1_5 30 !Tnamey TileName:
+	menu text c1_6 30 !TtypeY TileType:
+	menu text c1_7 125 !Ttypey TileZ:
+	menu font color blue
+	menu text c1_8 90 !TnameY #tilename
+	menu text c1_9 160 !TtypeY #tilez
+	menu font color red
+	if | , #tiletype , | in %chopable
+		menu font color green
+	menu text c1_10 90 !TtypeY #tileType
+	set %del1 10 ; Marker for multi-item names
+	menu font bgcolor yellow
+	menu font color black
+	set %button %button + 1
+	set %button . !loop !coord1 , | , !coord2 , | , #tilez , | , #tiletype , | , 3
+	menu button button , !loop 5 !buttony 21 21 !loop
+  	menu font bgcolor btnface
+	}
+namespace clear
+namespace pop
+Return
+
+;*****SUB JOURNALCHECK*****
+sub journalcheck
+JournalCheckLoop:
+set %jstart %jstart + 1
+scanjournal %jstart
+if %cantsee_error3 in #journal
+   {
+   if %TrackWoodTypes && %TrackThisSpot && %CurrentWoodType > 1
+      gosub TrackWoodColor
+   menu set status Moved away from tile!
+   return #false
+   }
+if %cantsee_error in #journal || %too_far_error in #journal || %cantsee_error2 in #journal
+	{
+	menu set status Cannot Reach that Tile
+	return #false
+	}
+if %unchopable_error in #journal
+	{
+	menu set status Not Chopable.
+	return #false
+	}
+if %unEquip_error in #journal
+	{
+	menu set status Axe not Equipped.
+	return #false
+	}
+if %NoWood_error in #journal
+	{
+	menu set status Tile out of resources.
+	if %TrackWoodTypes && %TrackThisSpot && %CurrentWoodType <> 0
+		{
+		gosub TrackWoodColor
+		If ! %record
+			{
+			gosub ClearGrid
+			gosub DrawGrid
+			}
+		}
+	if %record
+		{
+		gosub convertXxX %Chop1 %Chop2 %shardtypeX %shardtypeY
+		set %recorded_tiles %recorded_tiles , #result , _ , %facet , |
+		gosub ClearGrid
+		gosub DrawGrid
+		}
+  if %DepleteDrop && %vEUO2 >= 50 && %DropStyle <> 3
+       {
+       gosub DropItems
+       menu set status -
+       }
+	return #false
+	}
+if %Full1_error in #journal || %Full2_error in #journal
+	{
+	menu set status Your Backpack is too Full!
+	if %TrackWoodTypes && %TrackThisSpot && %CurrentWoodType > 1
+		{
+		gosub TrackWoodColor
+		gosub Cleargrid
+		gosub Drawgrid
+		}
+	return #false
+	}
+if ( %TrackWoodTypes || %DisplayColorOnTile || %DisplayTextOnTile ) && ( %CurrentWoodType <= 1 || %CurrentWoodType = n/a ) && %PreWood in #journal && %PostWood in #journal
+	{
+	set %CurrentWoodType 0
+	gosub DetermineWoodType
+	for %woodSearch 1 %Number_of_WoodTypes
+		{
+		if #result = %NameWoodType . %woodSearch
+			{
+			if %woodSearch > 1 && %HaltOnColor
+				set #menubutton stop
+			set %CurrentWoodType %woodSearch
+			if _ in % . %currentLoc && %woodSearch = 1
+				set %TrackThisSpot #false
+			if _ in % . %currentLoc && %woodSearch > 1
+				{
+				set %TrackThisSpot #true
+				menu set status Wood Type Upgraded!!!
+				set %upgrade #true
+				str pos % . %currentloc _
+				str del % . %currentloc 1 #strres
+				set %UpgradeLoc #strres
+				set % . %currentLoc %woodSearch
+				}
+			if %TrackThisSpot && _ notin % . %currentLoc && ! %upgrade
+				set % . %currentLoc %woodSearch
+			set %dispwood %NameWoodType . %woodSearch
+			if _ in %dispwood && ! %upgrade
+				{
+				gosub replace %dispwood _ #spc
+				set %dispwood #strres
+				}
+			if ! %upgrade
+				menu set status Chopping , #spc , %dispwood , #spc , Logs
+			}
+		}
+	if %CurrentWoodType = 0
+		{
+		menu set status Unknown Wood: #result
+		set %TrackThisSpot #false
+		}
+	}
+if %jstart >= #jindex
+	{
+	set %jstart #jindex
+	return #true
+	}
+goto JournalcheckLoop
+
+;****SUB TRACKWOODCOLOR***********
+sub TrackWoodColor
+menu set status Recording Location Data
+if %upgrade
+	{
+	set %LocIndex %UpgradeLoc / 300 + 1
+	set %Loc . %UpgradeLoc %currentloc , _ , % . %currentloc
+	set %upgradedLoc #true
+	gosub putGlobalVar LJLoc_ , %shard , 1 CPLR SAME UpgradedLoc NOLOCK
+	gosub putGlobalVar LJLoc_ , %shard , %LocIndex CPLR SAME Loc , %UpgradeLoc NOLOCK
+	gosub getGlobalVar CPLR_Export CPLR %shard lastwrite NOLOCK
+	if #result
+		{
+		set %expUpgrade #true
+		gosub putGlobalVar CPLR_Export CPLR %shard ExpUpgrade NOLOCK
+		}
+	set %expupgrade #false
+	set %upgrade #false
+  	set %Temp %facet . %facet , % . %currentLoc
+  	gosub getGlobalvar CPLR_Stats_ , %shard CPLR %facet %temp NOLOCK
+	  if ! #result
+       		set % . %Temp 1
+  	else
+       		set % . %Temp % . %Temp + 1
+  	gosub putGlobalvar CPLR_Stats_ , %shard CPLR %facet %temp NOLOCK
+  	set %temp %facet . %facet , 1
+  	gosub getGlobalvar CPLR_Stats_ , %shard CPLR %facet %temp NOLOCK
+  	set % . %Temp % . %Temp - 1
+  	gosub putGlobalvar CPLR_Stats_ , %shard CPLR %facet %temp NOLOCK
+	goto savecolor
+	}
+gosub getGlobalVar LJLoc_ , %shard , 1 CPLR SAME NumLoc NOLOCK
+if ! #result
+	{
+	set %NumLoc 1
+	set %Loc1 %currentloc , _ , % . %currentloc
+	gosub putGlobalVar LJLoc_ , %shard , 1 CPLR SAME NumLoc NOLOCK
+	gosub putGlobalVar LJLoc_ , %shard , 1 CPLR SAME Loc1 NOLOCK
+	}
+else
+	{
+	set %NumLoc %NumLoc + 1
+	set %LocIndex %NumLoc / 300 + 1
+	set %Loc . %NumLoc %currentloc , _ , % . %currentloc
+	gosub putGlobalVar LJLoc_ , %shard , 1 CPLR SAME NumLoc NOLOCK
+	gosub putGlobalVar LJLoc_ , %shard , %LocIndex CPLR SAME Loc , %NumLoc NOLOCK
+	}
+set %temp %facet . %facet , % . %currentloc
+gosub getGlobalVar CPLR_Stats_ , %shard CPLR %facet %temp NOLOCK
+if ! #result
+   	set % . %temp 1
+else
+   	set % . %temp % . %temp + 1
+gosub putGlobalVar CPLR_Stats_ , %shard CPLR %facet %temp NOLOCK
+if % . %currentloc = 1
+	set % . %currentloc 1_ , %numloc
+savecolor:
+gosub DBarea %Chop1 %Chop2 %facet
+set %temp %shard , %facet
+if *LJDBW_ . %temp = n/a
+	set *LJDBW_ . %temp |
+if | , %DBwrite , | notin *LJDBW_ . %temp
+	set *LJDBW_ . %temp *LJDBW_ . %temp , %DBwrite , |
+gosub putGlobalVar LJColor_ , #result CPLR SAME %currentLoc NOLOCK
+menu set status -
+Return
+
+;*****SUB DETERMINEWOODTYPE*****
+sub DetermineWoodType
+namespace push
+namespace local DetermineWoodType
+str len %PreWood
+str del #journal 1 #strres
+set !DOTstring #strres
+str pos !DOTstring %PostWood
+set !del #strres
+str len !DOTstring
+str del !DOTstring !del #strres
+namespace clear
+namespace pop
+return #strres
+
+;*****SUB SPECIALCASES*****
+;sub SpecialCases
+;return
+
+;*****SUB CLEARGRID*****
+sub ClearGrid
+if %button > 0
+	{
+	for %del 1 %button
+		{
+		menu delete button , %del
+		}
+	}
+;menu delete line
+menu delete line1
+menu delete line2
+for %delx 0 8
+	{
+        for  %dely 0 8
+		{
+		menu delete m2 , %delx , %dely
+		set !name m2t_ , %delx , _ , %dely
+		menu delete !name
+		}
+	}
+
+return
+
+;****SUB SHARDCHECK*******
+sub ShardCheck
+if %lshard = #shard
+	return
+str len #shard
+if #shard = n/a || #strres = 0
+	{
+	display ok You must be logged-in to use this script.$
+		+Please log in and restart this script.$$
+		+Thanks,$
+		+CyberPope
+	Halt
+	}
+set %shard #shard
+if #spc in %shard
+	{
+	gosub replace %shard #spc _
+	set %shard #strres
+	}
+gosub delBadCharacters ?`~@$^&()-+={}[]|\;:'"<.>/ shard
+gosub getGlobalvar LJSetup CPLR %shard finished NOLOCK
+if ! #result
+	gosub SetupMenu
+else
+	gosub GetSavedSetup
+gosub initmenu
+set %lshard #shard
+Return
+
+;*****SUB DELBADCHARACTERS***
+Sub DelBadCharacters
+namespace push
+namespace local DBC
+str len %1
+set !badtemp %1
+for !del 1 #strres
+	{
+	str left !badtemp 1
+	set !curChar #strres
+	recheckChar:
+	if !curChar in % . %2
+		{
+		str pos % . %2 !curChar
+		str del % . %2 #strres 1
+		set % . %2 #strres
+		goto recheckChar
+		}
+	str del !badtemp 1 1
+	set !badtemp #strres
+	}
+namespace clear
+namespace pop
+Return
+
+;*****SUB CALCULATESTARTINGSTATS*****
+sub CalculateStartingStats
+namespace push
+namespace local CalcStartStats
+gosub getGlobalvar LJSetup CPLR SAME NumShard NOLOCK
+if ! #result
+   Return
+menu window size 225 285
+menu clear
+menu window color btnface
+menu font bgcolor btnface
+menu font transparent #true
+menu font style bu
+menu font color blue
+menu font bgcolor btnface
+menu font transparent #true
+menu text m2 5 5 Stat Tracking
+menu font color black
+menu font style
+menu text m1_0 5 25 CyberPope's Lumberjacking Radar
+menu text m1_1 5 40 now tracks LJ statistics for you.
+menu text m1_2 5 60 In order to track these statistics,
+menu text m1_3 5 75 your current saved locations must be
+menu text m1_4 5 90 added to the statistics database.
+menu text m1_5 5 110 This may take only a few seconds or
+menu text m1_6 5 125 a few minutes depending on how
+menu text m1_7 5 140 many locations you have recorded on
+menu text m1_8 5 155 each shard.
+menu text m1_9 5 175 You will only have to do this once.
+menu text m1_10 5 190 After it is done, statistic tracking
+menu text m1_11 5 205 will happen as you record each
+menu text m1_12 5 220 location.
+set %del1 12 ; Marker for multi-item names
+menu font style b
+menu button Continue 157 262 65 20 Continue
+menu show
+set #menubutton n/a
+CalcStatsContLoop:
+wait 0
+if #menubutton = closed
+	gosub ending
+if #menubutton <> Continue
+   	goto CalcStatsContLoop
+menu delete m1
+menu delete continue
+menu text m1_0 5 25 Shard:
+menu text m1_1 5 40 Location:
+menu text m1_2 5 55 Facet:
+menu text m1_3 5 70 Wood:
+menu font color red
+menu text shard 53 25 -
+menu text loc 70 40 -
+menu text facet 53 55 -
+menu text wood 53 70 -
+menu text status 15 265 -
+menu font color black
+menu font style u
+menu text m1_4 5 90 Wood
+menu text m1_5 45 90 Fell
+menu text m1_6 75 90 Trm
+menu text m1_7 105 90 Ilsh
+menu text m1_8 135 90 Mal
+menu text m1_9 165 90 TkIs
+set %del1 9 ; Marker for multi-item names
+menu font style b
+for !nCnt 1 %Number_of_WoodTypes
+    	{
+    	set !buttony !nCnt * 22 + 90
+    	menu font bgcolor %colorWoodType . !nCnt
+    	menu font color %TextColorWoodType . !nCnt
+    	menu button na 10 !buttony 21 21 %TextWoodType . !nCnt ; ------------------------------------------------------------------------------
+    	menu font bgcolor btnface
+    	menu font color blue
+    	for !fCnt 1 5
+        	{
+        	set !textx !fCnt * 30 + 23
+        	set !texty !nCnt * 22 + 91
+        	menu text %facet . !fCnt , !nCnt !textx !texty 0
+        	}
+    	}
+for !sCount 1 %numshard
+    	{
+    	gosub getGlobalvar LJSetup CPLR SAME Shard , !sCount NOLOCK
+    	menu set shard %shard . !sCount , #spc , ( , !sCount , #spc , of , #spc , %numShard , )
+    	gosub getGlobalvar LJLoc_ , %shard . !scount , 1 CPLR SAME NumLoc NOLOCK
+    	if ! #result
+        goto _NextShard
+    	for !lCount 1 %numloc
+        	{
+        	menu set loc ( , !lCount , #spc , of , #spc , %numloc , )
+        	set !locIndex !lCount / 300 + 1
+        	gosub getGlobalvar LJLoc_ , %shard . !scount , !locIndex CPLR SAME Loc , !lCount NOLOCK
+        	gosub string exp %Loc . !lCount _ loc #true
+        	menu set facet %facet . !loc3
+        	menu set wood %NameWoodType . !loc4
+        	if !loc3 < 6 && !loc3 > 0 && !loc4 > 0 && !loc4 <= %Number_of_WoodTypes
+           		{
+           		set !temp %facet . !loc3 , !loc4
+           		set % . !temp % . !temp + 1
+           		menu set %facet . !loc3 , !loc4 % . !temp
+           		}
+        	}
+    	menu set facet -
+    	menu set wood -
+    	for !fCount 1 5
+        	{
+        	for !wCount 1 %Number_of_WoodTypes
+            		{
+            		set !temp %facet . !fcount , !wCount
+            		menu set status Saving ... , !temp
+            		if % . !temp = n/a
+               			set % . !temp 0
+            		gosub putGlobalvar CPLR_Stats_ , %shard . !scount CPLR !fCount !temp NOLOCK
+            		set % . !temp 0
+            		menu set !temp 0
+            		}
+        	}
+      _NextShard:
+    	}
+set %Initialized #true
+gosub putGlobalVar LJSetup CPLR Stats Initialized NOLOCK
+namespace clear
+namespace pop
+Return
+
+;*****SUB SETUPMENU*****
+sub SetupMenu
+menu window title LJ Radar Setup ( , %shard , )
+set #menubutton n/a
+menu clear
+menu window size 350 280
+menu window color btnface
+menu font bgcolor btnface
+menu font transparent #true
+menu font color blue
+menu font size 12
+menu font style b
+menu text m1 25 3 Welcome to CyberPope's LJ Radar.
+menu text m1 60 170 Thank you for trying my script$
+		+and don't forget to vote for it!
+menu font color black
+menu text m1 220 220 CyberPope
+menu font size 10
+
+menu text m1 5 40 Settings for %shard shard were not found.$
+		+Options must be set before you can use this script.$$
+menu text m1 5 90 Once you have set these options you shouldn't have$
+		+to see this menu again for this shard. Instead if you$
+		+want to change your options you will be able to do so $
+		+by going to the Options section of the main script.
+menu button Next 280 250 60 25 Next>>
+menu show 200 100
+gosub NextLoop
+set #menubutton n/a
+menurestart:
+menu clear
+menu font style b
+menu button Next 280 250 60 25 Next>>
+menu window size 350 280
+menu font size 14
+menu text m1_0 5 5 Setup Options
+menu font size 11
+menu font bgcolor white
+menu font size 8
+menu list create record 300 170 30 32
+menu list add record Yes
+menu list add record No
+gosub getGlobalVar LJSetup CPLR SAME record NOLOCK
+if ! #result || #record
+	menu list select record 1
+else
+	menu list select record 2
+menu font size 11
+menu font bgcolor btnface
+menu font color blue
+menu text m1_1 5 30 Grid Drawing Delay:
+menu text m1_2 5 90 Chopping Delay:
+menu text m1_3 5 145 Record Depleted Tiles?
+menu font color black
+menu font size 8
+menu text m1_4 150 33 (In Seconds)
+menu text m1_5 125 93 (20 = 1 second)
+menu text m1_6 5 45 This the amount of time you must stand still
+		+$before the grid will draw.
+menu text m1_7 5 108 This is the amount of time that you want $to wait between each chop.
+menu text m1_8 5 163 By selecting 'Yes' the script will highlight
+		+$previously depleted resources a
+		+$designated color. They can be unhighlighted
+		+$by pressing the RESET button.
+menu font color red
+menu text m1_9 5 70 NOTE: A delay of 0 or 1 will most likely cause lag
+set %del1 9 ; Marker for multi-item names
+menu font color black
+menu font size 10
+menu font bgcolor white
+gosub getGlobalVar LJSetup CPLR SAME delay NOLOCK
+if ! #result
+	menu edit delay 300 43 25 2
+else
+	menu edit delay 300 43 25 %delay
+menu edit chop_delay 300 102 25 40
+menu font bgcolor btnface
+gosub NextLoop
+menu delete next
+menu get delay
+set %delay #menures
+menu get chop_delay
+set %chop_delay #menures
+menu get record
+if #menures = 1
+	set %record #true
+else
+	set %record #false
+menu clear
+set #menubutton n/a
+menu font style b
+menu button Next 280 250 60 25 Next>>
+menu font size 14
+menu text m1_0 5 5 Track Wood Colors
+menu font size 12
+menu font color green
+menu font style bu
+menu text m1_1 5 30 Do You Wish To Track Wood Colors?
+menu font size 8
+menu font style b
+menu font color black
+menu text m1_2 5 50 Enabling Wood Tracking will record each location$
+		+you chop and store that information in a persistant$
+		+variable. The corresponding tiles will then highlight$
+		+a corresponding hue according to the wood type that$
+		+is cut from a previously recorded spot.
+menu text m1_3 5 135 Freesharders, please note that only the 7 standard$
+		+wood types on OSI are able to be tracked. If your shard$
+		+has other types of wood you can follow my tutorial in the$
+		+script's thread on how to add new wood types.
+menu font bgcolor white
+menu font size 8
+menu list create track 300 35 30 32
+menu list add track Yes
+menu list add track No
+menu list select track 1
+gosub Nextloop
+menu delete next
+menu get track
+if #menures = 1
+	set %TrackWoodTypes #true
+else
+	{
+	set %TrackWoodTypes #false
+	set %DisplayTextOnTile #true
+	set %DisplayColorOnTIle #true
+	}
+menu clear
+set #menubutton n/a
+menu font style b
+menu button Next 280 250 60 25 Next>>
+if %TrackWoodTypes
+	{
+	menu font size 14
+	menu text m1 5 5 Track Wood (Options)
+	menu font size 12
+	menu font color Blue
+	menu font style bu
+	menu text m1 5 30 Display Text on Tiles?
+	menu text m1 5 120 Display Color on Tiles?
+	menu font size 8
+	menu font style b
+	menu font color black
+	menu text m1 5 50 This option will add a corresponding letter to each$
+			 +chopable tile denoting the wood type or a "?" if unknown.$$
+			 +Examples:
+	menu text m1 5 140 This option will hue the Tile a simiar color based on$
+			 +the wood type for that tile.$$
+			 +Examples:
+	menu font bgcolor %cave_color
+	menu font color blue
+	set %Bx 45
+	for %menu 0 7
+		{
+		set %Bx %bx + 23
+		menu font bgcolor gray
+		menu font color black
+		menu button na %Bx 85 21 21 %TextWoodType . %menu
+		menu font bgcolor %ColorWoodType . %menu
+		menu font color %ColorWoodType . %menu
+		menu button na %Bx 175 21 21 -
+		menu font color %TextColorWoodType . %menu
+		menu button na %Bx 198 21 21 %TextWoodType . %menu
+		}
+	menu font bgcolor white
+	menu font color black
+	menu font size 8
+	menu list create Dtxt 310 35 30 32
+	menu list add Dtxt Yes
+	menu list add Dtxt No
+	menu list select Dtxt 1
+	menu list create Dclr 310 125 30 32
+	menu list add Dclr Yes
+	menu list add Dclr No
+	menu list select Dclr 1
+	gosub NextLoop
+	menu delete next
+	menu get Dtxt
+	if #menures = 1
+		set %DisplayTextOnTile #true
+	else
+		set %DisplayTextOnTile #false
+	menu get Dclr
+	if #menures = 1
+		set %DisplayColorOnTile #true
+	else
+		set %DisplayColorOnTile #false
+	menu clear
+	set #menubutton n/a
+	menu font style b
+	menu button Next 280 250 60 25 Next>>
+	}
+menu font size 14
+menu text m1 5 5 More Options
+menu font size 12
+menu font color green
+menu font style bu
+menu text m1 5 30 Select Resource Grid
+menu text m1 5 165 Select Depleted Tile Color
+menu font color blue
+menu font style b
+menu font color black
+menu font size 8
+menu text m1 5 50 This will highlight the entire resource grid
+		+$after a spot is depleted or a Wood Type has
+		+$been tracked. On OSI shards and most Freeshards
+		+$this is on an 8x8 basis. Some Freeshards are
+		+$different and can be 1x1, 4x4, even 4x3 and such.
+menu text m1 5 120 You will have to play around on your Freeshard
+		+$to figure out your resource grid area.
+
+menu font color blue
+menu text m1 5 185 Only the following color names are valid:
+menu font size 12
+menu text m1 275 30 X
+menu text m1 320 30 Y
+menu font size 8
+menu font color black
+menu text m1 300 30 x
+menu text m1 5 198 Aqua, black, blue, fuchsia, gray, green, lime,
+		+$maroon, navy, olive, purple, red, silver, teal,
+		+$white, yellow or btnface. You can also use a
+		+$hexidecimal descriptor. See the EasyUO Docs
+		+$for an example.
+menu font bgcolor white
+menu font size 10
+menu combo create ShardStyleX 265 50 35
+menu combo create ShardStyleY 310 50 35
+for %temp 1 12
+	{
+	menu combo add ShardStyleX %temp
+	menu combo add ShardStyleY %temp
+	}
+menu combo select ShardStyleX 8
+menu combo select ShardStyleY 8
+gosub getGlobalVar LJSetup CPLR SAME record_color NOLOCK
+if ! #result
+	menu edit record_color 262 210 75 Red
+else
+	menu edit record_color 262 210 75 %record_color
+gosub Nextloop
+menu delete next
+menu get ShardStyleX
+set %ShardTypeX #menures
+menu get ShardStyleY
+set %ShardTypeY #menures
+menu get record_color
+set %record_color #menures
+menu clear
+set #menubutton n/a
+menu font style b
+menu button Next 280 250 60 25 Next>>
+menu font size 14
+menu text m1 5 5 More Options
+menu font size 12
+menu font color blue
+menu font style bu
+menu text m1 5 30 Use Z-Axis Testing?
+menu font style b
+menu font size 8
+menu font color black
+menu text m1 5 50 On many Freeshards, if the tile you want to chop has$
+		 +a Z-Axis that is 19 more or less than your current$
+		+location, most of the time you will get the message$
+		+that you cannot chop that location.
+menu text m1 5 110 By selecting YES the script will check each tile as it$
+		+draws the radar for tiles that are outside this acceptable$
+		+Z-Axis range and will appear as non-chopable locations.
+menu font bgcolor white
+menu list create Axis 310 35 30 32
+menu list add Axis Yes
+menu list add Axis No
+menu list select Axis 1
+gosub nextloop
+menu delete next
+menu get axis
+if #menures = 1
+	set %TestZAxis #true
+else
+	set %TestZAxis #false
+menu clear
+set #menubutton n/a
+menu font style b
+menu button Next 280 250 60 25 Next>>
+menu font size 14
+menu text m1 5 5 More Options
+menu font size 12
+menu font color blue
+menu font style bu
+menu text m1 5 30 Halt on Colored Wood?
+menu text m1 5 125 Use Any Available Axe?
+menu font color black
+menu font size 8
+menu font style b
+menu text m1 5 50 Select 'Yes' if you would like for this script to stop $
+		+chopping once a colored wood type is found and $
+		+save it to the database. This can make for quicker $
+		+tracking by not having to wait until the resource $
+		+square is completely depleted.
+menu text m1 5 145 Selecting 'Yes' will cause this script to use the $
+		+first axe it finds in your backpack. Otherwise you$
+		+will have to equip your axes manually. Please $
+		+keep in mind that this will use ANY axe it finds.$
+		+On some shards axes will eventually break. It is$
+menu text m1 5 215 up to YOU to make sure you don't keep your "Axe$
+		+of the Heavens" or other valuable axes in your pack.
+menu font bgcolor white
+menu list create HoC 310 35 30 32
+menu list add HoC Yes
+menu list add HoC No
+menu list select HoC 2
+menu list create UaA 310 130 30 32
+menu list add UaA Yes
+menu list add UaA No
+menu list select UaA 1
+menu font size 14
+menu font color blue
+menu font bgcolor btnface
+menu text m1 80 250 (End of Options)
+gosub nextloop
+menu get HoC
+if #menures = 1
+	set %HaltOnColor #true
+else
+	set %HaltOnColor #false
+menu get UaA
+if #menures = 1
+	set %UseAnyAxe #true
+else
+	set %useAnyAxe #false
+menu clear
+menu font style b
+menu window title Setup for ( , %shard , )
+menu window size 240 255
+menu font style bu
+menu font color red
+menu text m1 5 2 Setup Confirmation
+menu font style b
+menu font size 10
+menu font color black
+menu text m1 5 20 Draw Grid Delay:
+menu text m1 5 35 Chopping Delay:
+menu text m1 5 50 Record Depleted Tiles:
+menu text m1 5 65 Track Wood Colors:
+if ! %TrackWoodTypes
+	{
+	menu font color Gray
+	menu text m1 15 80 -Display Text on Tile:
+	menu text m1 15 95 -Display Color on Tile:
+	menu text m1 190 80 Yes
+	menu text m1 190 95 Yes
+	menu font color black
+	}
+else
+	{
+	menu text m1 15 80 -Display Text on Tile:
+	menu text m1 15 95 -Display Color on Tile:
+	gosub YesNo %DisplayTextOnTile 190 80
+	gosub YesNo %DisplayColorOnTIle 190 95
+	menu font color black
+	}
+menu text m1 5 110 Shard Type:
+menu font color blue
+menu text m1 190 110 %shardtypeX , x , %shardtypeY
+menu font color black
+menu text m1 5 125 Test Z-Axis:
+menu text m1 5 140 Halt on Colored Wood:
+menu text m1 5 155 Use Any Available Axe:
+menu text m1 5 178 Depleted Tile Color:
+menu shape m2 185 170 22 22 6 6 10 %record_color 7 %record_color
+gosub YesNo %record 190 50
+gosub YesNo %TrackWoodTypes 190 65
+gosub YesNo %testZAxis 190 125
+gosub YesNo %haltOnColor 190 140
+gosub YesNo %UseAnyAxe 190 155
+menu font color blue
+menu text m1 190 20 %delay
+menu text m1 190 35 %chop_delay
+menu font color Red
+menu font size 10
+menu text m1 5 200 Do you wish to save these settings?
+menu font color black
+menu button NO 170 225 60 25 NO
+menu button YES 10 225 60 25 YES
+finishedLoop:
+wait 0
+if #menubutton = yes
+	{
+	menu clear
+	menu font color red
+	menu font size 10
+	menu font style b
+	menu window size 225 60
+	menu window title Saving Settings
+	Menu text m1 5 5 Saving Settings for:
+	menu text m1 5 40 Saving:
+	menu font color blue
+	Menu text m1 5 20 %shard
+	menu text save 55 40 NumShard
+	set %finished #true
+	gosub getGlobalVar LJSetup CPLR SAME NumShard NOLOCK
+	if ! #Result
+		set %NumShard 1
+	else
+		set %NumShard %NumShard + 1
+	gosub putGlobalVar LJSetup CPLR SAME Numshard NOLOCK
+	set %shard . %numShard %shard
+	set % . %shard %numshard
+	menu set save shard , %Numshard
+	gosub putGlobalVar LJSetup CPLR SAME shard , %NumShard NOLOCK
+	menu set save %shard
+	gosub putGlobalVar LJSetup CPLR SAME %shard NOLOCK
+	menu set save Delay
+	gosub putGlobalVar LJSetup CPLR SAME delay NOLOCK
+	menu set save chop_delay
+	gosub putGlobalVar LJSetup CPLR %shard chop_delay NOLOCK
+	menu set save Record
+	gosub putGlobalVar LJSetup CPLR SAME record NOLOCK
+	menu set save TrackWoodTypes
+	gosub putGlobalVar LJSetup CPLR %shard TrackWoodTypes NOLOCK
+	menu set save DisplayTextOnTile
+	gosub putGlobalVar LJSetup CPLR %shard DisplayTextOnTile NOLOCK
+	menu set save DisplayColorOnTile
+	gosub putGlobalVar LJSetup CPLR %shard DisplayColorOnTile NOLOCK
+	menu set save ShardTypeX
+	gosub putGlobalVar LJSetup CPLR %shard ShardTypeX NOLOCK
+	menu set save ShardTypeY
+	gosub putGlobalVar LJSetup CPLR %shard ShardTypeY NOLOCK
+	menu set save RecordColor
+	gosub putGlobalVar LJSetup CPLR SAME record_color NOLOCK
+	menu set save TestZAxis
+	gosub putGlobalVar LJSetup CPLR %shard TestZAxis NOLOCK
+	menu set save HaltOnColor
+	gosub putGlobalVar LJSetup CPLR SAME HaltOnColor NOLOCK
+	menu set save UseAnyAxe
+	gosub putGlobalVar LJSetup CPLR %shard UseAnyAxe NOLOCK
+	menu set save MaxChopRange
+	set %maxChopRange 2
+	gosub putGlobalVar LJSetup CPLR %shard %MaxChopRange NOLOCK
+	menu set save MaxChopWeight
+	gosub getGlobalVar LJSetup CPLR #charid maxchopweight NOLOCK
+	if ! #result
+		{
+		set %MaxChopWeight 375
+		gosub putGlobalVar LJSetup CPLR #charid maxchopweight NOLOCK
+		}
+  menu set save WeightCheck
+	gosub getGlobalVar LJSetup CPLR #charid WeightCheck NOLOCK
+	if ! #result
+		{
+		set %WeightCheck #false
+		gosub putGlobalVar LJSetup CPLR #charid WeightCheck NOLOCK
+		}
+	set %axes %DefaultAxes
+	set %chopable %defaultChopable
+  menu set save PathCheck
+	gosub getGlobalVar CPLR_Export CPLR Same PathCheck NOLOCK
+	if ! #result
+		{
+		set %PathCheck #true
+		gosub putGlobalVar CPLR_Export CPLR Same PathCheck NOLOCK
+		}
+	set %PreWood You_chop_some_
+	set %PostWood _logs
+	menu set save DropItems
+  	for %temp 1 %Number_of_WoodTypes
+    		{
+    		Set %drop . %temp #false
+    		gosub putGlobalVar CPLR_Drop CPLR %shard Drop , %temp NOLOCK
+    		if %temp =< 5
+       			{
+          		Set %MiscDrop . %temp #false
+          		gosub putGlobalVar CPLR_Drop CPLR %shard MiscDrop , %temp NOLOCK
+       			}
+    		}
+    menu set save DropStyle
+  	set %DropStyle 3
+  	gosub putGlobalVar CPLR_Drop CPLR %shard DropStyle NOLOCK
+  	menu set save DepleteDrop
+  	set %DepleteDrop #false
+  	gosub putGlobalVar CPLR_Drop CPLR %shard DepleteDrop NOLOCK
+  	menu set save DropWait
+  	set %DropWait 16
+   	gosub putGlobalVar CPLR_Drop CPLR %shard DropWait NOLOCK
+  	menu set save WoodTypes
+  	gosub DefaultWoods
+    menu set save FINISHED!!!!
+ 		gosub putGlobalVar LJSetup CPLR %shard finished NOLOCK
+  	gosub GetGlobalVar LJSetup CPLR Stats Initialized NOLOCK
+  	if ! #result || ! %Initialized
+     		gosub CalculateStartingStats
+	return
+	}
+if #menubutton = no
+	goto menurestart
+if #menubutton = closed
+	halt
+goto finishedLoop
+
+sub NextLoop
+Nextloop:
+wait 0
+if #menubutton = Next
+	return
+if #menubutton = Closed
+	halt
+goto Nextloop
+
+;*****SUB YESNO*****
+sub YesNo
+if %1
+	{
+	menu font color green
+	menu text m1 %2 %3 Yes
+	}
+else
+	{
+	menu font color red
+	menu text m1 %2 %3 No
+	}
+Return
+
+;*****SUB GETSAVEDSETUP*****
+sub GetSavedSetup
+menu set save Grid Draw Delay
+gosub getGlobalVar LJSetup CPLR SAME delay NOLOCK
+Menu set save Chop Delay
+gosub getGlobalVar LJSetup CPLR %shard chop_delay NOLOCK
+menu set save Record Depleted Tiles
+gosub getGlobalVar LJSetup CPLR SAME record NOLOCK
+menu set save Record Color
+gosub getGlobalVar LJSetup CPLR SAME record_color NOLOCK
+menu set save ShardType X
+gosub getGlobalVar LJSetup CPLR %shard ShardTypeX NOLOCK
+menu set save ShardType Y
+gosub getGlobalVar LJSetup CPLR %shard ShardTypeY NOLOCK
+menu set save Track Wood Types
+gosub getGlobalVar LJSetup CPLR %shard TrackWoodTypes NOLOCK
+menu set save Display Text On Tile
+gosub getGlobalVar LJSetup CPLR %shard DisplayTextOnTile NOLOCK
+menu set save Display Color On Tile
+gosub getGlobalVar LJSetup CPLR %shard DisplayColorOnTile NOLOCK
+menu set save Test Z Axis
+gosub getGlobalVar LJSetup CPLR %shard TestZAxis NOLOCK
+menu set save Halt On Colored Wood
+gosub getGlobalVar LJSetup CPLR SAME HaltOnColor NOLOCK
+menu set save Use Any Axe
+gosub getGlobalVar LJSetup CPLR %shard UseAnyAxe NOLOCK
+menu set save Max Chop Range
+gosub getGlobalVar LJSetup CPLR %shard maxchoprange NOLOCK
+if ! #result
+	{
+	set %maxChopRange 2
+	gosub putGlobalVar LJSetup CPLR %shard maxchoprange NOLOCK
+	}
+menu set save Max Chop Weight
+gosub getGlobalVar LJSetup CPLR #charid maxchopweight NOLOCK
+if ! #result
+	{
+	set %MaxChopWeight 375
+	gosub putGlobalVar LJSetup CPLR #charid maxchopweight NOLOCK
+	}
+menu set save Weight Check
+gosub getGlobalVar LJSetup CPLR #charid WeightCheck NOLOCK
+if ! #result
+	{
+	set %WeightCheck #false
+	gosub putGlobalVar LJSetup CPLR #charid WeightCheck NOLOCK
+	}
+
+set %axes %DefaultAxes
+if *CPLR_Axes_ . %shard <> n/a
+	set %axes *CPLR_Axes_ . %shard
+set %chopable %defaultChopable
+if *CPLR_Tiles_ . %shard <> n/a
+	set %chopable *CPLR_Tiles_ . %shard
+menu set save Path Check
+gosub getGlobalVar CPLR_Export CPLR Same PathCheck NOLOCK
+if ! #result
+	{
+	set %PathCheck #true
+	gosub putGlobalVar CPLR_Export CPLR Same PathCheck NOLOCK
+	}
+menu set save PreWood
+gosub getGlobalVar LJSetup CPLR %shard prewood NOLOCK
+if ! #result
+	set %PreWood You_chop_some_
+menu set save PostWood
+gosub getGlobalVar LJSetup CPLR %shard postwood NOLOCK
+if ! #result
+	set %PostWood _logs
+gosub GetGlobalVar CPLR_WOODS_ , %shard CPLR CPLR Number_of_WoodTypes NOLOCK
+if ! #result || %Number_of_WoodTypes = n/a
+   {
+   menu set save Default Wood Types
+   gosub DefaultWoods
+   }
+else
+    {
+    for %temp 1 %Number_of_WoodTypes
+      {
+      menu set save Wood Type Data , #spc , %temp , #spc , of , #spc , %Number_of_WoodTypes
+      gosub getGlobalVar CPLR_WOODS_ , %shard CPLR CPLR NameWoodType , %temp NOLOCK
+      gosub getGlobalVar CPLR_WOODS_ , %shard CPLR CPLR ColorWoodType , %temp NOLOCK
+      gosub getGlobalVar CPLR_WOODS_ , %shard CPLR CPLR TextWoodType , %temp NOLOCK
+      gosub getGlobalVar CPLR_WOODS_ , %shard CPLR CPLR TextColorWoodType , %temp NOLOCK
+      gosub getGlobalVar CPLR_WOODS_ , %shard CPLR CPLR WoodFindcol , %temp NOLOCK
+      }
+    }
+for %temp 1 %Number_of_WoodTypes
+    	{
+    	menu set save Drop , %temp
+    	gosub getGlobalVar CPLR_Drop CPLR %shard Drop , %temp NOLOCK
+    	if ! #result
+       		{
+       		Set %drop . %temp #false
+       		gosub putGlobalVar CPLR_Drop CPLR %shard Drop , %temp NOLOCK
+       		}
+    	if %temp =< 5
+       		{
+       		menu set save MiscDrop , %temp
+       		gosub getGlobalVar CPLR_Drop CPLR %shard MiscDrop , %temp NOLOCK
+       		if ! #result
+          		{
+          		Set %MiscDrop . %temp #false
+          		gosub putGlobalVar CPLR_Drop CPLR %shard MiscDrop , %temp NOLOCK
+          		}
+       		}
+    	}
+If %NamewoodType4 = ash && %WoodFindcol4 = 1192 && %NamewoodType3 = yew && %WoodFindCol3 = 1191
+   {
+   Set %WoodFindCol4 1191
+   set %WoodFindCol3 1192
+   gosub putGlobalVar CPLR_WOODS_ , %shard CPLR CPLR WoodFindcol4 NOLOCK
+   gosub putGlobalVar CPLR_WOODS_ , %shard CPLR CPLR WoodFindcol3 NOLOCK
+   }
+menu set save DropStyle
+gosub GetGlobalVar CPLR_Drop CPLR %shard DropStyle NOLOCK
+if ! #result
+   	{
+   	set %DropStyle 3
+   	gosub putGlobalVar CPLR_Drop CPLR %shard DropStyle NOLOCK
+   	}
+menu set save Deplete Drop
+gosub GetGlobalVar CPLR_Drop CPLR %shard DepleteDrop NOLOCK
+if ! #result
+   	{
+   	set %DepleteDrop #false
+   	gosub putGlobalVar CPLR_Drop CPLR %shard DepleteDrop NOLOCK
+   	}
+menu set save Drop Wait
+gosub GetGlobalVar CPLR_Drop CPLR %shard DropWait NOLOCK
+if ! #result
+   	{
+   	set %DropWait 16
+   	gosub putGlobalVar CPLR_Drop CPLR %shard DropWait NOLOCK
+   	}
+gosub GetGlobalVar LJSetup CPLR Stats Initialized NOLOCK
+if ! #result || ! %Initialized
+   gosub CalculateStartingStats
+Return
+
+;*****SUB AdvancedFILLLists*****
+sub AdvancedFillLists
+namespace push
+namespace local AdvancedFillLists
+set !_2 %2
+if %1
+	{
+	set !axes %axes
+	gosub string exp !axes _ axe #true
+	for !temp 1 #result
+		{
+		menu list add Adv8 !Axe . !temp
+		}
+	}
+if !_2
+	{
+	str del %chopable 1 1
+	set !tiles #strres
+	str len !tiles
+	str del !tiles #strres 1
+	set !tiles #strres
+	gosub string exp !tiles | tile #true
+	for !temp 1 #result
+		{
+		menu list add Adv10 !tile . !temp
+		}
+	}
+namespace clear
+namespace pop
+return
+
+;*****SUB DELETELISTITEM*****
+sub DeleteListItem
+namespace push
+namespace local DelListItem
+set !_1 %1
+set !_2 %2
+set !_3 %3
+if !_2
+	{
+	set !axes %axes
+	gosub string exp !axes _ axe #true
+	set !axes
+	Display YesNo You are about to remove the following Item Type: !axe . !_1 $$
+			+Are you sure you wish to remove this Item Type?
+	if #dispres = no
+		{
+		namespace clear
+		namespace pop
+		return
+		}
+	menu delete adv8
+	menu font bgcolor white
+	menu list Create Adv8 330 93 85  20
+	for !temp 1 #result
+		{
+		if !temp <> !_1
+			{
+			set !axes !axes , _ , !axe . !temp
+			menu list add Adv8 !Axe . !temp
+			}
+		}
+	str del !axes 1 1
+	set %axes #strres
+	if %axes <> %DefaultAxes
+		set *CPLR_Axes_ . %shard %axes
+	else
+		set *CPLR_Axes_ . %shard n/a
+	menu list select Adv8 1
+	}
+if !_3
+	{
+	str del %chopable 1 1
+	set !tiles #strres
+	str len !tiles
+	str del !tiles #strres 1
+	set !tiles #strres
+	gosub string exp !tiles | tile #true
+	set !tiles
+	Display YesNo You are about to remove the following Tile Type: !tile . !_1 $$
+			+Are you sure you wish to remove this Item Type?
+	if #dispres = no
+		{
+		namespace clear
+		namespace pop
+		return
+		}
+	menu delete adv10
+	menu font bgcolor white
+	menu list Create Adv10 330 147 85 20
+	for !temp 1 #result
+		{
+		if !temp <> !_1
+			{
+			set !tiles !tiles , | , !tile . !temp
+			menu list add Adv10 !tile . !temp
+			}
+		}
+	set !tiles !tiles , |
+	set %chopable !tiles
+	if %chopable <> %DefaultChopable
+		set *CPLR_Tiles_ . %shard %chopable
+	else
+		set *CPLR_Tiles_ . %shard n/a
+	menu list select Adv10 1
+	}
+namespace clear
+namespace pop
+Return
+
+sub TotalWipe
+namespace push
+namespace local TotalWipe
+menu set status Thorough Wipe: Felluca
+set !FacetXMax1 ( 6143 - %shardtypex + 1 ) / %shardtypeX * %shardtypeX / ( %shardtypeX * 17 )
+set !FacetYMax1 ( 4095 - %shardtypey + 1 ) / %shardtypeY * %shardtypeY / ( %shardtypeY * 17 )
+set !FacetXMax2 ( 6143 - %shardtypex + 1 ) / %shardtypeX * %shardtypeX / ( %shardtypeX * 17 )
+set !FacetYMax2 ( 4095 - %shardtypey + 1 ) / %shardtypeY * %shardtypeY / ( %shardtypeY * 17 )
+set !FacetXMax3 ( 2303 - %shardtypex + 1 ) / %shardtypeX * %shardtypeX / ( %shardtypeX * 17 )
+set !FacetYMax3 ( 1599 - %shardtypey + 1 ) / %shardtypeY * %shardtypeY / ( %shardtypeY * 17 )
+set !FacetXMax4 ( 2559 - %shardtypex + 1 ) / %shardtypeX * %shardtypeX / ( %shardtypeX * 17 )
+set !FacetYMax4 ( 2047 - %shardtypey + 1 ) / %shardtypeY * %shardtypeY / ( %shardtypeY * 17 )
+set !FacetXMax5 ( 1447 - %shardtypex + 1 ) / %shardtypeX * %shardtypeX / ( %shardtypeX * 17 )
+set !FacetYMax5 ( 1447 - %shardtypey + 1 ) / %shardtypeY * %shardtypeY / ( %shardtypeY * 17 )
+
+For !f 1 5
+    {
+    menu set status Thorough Wipe: %facet . !f
+    for !x 0 !FacetXMax . !f
+        {
+        for !y 0 !FacetYMax . !f
+            {
+             set !temp %shard , _ , !x , _ , !y , _ , !f
+             if *LJCOLOR_ . !temp <> n/a
+                set *LJCOLOR_ . !temp n/a
+            }
+        }
+    set !temp _ , %shard , _ , !f
+    set *LJDBW . !temp |
+    }
+gosub getGlobalVar LJLoc_ , %shard , 1 CPLR SAME NumLoc NOLOCK
+set !l %numloc / 300 + 1
+menu set status Thorough Wipe: Loc Index
+for !w 1 !l
+    {
+    set !temp %shard , !w
+    set *LJLoc_ . !temp n/a
+    }
+menu set status Thorough Wipe: Stats
+set *CPLR_STATS_ . %shard n/a
+;Reset LastLocation Written for Export & UOAM
+gosub delGlobalVar CPLR_Export CPLR %shard lastwrite NOLOCK
+gosub delGlobalVar LJLoc_ , %shard , 1 CPLR SAME LastRec NOLOCK
+menu set status Shard Wipe Complete
+return
+
+;*****SUB OPSBUTTONS*****
+sub OpsButtons
+menu window title CyberPope's LJ Radar , %space , #spc , #spc , #spc , #spc , #spc , #spc , Options
+menu font bgcolor btnface
+menu font transparent #true
+menu font size 8
+menu font color black
+menu delete options
+menu delete reset
+menu delete submit
+menu delete OpsExit
+menu font style
+menu button OpsAdvanced 250 218 55 20 Advanced
+menu button OpsWoods 250 240 55 20 Woods
+menu button OpsExit 172 262 50 20 Exit
+menu button OpsKey 250 262 55 20 Legend
+menu button OpsSettings 310 262 55 20 Settings
+menu button OpsImport 310 240 55 20 Import
+menu button OpsStats 310 218 55 20 Stats
+if %vEUO2 < 50 && %vEUO1 < 2
+   {
+	 menu font color yellow
+	 menu font bgcolor red
+	 }
+menu button OpsDrop 370 218 50 20 Drop
+if exec notin #opts
+   {
+	 menu font color yellow
+	 menu font bgcolor red
+	 }
+else
+   {
+   menu font bgcolor btnface
+   menu font color black
+   }
+menu button OpsUOAM 370 262 50 20 UOAM
+menu button OpsExport 370 240 50 20 Export
+menu font size 11
+menu font bgcolor btnface
+menu font color blue
+menu font style b
+menu text Select1 270 100 Select A Catagory
+menu font size 8
+menu font color black
+set #menubutton n/a
+Return
+
+;***SUB DELETEBUTTONS*****
+sub DeleteButtons
+menu delete opsSettings
+menu delete opsUOAM
+menu delete opsExport
+menu delete opsKey
+menu delete opsImport
+menu delete opsAdvanced
+menu delete opsDrop
+menu delete opsStats
+menu delete opsWoods
+Return
+
+;*****SUB OPTIONS*****
+Sub Options
+menu window size 420 285
+gosub OpsButtons
+OpsLoop:
+wait 0
+if button in #menubutton
+	{
+	set #menubutton n/a
+	display ok You cannot chop until you Exit the Options.
+	}
+if Ops in #menubutton
+	{
+	if ! ( ( #menubutton = OpsUOAM || #menubutton = OpsExport ) && exec notin #opts )
+		menu delete Select1
+	gosub DeleteButtons
+	goto #menubutton
+	}
+goto OpsLoop
+
+;***WOODS***
+OpsWoods:
+namespace push
+namespace local OpsWoods
+menu window size 575 285
+menu window title CyberPope's LJ Radar , %space , #spc , #spc , Wood Types
+menu text OpW0_0 225 5 # of Wood Types:
+menu text OpW0_1 255 20 # :
+menu text OpW0_2 225 35 Name
+menu text OpW0_3 225 53 Button Text
+menu text OpW0_4 225 71 Button Color
+menu text OpW0_5 225 89 Text Color
+menu text OpW0_6 225 107 Wood Findcol
+menu text OpW0_7 255 155 # :
+menu text OpW0_8 225 170 Name
+menu text OpW0_9 225 188 Button Text
+menu text OpW0_10 225 206 Button Color
+menu text OpW0_11 225 224 Text Color
+menu text OpW0_12 225 242 Wood Findcol
+menu text OpW0_13 235 125 Ex:
+menu text OpW0_14 235 260 Ex:
+set !temp 17
+for !loop 1 5
+    {
+    set !ntemp OpW0_ , !temp
+    set !temp !temp + 1
+    set !_y 18 * !loop + 17
+    menu text !ntemp 300 !_y :
+    set !_y 18 * !loop + 152
+    set !ntemp OpW0_ , !temp
+    set !temp !temp + 1
+    menu text !ntemp 300 !_y :
+; 17 + 2*5 = 27
+    }
+menu font color maroon
+menu font size 9
+menu text Opw0_15 225 20 Add
+menu text Opw0_16 225 155 Edit
+set %del0 27 ; Marker for multi-item names
+set !nextCol %Number_of_WoodTypes + 1
+menu font color blue
+menu font size 8
+menu text OpW1 325 5 %Number_of_WoodTypes
+menu text OpW13 271 155 -
+menu text OpW2 271 20 !nextCol
+menu font bgcolor white
+menu font color black
+menu font size 7
+menu edit OpW3 305 33 80
+menu edit OpW4 305 51 30
+menu edit OpW5 305 69 80
+menu edit OpW6 305 87 80
+menu edit OpW7 305 105 80
+menu edit OpW8 305 168 80
+menu edit OpW9 305 186 30
+menu edit OpW10 305 204 80
+menu edit OpW11 305 222 80
+menu edit OpW12 305 240 80
+menu font size 8
+menu font bgcolor btnface
+menu button AddEx 255 123 21 21 -
+menu button EdEx 255 258 21 21 -
+menu button OpWAdd 305 126 35 18 Add
+menu button AddClear 340 126 45 18 Clear
+menu button OpWEd 305 261 35 18 Add
+menu button EdClear 340 261 45 18 Clear
+if %number_of_WoodTypes > 11
+       {
+       set !col ( %number_of_WoodTypes - 1 ) / 11
+       set !windowX !col * 180 + 575
+       menu window size !windowX 285
+       }
+for !w 1 %Number_of_WoodTypes
+    {
+    gosub AddWoodTypeMenu !w
+    }
+for !n 4 6
+    {
+    menu get OpW , !n
+    set !last . !n #menures
+    }
+for !n 9 11
+    {
+    menu get OpW , !n
+    set !last . !n #menures
+    }
+OpsWoodsLoop:
+if #menubutton = closed
+   gosub ending
+if #menubutton = OpsExit
+   {
+   for !del 1 %Number_of_Woodtypes
+       {
+       menu delete c , !del
+       menu delete cw , !del
+       menu delete n , !del
+       menu delete f , !del
+       menu delete edit , !del
+       menu delete del , !del
+       }
+for %del 0 13
+	{
+	; Lets check %del[n] for marker
+	set !temp del , %del ; Build the Varname
+	set !temp % . !temp ; Cast the name as var
+	if !temp > 0 && !temp <> n/a ; We have a multi-item-name if we counted many items AND if the var us initialised
+		{
+		for !itemp 0 !temp
+			{
+			menu delete OpW , %del , _ , !itemp ; Used to remove multi-item-names
+			}
+		set %del . %del 0 ; Reset for next drawing of multi-item names
+		}
+	else
+		{
+		menu delete OpW , %del
+		}
+	}
+	
+   menu delete OpWAdd
+   menu delete AddClear
+   menu delete OpWEd
+   menu delete EdClear
+   menu delete EdEx
+   menu delete AddEx
+   menu window size 420 285
+   gosub OpsButtons
+   goto OpsLoop
+   }
+if #menubutton = OpWAdd
+   {
+   set #menubutton n/a
+   for !cnt 3 7
+       {
+       menu get OpW , !cnt
+       str len #menures
+       if #strres = 0
+          {
+          display ok One or more fields are blank.$
+                  +Please fill in all the fields$
+                  +and try again.
+          goto OpsWoodsLoop
+          }
+       else
+           set !item . !cnt #menures
+       }
+   _ContAdd:
+   menu window title CyberPope's LJ Radar , %space , #spc , #spc , Adding New Wood Type
+   set %Number_of_WoodTypes !nextCol
+   gosub putGlobalVar CPLR_WOODS_ , %shard CPLR CPLR Number_of_WoodTypes NOLOCK
+   set %NameWoodType . !nextCol !item . 3
+   gosub putGlobalVar CPLR_WOODS_ , %shard CPLR CPLR NameWoodType , !nextCol NOLOCK
+   set %TextWoodType . !nextCol !item . 4
+   gosub putGlobalVar CPLR_WOODS_ , %shard CPLR CPLR TextWoodType , !nextCol NOLOCK
+   set %ColorWoodType . !nextCol !item . 5
+   gosub putGlobalVar CPLR_WOODS_ , %shard CPLR CPLR ColorWoodType , !nextCol NOLOCK
+   set %TextColorWoodType . !nextCol !item . 6
+   gosub putGlobalVar CPLR_WOODS_ , %shard CPLR CPLR TextColorWoodType , !nextCol NOLOCK
+   set %WoodFindcol . !nextCol !item . 7
+   gosub putGlobalVar CPLR_WOODS_ , %shard CPLR CPLR WoodFindcol , !nextCol NOLOCK
+   set %Drop . !nextCol #false
+   gosub putlGlobalVar CPLR_DROP CPLR %shard Drop , !nextCol NOLOCK
+   gosub AddWoodTypeMenu !nextCol
+   set !nextCol !nextCol + 1
+   menu set OpW1 %Number_of_WoodTypes
+   menu set OpW2 !nextCol
+   set #menubutton AddClear
+   menu window title CyberPope's LJ Radar , %space , #spc , #spc , Wood Types
+   }
+if #menubutton = AddClear
+   {
+	for %del 3 7
+		{
+		; Lets check %del[n] for marker
+		set !temp del , %del ; Build the Varname
+		set !temp % . !temp ; Cast the name as var
+		if !temp > 0 && !temp <> n/a ; We have a multi-item-name if we counted many items AND if the var us initialised
+			{
+			for !itemp 0 !temp
+				{
+				menu delete OpW , %del , _ , !itemp ; Used to remove multi-item-names
+				}
+			set %del . %del 0 ; Reset for next drawing of multi-item names
+			}
+		else
+			{
+			menu delete OpW , %del
+			}
+		}
+
+
+   menu delete AddEx
+   menu font bgcolor white
+   menu font color black
+   menu font size 7
+   menu edit OpW3 305 33 80
+   menu edit OpW4 305 51 30
+   menu edit OpW5 305 69 80
+   menu edit OpW6 305 87 80
+   menu edit OpW7 305 105 80
+   menu font size 8
+   menu font bgcolor btnface
+   menu button AddEx 255 123 21 21 -
+   set #menubutton n/a
+   }
+if #menubutton = EdClear
+   {
+
+	for %del 8 12
+		{
+		; Lets check %del[n] for marker
+		set !temp del , %del ; Build the Varname
+		set !temp % . !temp ; Cast the name as var
+		if !temp > 0 && !temp <> n/a ; We have a multi-item-name if we counted many items AND if the var us initialised
+			{
+			for !itemp 0 !temp
+				{
+				menu delete OpW , %del , _ , !itemp ; Used to remove multi-item-names
+				}
+			set %del . %del 0 ; Reset for next drawing of multi-item names
+			}
+		else
+			{
+			menu delete OpW , %del
+			}
+		}
+   set !curEdit n/a
+   menu delete EdEx
+   menu font bgcolor white
+   menu font color black
+   menu font size 7
+   menu edit OpW8 305 168 80
+   menu edit OpW9 305 186 30
+   menu edit OpW10 305 204 80
+   menu edit OpW11 305 222 80
+   menu edit OpW12 305 240 80
+   menu font size 8
+   menu set OpW13 -
+   menu font bgcolor btnface
+   menu button EdEx 255 258 21 21 -
+   set #menubutton n/a
+   }
+for !n 4 6
+    {
+    menu get OpW , !n
+    if !last . !n <> #menures
+       {
+       set !last . !n #menures
+       menu delete AddEx
+       menu get OpW4
+       set !BT #menures
+       menu get OpW5
+       menu font bgcolor #menures
+       menu get OpW6
+       menu font color #menures
+       menu button AddEx 255 123 21 21 !BT
+       }
+    }
+for !n 9 11
+    {
+    menu get OpW , !n
+    if !last . !n <> #menures
+       {
+       set !last . !n #menures
+       menu delete EdEx
+       menu get OpW9
+       set !BT #menures
+       menu get OpW10
+       menu font bgcolor #menures
+       menu get OpW11
+       menu font color #menures
+       menu button EdEx 255 258 21 21 !BT
+       }
+    }
+if edit in #menubutton
+   {
+   str del #menubutton 1 4
+   menu set OpW13 #strres
+   if #strres = !curEdit
+      {
+      set #menubutton n/a
+      goto OpsWoodsLoop
+      }
+   set !curEdit #strres
+   menu set OpW8 %NameWoodType . #strres
+   menu set OpW9 %TextWoodType . #strres
+   menu set OpW10 %ColorWoodType . #strres
+   menu set OpW11 %TextColorWoodType . #strres
+   menu set OpW12 %WoodFindCol . #strres
+   menu delete EdEx
+   menu font bgcolor %ColorWoodType . #strres
+   menu font color %TextColorWoodType . #strres
+   menu delete EdEx
+   menu button EdEx 255 258 21 21 %TextWoodType . #strres
+   set #menubutton n/a
+   }
+if #menubutton = OpWEd
+   {
+   set #menubutton n/a
+   if !curEdit = n/a
+      {
+      display ok You must first select a wood type to edit!$
+              +Please select one and try again.
+      goto OpsWoodsLoop
+      }
+   menu get OpW8
+   str len #menures
+   if #menures <> %NameWoodType . !curEdit && #strres <> 0
+      {
+      set %nameWoodType . !curEdit #menures
+      gosub PutGlobalVar CPLR_WOODS_ , %shard CPLR CPLR NameWoodType , !curEdit NOLOCK
+      }
+   menu get OpW9
+   str len #menures
+   if #menures <> %TextWoodType . !curEdit && #strres <> 0
+      {
+      set %TextWoodType . !curEdit #menures
+      gosub PutGlobalVar CPLR_WOODS_ , %shard CPLR CPLR TextWoodType , !curEdit NOLOCK
+      }
+   menu get OpW10
+   str len #menures
+   if #menures <> %ColorWoodType . !curEdit && #strres <> 0
+      {
+      set %ColorWoodType . !curEdit #menures
+      gosub PutGlobalVar CPLR_WOODS_ , %shard CPLR CPLR ColorWoodType , !curEdit NOLOCK
+      }
+   menu get OpW11
+   str len #menures
+   if #menures <> %TextColorWoodType . !curEdit && #strres <> 0
+      {
+      set %TextColorWoodType . !curEdit #menures
+      gosub PutGlobalVar CPLR_WOODS_ , %shard CPLR CPLR TextColorWoodType , !curEdit NOLOCK
+      }
+   menu get OpW12
+   str len #menures
+   if #menures <> %WoodFindcol . !curEdit && #strres <> 0
+      {
+      set %WoodFindcol . !curEdit #menures
+      gosub PutGlobalVar CPLR_WOODS_ , %shard CPLR CPLR WoodFindcol , !curEdit NOLOCK
+      }
+   gosub delWoodTypeMenu !curEdit
+   gosub AddWoodTypeMenu !curEdit
+   }
+if del in #menubutton
+   {
+   str del #menubutton 1 3
+   set !delType #strres
+   set #menubutton n/a
+   for !chk !delType %Number_of_WoodTypes
+           {
+           for !fac 1 5
+               {
+               set !temp %facet . !fac , !chk
+               Gosub GetGlobalVar CPLR_Stats_ , %Shard CPLR !fac !temp NOLOCK
+               if #result && % . !temp > 0
+                  {
+                  Display YesNo You are about to delete...$$
+                          +WoodType: , #spc , %NameWoodType . !delType $$
+                          +Doing so will delete ALL previous saved Locations$
+                          +Are you sure you wish to do this?
+                  if #Dispres = Yes
+                     {
+                     gosub getGlobalVar LJLoc_ , %shard , 1 CPLR Same NumLoc NOLOCK
+                     gosub totalwipe
+                     }
+                  else
+                      goto OpsWoodsLoop
+                  goto _DelWoodType
+                  }
+               }
+           }
+   Display YesNo You are about to delete...$$
+                 +WoodType: , #spc , %NameWoodType . !delType $$
+                 +Are you sure you wish to do this?
+   if #Dispres = No
+      goto OpsWoodsLoop
+   _DelWoodType:
+   for !del !delType %Number_of_WoodTypes
+       {
+       if !del = %Number_of_WoodTypes
+          {
+          menu window title CyberPope's LJ Radar , %space , #spc , #spc , Deleteing Wood Type
+          gosub DelGlobalVar CPLR_WOODS_ , %shard CPLR CPLR NameWoodType , !del NOLOCK
+          gosub DelGlobalVar CPLR_WOODS_ , %shard CPLR CPLR TextWoodType , !del NOLOCK
+          gosub DelGlobalVar CPLR_WOODS_ , %shard CPLR CPLR ColorWoodType , !del NOLOCK
+          gosub DelGlobalVar CPLR_WOODS_ , %shard CPLR CPLR TextColorWoodType , !del NOLOCK
+          gosub DelGlobalVar CPLR_WOODS_ , %shard CPLR CPLR WoodFindcol , !del NOLOCK
+          gosub DelGlobalVar CPLR_DROP CPLR %shard Drop , !del NOLOCK
+          set !nextCol %Number_of_WoodTypes
+          set %Number_of_WoodTypes %Number_of_WoodTypes - 1
+          menu set OpW1 %Number_of_WoodTypes
+          if %Number_of_WoodTypes = 0
+             set %Number_of_WoodTypes n/a
+          gosub PutGlobalVar CPLR_WOODS_ , %shard CPLR CPLR Number_of_WoodTypes NOLOCK
+          menu set OpW1 %Number_of_WoodTypes
+          menu set OpW2 !nextCol
+          gosub delWoodTypeMenu !del
+          menu window title CyberPope's LJ Radar , %space , #spc , #spc , Wood Types
+          goto OpsWoodsLoop
+          }
+       menu window title CyberPope's LJ Radar , %space , #spc , #spc , Re-Indexing Wood Types
+       set !next !del + 1
+       set %NameWoodType . !del %NameWoodType . !next
+       set %TextWoodType . !del %TextWoodType . !next
+       set %ColorWoodType . !del %ColorWoodType . !next
+       set %TextColorWoodType . !del %TextColorWoodType . !next
+       set %WoodFindcol . !del %WoodFindcol . !next
+       set %Drop . !del %Drop . !next
+       gosub PutGlobalVar CPLR_WOODS_ , %shard CPLR CPLR NameWoodType , !del NOLOCK
+       gosub PutGlobalVar CPLR_WOODS_ , %shard CPLR CPLR TextWoodType , !del NOLOCK
+       gosub PutGlobalVar CPLR_WOODS_ , %shard CPLR CPLR ColorWoodType , !del NOLOCK
+       gosub PutGlobalVar CPLR_WOODS_ , %shard CPLR CPLR TextColorWoodType , !del NOLOCK
+       gosub PutGlobalVar CPLR_WOODS_ , %shard CPLR CPLR WoodFindcol , !del NOLOCK
+       gosub PutGlobalVar CPLR_DROP CPLR %shard Drop , !del NOLOCK
+       gosub delWoodTypeMenu !del
+       gosub AddWoodTypeMenu !del
+       }
+   }
+goto OpsWoodsLoop
+
+;***STATS***
+OpsStats:
+namespace push
+namespace local OpsStats
+menu window title CyberPope's LJ Radar , %space , #spc , #spc , Stats
+menu font bgcolor white
+menu font color black
+gosub getGlobalVar LJSetup CPLR SAME NumShard NOLOCK
+gosub getGlobalVar LJSetup CPLR SAME %shard NOLOCK
+menu Combo Create Stat1 260 5 157
+gosub FillShardCombo %numshard % . %shard stat1
+OpsStats_ReCount:
+set !y 285
+if %Number_of_WoodTypes > 8
+   set !y %Number_of_WoodTypes * 22 + 105
+menu window size 495 !y
+menu font color blue
+menu text stat0_10 225 10 Shard:
+menu font bgcolor btnface
+menu font color blue
+menu text stat0_0 225 45 Wood
+menu text stat0_1 265 45 Fell
+menu text stat0_2 292 45 Tram
+menu text stat0_3 330 45 Ilsh
+menu text stat0_4 358 45 Malas
+menu text stat0_5 395 45 TkIs
+menu font color red
+menu text stat0_6 466 45 %
+set !y %Number_of_WoodTypes * 22 + 83
+menu text stat0_7 235 !y %
+menu font color Maroon
+menu font size 12
+set !y !y - 25
+menu text stat2 440 !y -
+menu font size 8
+set !y !y + 5
+menu font color green
+menu font bgcolor btnface
+menu text stat0_8 430 45 TOT
+menu text stat0_9 230 !y TOT
+menu get stat1
+gosub getGlobalvar LJLoc_ , %shard . #menures , 1 CPLR SAME NumLoc NOLOCK
+if ! #result
+   	set %numloc 0
+menu set stat2 %Numloc
+menu font align right
+for !nCnt 1 %Number_of_WoodTypes
+    	{
+    	set !buttony !nCnt * 22 + 40
+    	menu font bgcolor %colorWoodType . !nCnt
+    	menu font color %TextColorWoodType . !nCnt
+	set !temp !nCnt + 10
+	set !temp stat0_ , !temp
+	menu button !temp 230 !buttony 21 21 %TextWoodType . !nCnt
+    	menu font bgcolor btnface
+    	menu font color black
+    	for !fCnt 1 5
+        	{
+        	set !textx !fCnt * 34 + 250
+        	set !texty !nCnt * 22 + 43
+        	menu text %facet . !fCnt , !nCnt !textx !texty -
+        	}
+    	}
+for !tot 1 %Number_of_WoodTypes
+    	{
+    	menu font color green
+    	set !texty !tot * 22 + 43
+      menu text WTot , !tot 450 !texty -
+    	menu font color red
+    	menu text WPer , !tot 485 !texty -
+    	set %colorTot . !tot 0
+    	}
+for !tot 1 5
+    	{
+    	menu font color green
+    	set !textx !tot * 34 + 250
+    	set !texty %Number_of_WoodTypes * 22 + 63
+    	menu text FTot , !tot !textx !texty -
+    	menu font color red
+    	set !texty !texty + 20
+    	menu text FPer , !tot !textx !texty -
+    	set %facetTot . !tot 0
+    	}
+menu get Stat1
+set !curShard #menures
+for !fCount 1 5
+        {
+        for !wCount 1 %Number_of_WoodTypes
+            	{
+            	set !temp %facet . !fcount , !wCount
+            	gosub getGlobalvar CPLR_Stats_ , %shard . #menures CPLR !fCount !temp NOLOCK
+            	if ! #result
+               		{
+               		set % . !temp 0
+               		}
+            	menu set !temp % . !temp
+            	set !facetTot . !fcount !facetTot . !fcount + % . !temp
+            	set !colorTot . !wCount !colorTot . !wCount + % . !temp
+            	}
+        menu set Ftot , !fCount !facetTot . !fcount
+        set !FacetPer . !fcount 1000 * !facetTot . !fcount / %numloc
+        if !FacetPer . !fCount <> 0
+           	{
+           	str len !FacetPer . !fcount
+           	str ins !facetPer . !fCount #dot #strres
+           	}
+        else
+            	set #strres !FacetPer . !fCount
+        menu set FPer , !fcount #strres
+        }
+for !tot 1 %Number_of_WoodTypes
+    	{
+    	menu set Wtot , !tot !colorTot . !tot
+    	set !woodPer . !tot 10000 * !colorTot . !tot / %numloc
+    	if !woodPer . !tot <> 0
+       		{
+       		str len !woodPer . !tot
+       		set !ins #strres - 1
+       		str ins !woodPer . !tot #dot !ins
+       		}
+    	else
+        	set #strres !woodPer . !tot
+    	menu set Wper , !tot #strres
+    	}
+Menu Font align Left
+OpsStatsLoop:
+wait 0
+menu get Stat1
+if #menures <> !curShard
+   	{
+   	set !curshard #menures
+   	for !temp 1 %Number_of_WoodTypes
+       		{
+       		if !temp < 6
+          		set !facetTot . !temp 0
+       		set !colorTot . !temp 0
+       		}
+   	gosub getGlobalvar LJLoc_ , %shard . !curShard , 1 CPLR SAME NumLoc NOLOCK
+   	if ! #result
+       set %numLoc 0
+    for !temp 1 %Number_of_WoodTypes
+       		{
+       		menu delete Wper , !temp
+       		menu delete Wtot , !temp
+       		for !temp2 1 5
+           		{
+           		menu delete %facet . !temp2 , !temp
+           		menu delete Fper . !temp2
+           		menu delete Ftot . !temp2
+           		}
+       		}
+	set !ttemp 11 + %Number_of_WoodTypes
+	for !temp 0 !ttemp
+		{
+		menu delete stat0_ , !temp ; Used to remove multi-item-names
+		}
+    gosub getGlobalVar CPLR_WOODS_ , %shard . !curShard CPLR CPLR Number_Of_WoodTypes NOLOCK
+    for !temp 1 %Number_Of_WoodTypes
+        {
+        gosub getGlobalVar CPLR_WOODS_ , %shard . !curShard CPLR CPLR ColorWoodType , !temp NOLOCK
+        gosub getGlobalVar CPLR_WOODS_ , %shard . !curShard CPLR CPLR TextWoodType , !temp NOLOCK
+        gosub getGlobalVar CPLR_WOODS_ , %shard . !curShard CPLR CPLR TextColorWoodType , !temp NOLOCK
+        }
+   	menu delete Stat2
+   	menu delete stat0
+   	goto OpsStats_Recount
+   	}
+if #menubutton = OpsExit
+   	{
+   	menu delete stat0
+   	menu get stat1
+   	menu delete stat1
+   	menu delete stat2
+   	for !temp 1 %Number_of_WoodTypes
+       		{
+       		menu delete Wper , !temp
+       		menu delete Wtot , !temp
+       		for !temp2 1 5
+           		{
+           		menu delete %facet . !temp2 , !temp
+           		menu delete Fper . !temp2
+           		menu delete Ftot . !temp2
+           		}
+       		}
+	set !ttemp 11 + %Number_of_WoodTypes
+	for !temp 0 !ttemp
+		{
+		menu delete stat0_ , !temp ; Used to remove multi-item-names
+		}
+    if %shard . #menures <> %shard
+       {
+       gosub getGlobalVar CPLR_WOODS_ , %shard CPLR CPLR Number_Of_WoodTypes NOLOCK
+       for !temp 1 %Number_Of_WoodTypes
+           {
+           gosub getGlobalVar CPLR_WOODS_ , %shard CPLR CPLR ColorWoodType , !temp NOLOCK
+           gosub getGlobalVar CPLR_WOODS_ , %shard CPLR CPLR TextWoodType , !temp NOLOCK
+           gosub getGlobalVar CPLR_WOODS_ , %shard CPLR CPLR TextColorWoodType , !temp NOLOCK
+           }
+       }
+   	menu font align left
+   	menu window size 420 285
+   	namespace clear
+   	namespace pop
+   	gosub OpsButtons
+   	goto OpsLoop
+   	}
+if #menubutton = closed
+   	gosub ending
+Goto OpsStatsLoop
+
+;***DROP***
+OpsDrop:
+namespace push
+namespace local OpsDrop
+if %vEUO2 < 50 && %vEUO1 < 2
+	{
+	display ok You cannot use the Drop Functions$
+		+with an EUO version less than 1.5$$
+		+Update your EUO version if you wish$
+    		+to use these functions.
+	gosub OpsButtons
+	goto OpsLoop
+	}
+menu window title CyberPope's LJ Radar , %space , #spc , #spc , Drop
+if %Number_of_WoodTypes > 8
+   {
+   set !y 15 * %Number_of_WoodTypes + 180
+   menu window size 420 !y
+   }
+menu font color blue
+menu text drop0_0 225 65 Log Types to Drop
+menu text drop0_1 225 48 Drop Wait
+
+set !y 15 * %Number_of_WoodTypes + 85
+menu text drop0_2 225 !y Misc. Items to Drop
+menu text drop0_3 225 10 Drop Style
+menu font color black
+for !temp 1 %Number_of_WoodTypes
+    	{
+    	set !y 15 * !temp + 65
+    	menu check drop , !temp 225 !y 200 20 %drop . !temp %NameWoodType . !temp
+    	}
+set !y 15 * %Number_of_WoodTypes + 100
+menu check MiscDrop1 225 !y 200 20 %MiscDrop1 Switches
+set !y !y + 15
+menu check MiscDrop2 225 !y 200 20 %MiscDrop2 Bark Fragments
+set !y !y + 15
+menu check MiscDrop3 225 !y 200 20 %MiscDrop3 Luminescent Fungi
+set !y !y + 15
+menu check MiscDrop4 225 !y 200 20 %MiscDrop4 Parasitic Plants
+set !y !y + 15
+menu check MiscDrop5 225 !y 200 20 %MiscDrop5 Brilliant Amber
+menu check DepleteDrop 225 25 200 20 %DepleteDrop Drop after Tile Depletion
+menu font color red
+menu font size 7
+menu text drop0_4 330 48 (20 = 1 Second)
+set %del0 4 ; Marker for multi-item names
+menu font color black
+menu font size 8
+menu font bgcolor white
+menu edit DropWait 285 44 40 %DropWait
+menu Combo Create DropStyle 290 5 127
+menu combo add DropStyle UOAssist
+menu combo add DropStyle Overweight
+menu combo add DropStyle Do Not Drop
+menu combo select DropStyle %DropStyle
+menu font bgcolor btnface
+OpsDropLoop:
+wait 0
+if #menubutton = closed
+   	gosub ending
+if #menubutton = OpsExit
+   	{
+   	set %WoodtoSave |
+   	set %MiscDropTypes _
+   	for !temp 1 %Number_of_WoodTypes
+    		{
+    		menu get drop , !temp
+    		if #menures <> %drop . !temp
+       			{
+       			set %drop . !temp #menures
+       			gosub putGlobalVar CPLR_Drop CPLR %shard Drop , !temp NOLOCK
+       			}
+    		if ! %drop . !temp
+       			set %WoodtoSave %WoodtoSave , %WoodFindCol . !temp , |
+    		if !temp =< 5
+       			{
+       			menu get MiscDrop , !temp
+       			if #menures <> %MiscDrop . !temp
+          			{
+          			set %MiscDrop . !temp #menures
+          			gosub putGlobalVar CPLR_Drop CPLR %shard MiscDrop , !temp NOLOCK
+          			}
+       			If %MiscDrop . !temp
+          			set %MiscDropTypes %MiscDropTypes , %MiscDropItem . !temp , _
+       			menu delete MiscDrop , !temp
+       			}
+    		menu delete drop , !temp
+    		}
+   	menu get Dropstyle
+   	if #menures <> %DropStyle
+      		{
+      		set %DropStyle #menures
+      		gosub putGlobalVar CPLR_Drop CPLR %shard DropStyle NOLOCK
+      		}
+   	menu get DepleteDrop
+   	if #menures <> %DepleteDrop
+      		{
+      		set %DepleteDrop #menures
+      		gosub putGlobalVar CPLR_Drop CPLR %shard DepleteDrop NOLOCK
+      		}
+    menu getnum DropWait %DropWait
+    if #menures <> %DropWait
+       {
+       set %DropWait #menures
+  		 gosub putGlobalVar CPLR_Drop CPLR %shard DropWait NOLOCK
+       }
+    ignoreitem reset LogsToSave
+    menu window size 420 285
+   	menu delete depletedrop
+   	menu delete dropstyle
+   	menu delete dropwait
+	for !itemp 0 %del0
+		{
+		menu delete Drop0_ , !itemp ; Used to remove multi-item-names
+		}
+	set %del0 0
+   	namespace clear
+   	namespace pop
+   	gosub OpsButtons
+	  goto OpsLoop
+   	}
+goto OpsDropLoop
+
+;***ADVANCED***
+OpsAdvanced:
+menu window title CyberPope's LJ Radar , %space , #spc , #spc , Advanced
+menu text adv1_0 250 47 PreWood:
+menu text adv1_1 250 71 PostWood:
+menu text adv1_2 250 92 Edit Axe
+menu text adv1_3 250 105 Types:
+menu text adv1_4 250 147 Edit Tile
+menu text adv1_5 250 160 Types:
+set %del1 5 ; Marker for multi-item names
+menu check Adv2 250 2 300 20 %Chop_All Chop All
+menu check Adv3 250 24 300 20 %PathCheck PathCheck
+menu font bgcolor white
+menu edit Adv4 315 44 100 %PreWood
+menu edit Adv5 315 66 100 %postWood
+menu edit Adv9 330 115 85
+menu edit Adv13 330 169 85
+menu list Create Adv8 330 93 85  20
+menu list Create Adv10 330 147 85  20
+menu font bgcolor blue
+menu font color white
+menu button help1 225 0 21 21 ?
+menu button help2 225 22 21 21 ?
+menu button help3 225 44 21 21 ?
+menu button help4 225 66 21 21 ?
+menu button help5 225 103 21 21 ?
+menu button help6 225 158 21 21 ?
+menu button help7 225 200 21 21 ?
+menu font bgcolor btnface
+menu font color black
+menu button Adv6 305 93 25 21 Del
+menu button Adv7 305 116 25 21 Add
+menu button Adv14 250 122 45 15 Default
+menu button Adv11 305 147 25 21 Del
+menu button Adv12 305 170 25 21 Add
+menu button Adv15 250 176 45 15 Default
+menu button Adv16 250 200 150 21 Wipe All Saved Locations
+gosub AdvancedFillLists #true #true
+menu list select Adv8 1
+menu list select Adv10 1
+AdvancedLoop:
+wait 0
+if #menubutton = closed
+	gosub ending
+if #menubutton = Opsexit
+	{
+	menu get adv2
+	if %chop_all <> #menures
+		{
+		gosub cleargrid
+		set %chop_all #menures
+		gosub drawgrid
+		}
+	menu get adv3
+	if %pathcheck <> #menures
+		{
+		set %pathcheck #menures
+		gosub putGlobalVar CPLR_Export CPLR Same PathCheck NOLOCK
+		}
+	menu get adv4
+	if %prewood <> #menures
+		{
+		set %prewood #menures
+		if %prewood <> You_Chop_Some_
+			gosub putGlobalVar LJSetup CPLR %shard prewood NOLOCK
+		if %prewood = You_Chop_Some_
+			gosub delGlobalVar LJSetup CPLR %shard prewood NOLOCK
+		}
+	menu get adv5
+	if %postwood <> #menures
+		{
+		set %postwood #menures
+		if %postwood = _logs
+			gosub delGlobalVar LJSetup CPLR %shard postwood NOLOCK
+		if %postwood <> _logs
+			gosub putGlobalVar LJSetup CPLR %shard postwood NOLOCK
+		}
+
+	for %del 1 17
+		{
+		; Lets check %del[n] for marker
+		set !temp del , %del ; Build the Varname
+		set !temp % . !temp ; Cast the name as var
+		if !temp > 0 && !temp <> n/a ; We have a multi-item-name if we counted many items AND if the var us initialised
+			{
+			for !itemp 0 !temp
+				{
+				menu delete adv , %del , _ , !itemp ; Used to remove multi-item-names
+				}
+			set %del . %del 0 ; Reset for next drawing of multi-item names
+			}
+		else
+			{
+			if %del < 8
+				menu delete help , %del
+			menu delete adv , %del
+			}
+		}	
+	menu delete help1
+	menu delete opsExit
+	gosub OpsButtons
+	goto OpsLoop
+	}
+if help in #menubutton
+	{
+	goto #menubutton
+	help1:
+	Display ok The "Chop All" option makes all tiles capable of being chopped.$
+		+This should only be used when trying to find new tiletypes that $
+		+might also be able to be chopped. In general, it is best to leave$
+		+this unchecked.
+	goto endhelp
+	help2:
+	Display ok PathCheck will try to validate the path you set in the import/export$
+		+options by looking for bad characters. Only uncheck this if you$
+		+have put in what you believe to be a valid path that is being declined.
+	goto endhelp
+	help3:
+	Display ok PreWood is the complete part of the journal message BEFORE$
+		+the wood type. For example in the message:$$
+		+"You chop some ordinary logs and place them in your backpack"$$
+		+YOU_CHOP_SOME_ is the value for PreWood. $$Note that spaces
+		+ should be replaced by underscores. "_"
+	goto endhelp
+	help4:
+	Display ok PostWood is any part of the journal message IMMEDIATELY$
+		+following the wood type. For example in the message:$$
+		+"You chop some ordinary logs and place them in your backpack"$$
+		+_LOGS is a valid value for PreWood. So would _LOGS_AND as well.$
+		+$Note that spaces should be replaced by underscores. "_"
+	goto endhelp
+	help5:
+	Display ok You can add or remove the axe item types that you want this script$
+		+to look for to chop with. Enter an item type in the edit box and $
+		+press the ADD button. To delete an axe type select it in the list$
+		+and press DEL.
+	goto endhelp
+	help6:
+	Display ok You can add or remove the tile types that you want this script$
+		+to look for to chop. Enter a tile type in the edit box and $
+		+press the ADD button. To delete a tile type select it in the list$
+		+and press DEL.
+  goto endhelp
+  help7:
+  Display ok To delete all of your saved locations on the current shard $
+          +simply press this button.
+	endhelp:
+	set #menubutton n/a
+	}
+if #menubutton = adv7
+	{
+	set #menubutton n/a
+	menu get adv9
+	str len #menures
+	if #strres <> 3
+		{
+		Display ok You must enter a valid item type.$$Item types are 3 letters long.$$
+			+Please try again with a different value.
+		goto AdvancedLoop
+		}
+	set %axes %axes , _ , #menures
+	menu list add Adv8 #menures
+	menu delete adv9
+	menu font bgcolor white
+	menu edit Adv9 330 115 85
+	menu font bgcolor btnface
+	if %axes <> %DefaultAxes
+		set *CPLR_Axes_ . %shard %axes
+	else
+		set *CPLR_Axes_ . %shard n/a
+	}
+if #menubutton = adv14
+	{
+	set #menubutton n/a
+	if %axes <> %DefaultAxes
+		{
+		set %axes %DefaultAxes
+		set *CPLR_Axes_ . %shard n/a
+		menu delete adv8
+		menu font bgcolor white
+		menu list Create Adv8 330 93 85 20
+		gosub AdvancedFillLists #true #false
+		menu font bgcolor btnface
+		menu list select Adv8 1
+		}
+	}
+if #menubutton = adv12
+	{
+	set #menubutton n/a
+	menu getnum adv13 n/a
+	str len #menures
+	if #strres < 3 || #menures = n/a
+		{
+		Display ok You must enter a valid tile type.$$Tile types are at least 3 numbers long.$
+			+And must be a NUMERIC Value.$
+			+Please try again with a different value.
+		goto AdvancedLoop
+		}
+	set %chopable %chopable , #menures , |
+	menu list add Adv10 #menures
+	menu delete adv13
+	menu font bgcolor white
+	menu edit Adv13 330 169 85
+	menu font bgcolor btnface
+	if %chopable <> %DefaultChopable
+		set *CPLR_Tiles_ . %shard %chopable
+	else
+		set *CPLR_Tiles_ . %shard n/a
+	}
+if #menubutton = adv15
+	{
+	set #menubutton n/a
+	if %chopable <> %DefaultChopable
+		{
+		set %chopable %Defaultchopable
+		set *CPLR_Tiles_ . %shard n/a
+		menu delete adv10
+		menu font bgcolor white
+		menu list Create Adv10 330 147 85  20
+		gosub AdvancedFillLists #false #true
+		menu font bgcolor btnface
+		menu list select Adv10 1
+		}
+	}
+if #menubutton = adv6
+	{
+	set #menubutton n/a
+	menu get adv8
+	gosub deleteListItem #menures #true #false
+	menu font bgcolor btnface
+	}
+if #menubutton = adv11
+	{
+	set #menubutton n/a
+	menu get adv10
+	gosub deleteListItem #menures #false #true
+	menu font bgcolor btnface
+	}
+if #menubutton = adv16
+   {
+   Display yesno You are about to delete all Location data for , %shard , #dot , $$
+                 +It is recommended that you back up your locations by Exporting them first.
+                 +$$ Are you sure you want to delete all location data?$$
+                 +This cannot be undone!
+   If #dispres = yes
+      gosub TotalWipe
+   else
+       menu set status No Locations Deleted
+   set #menubutton n/a
+   }
+goto AdvancedLoop
+
+
+;***EXPORT*****
+OpsExport:
+menu window title CyberPope's LJ Radar , %space , Export
+set #menubutton n/a
+if exec notin #opts
+	{
+	display ok You cannot use the Export Functions$
+		+until you allow EUO to Execute.$$
+		+1) Go to the Tools Menu and select Options,$
+		+2) Go to the Permissions Tab.$
+		+3) Make sure "Disable Execute" is UN-Checked.
+	gosub OpsButtons
+	goto OpsLoop
+	}
+gosub getGlobalVar CPLR_Export CPLR SAME EXPORTID NOLOCK
+if ! #result
+	{
+	menu font size 10
+	menu font color blue
+	menu text exp1 225 3 Export ID
+	menu font size 8
+	menu font color black
+	menu button Next 370 262 50 20 Next >>
+	menu text exp1 225 20 Before you can export your data$
+				+you will need to select an ID that $
+				+will Identify who you are to the $
+				+person importing your data.
+	menu text exp1 225 80 Your ID should be something the$
+				+person importing would recognize$
+				+like your Easy UO handle.
+	menu text exp1 225 125 Your ID name should not contain$
+				+any unusual characters. Stick to$
+				+letters and numbers.
+	menu text exp1 225 180 Once set you cannot change your$
+				+Export ID so choose a good one.
+	menu font color blue
+	menu text exp1 240 227 Enter your desired ID below
+	menu font color black
+	menu font bgcolor white
+	menu edit ID 225 240 180
+	IDLoop:
+	Wait 0
+	if #menubutton = Opsexit
+		{
+		menu delete exp1
+		menu delete next
+		menu delete ID
+		gosub opsButtons
+		goto OpsLoop
+		}
+	if #menubutton = closed
+		gosub ending
+	if #menubutton = next
+		{
+		menu get ID
+		set %ExportID #menures
+		gosub replace %exportid #spc _
+		set %exportid #strres
+		gosub delBadCharacters ?`~@$^&()-+={}[]|\;:'"<.>/ exportid
+		str len %exportid
+		if #strres = 0
+			{
+			menu delete ID
+			menu edit ID 225 240 180
+			set #menubutton n/a
+			goto IDloop
+			}
+		if %exportid <> #menures
+			{
+			Display YesNo Your ID contained unsuitable characters. $
+					+Your Entry: , #spc , #menures $
+					+Suggested Entry: , #spc , %ExportID $$
+					+To use the suggested entry press Yes. $
+					+To choose a different ID press No.
+			if #dispres = no
+				{
+				menu delete id
+				menu edit ID 225 240 180
+				set #menubutton n/a
+				goto IDloop
+				}
+			}
+		menu delete id
+		menu delete exp1
+		menu delete next
+		gosub putGlobalVar CPLR_Export CPLR SAME EXPORTID NOLOCK
+		goto ContExport
+		}
+	goto IDLoop
+	}
+ContExport:
+set #menubutton n/a
+gosub getGlobalVar CPLR_Export CPLR SAME ExpPath NOLOCK
+if ! #result
+	{
+	set %ExpPath #Pathdat
+	gosub putGlobalVar CPLR_Export CPLR Same ExpPath NOLOCK
+	}
+gosub getGlobalVar CPLR_Export CPLR %shard lastFile NOLOCK
+if ! #result
+	{
+	set %lastfile LJImport_ , %shard , .txt
+	gosub putGlobalVar CPLR_Export CPLR %shard lastFile NOLOCK
+	}
+menu font color black
+menu text exp1_0 225 5 Export ID:
+menu text exp1_1 225 110 Shard
+menu text exp1_2 225 135 Number of Locations:
+menu text exp1_3 225 150 Last Location Written:
+menu font style bu
+menu text exp1_4 225 20 Export Path
+menu text exp1_5 225 60 File Name
+menu font style b
+menu font color blue
+menu text exp1_6 280 5 %ExportID
+set %del1 6 ; Marker for multi-item names
+menu text exp5 350 135 -
+menu text exp6  350 150 -
+menu font color black
+menu font bgcolor white
+menu edit Exp2 225 35 190 %ExpPath
+menu edit Exp3 225 75 190 %lastFile
+gosub getGlobalVar LJSetup CPLR SAME NumShard NOLOCK
+gosub getGlobalVar LJSetup CPLR SAME %shard NOLOCK
+menu Combo Create Exp4 260 105 157
+gosub FillShardCombo %numshard % . %shard Exp4
+gosub FillExportData % . %shard
+menu get exp4
+set %curExp4 #menures
+ExportLoop:
+wait 0
+if #menubutton = OpsExit
+	{
+	menu get exp2
+	if %ExpPath <> #menures
+		{
+		set %ExpPath #menures
+		gosub putGlobalVar CPLR_Export CPLR SAME ExpPath NOLOCK
+		}
+	menu get exp4
+	set %temp #menures
+	menu get exp3
+	if %lastfile <> #menures
+		{
+		set %lastfile #menures
+		gosub putGlobalVar CPLR_Export CPLR %shard . %temp lastfile NOLOCK
+		}
+	for %del 0 9
+		{
+		; Lets check %del[n] for marker
+		set !temp del , %del ; Build the Varname
+		set !temp % . !temp ; Cast the name as var
+		if !temp > 0 && !temp <> n/a ; We have a multi-item-name if we counted many items AND if the var us initialised
+			{
+			for !itemp 0 !temp
+				{
+				menu delete Exp , %del , _ , !itemp ; Used to remove multi-item-names
+				}
+			set %del . %del 0 ; Reset for next drawing of multi-item names
+			}
+		else
+			{
+			menu delete Exp , %del
+			}
+		}
+
+	menu delete opsexit
+	gosub OpsButtons
+	goto OpsLoop
+	}
+menu get exp4
+if #menures <> %curExp4
+	{
+	set %curExp4 #menures
+	gosub FillExportData #menures
+	gosub getGlobalVar CPLR_Export CPLR %shard . #menures lastfile NOLOCK
+	if ! #result
+		{
+		menu set exp3 LJIMPORT_ , %shard . #menures , #dot , TXT
+		}
+	if #result
+		menu set exp3 %lastfile
+	}
+if #menubutton = closed
+	gosub ending
+if #menubutton = exp9
+	gosub WriteExportFile
+if #result = AddShardData
+	{
+	menu get exp4
+	gosub FillExportData #menures
+	set #result n/a
+	}
+goto ExportLoop
+
+;***IMPORT******
+OpsImport:
+set #menubutton n/a
+namespace push
+namespace local Imports
+menu window title CyberPope's LJ Radar , %space , Import
+menu shape Opim1_0 225 107 190 100 4 7 1 btnface 7 btnface
+menu font color black
+menu font style bu
+menu text OpIm1_1 225 5 Last Import Path
+menu text OpIm1_2 225 45 Last File Name
+menu font style b
+menu font align right
+menu font color black
+menu text OpIm1_3 295 110 File From:
+menu text OpIm1_4 295 120 Shard:
+menu font align left
+menu text OpIm1_5 230 130 Shard Type:
+menu text OpIm1_6 230 140 Last Imported Loc:
+set %del1 6 ; Marker for multi-item names
+menu font color black
+menu button OpIm4 225 85 190 20 Get File Data
+menu font bgcolor btnface
+menu edit OpIm2 225 20 190
+menu edit OpIm3 225 60 190
+menu font bgcolor btnface
+menu font color lime
+menu text OpIm5 300 110 -
+menu text OpIm6 300 120 -
+menu text OpIm7 300 130 -
+menu text OpIm8 340 140 -
+menu font color $008cff
+menu text OpIm9 240 160 Pease choose a file path and $
+				+file name then press the $
+				+Get File Data button.
+gosub getGlobalVar CPLR_Import CPLR SAME ImpPath NOLOCK
+if ! #result
+	{
+	set %ImpPath #Pathdat
+	gosub putGlobalVar CPLR_Import CPLR Same ImpPath NOLOCK
+	}
+menu set OpIm2 %ImpPath
+gosub getGlobalVar CPLR_Import CPLR SAME lastFile NOLOCK
+if ! #result
+	{
+	set %lastfile LJImport_ , %shard , .txt
+	gosub putGlobalVar CPLR_Import CPLR SAME lastFile NOLOCK
+	}
+menu set OpIm3 %lastfile
+namespace push
+namespace Local Import
+ImportLoop:
+if #menubutton = OpIm4
+	gosub GetImportData
+if #menubutton = OpIm12
+	{
+	gosub ImportData
+	if #menubutton = OpsImport || #menubutton = OpsExit
+		{
+		namespace clear
+		namespace pop
+		goto #menubutton
+		}
+	}
+if #menubutton = closed
+	gosub ending
+if #menubutton = OpsExit
+	{
+	menu get OpIm2
+	if #menures <> %impPath
+		{
+		set %ImpPath #menures
+		gosub putGlobalVar CPLR_Import CPLR Same ImpPath NOLOCK
+		}
+	menu get OpIm3
+	if #menures <> %lastfile
+		{
+		set %lastfile #menures
+		gosub putGlobalVar CPLR_Import CPLR SAME lastFile NOLOCK
+		}
+	for %del 0 12
+		{
+		; Lets check %del[n] for marker
+		set !temp del , %del ; Build the Varname
+		set !temp % . !temp ; Cast the name as var
+		if !temp > 0 && !temp <> n/a ; We have a multi-item-name if we counted many items AND if the var us initialised
+			{
+			for !itemp 0 !temp
+				{
+				menu delete OpIm , %del , _ , !itemp ; Used to remove multi-item-names
+				}
+			set %del . %del 0 ; Reset for next drawing of multi-item names
+			}
+		else
+			{
+			menu delete OpIm , %del
+			}
+		}
+	namespace clear
+	namespace pop
+	gosub OpsButtons
+	goto OpsLoop
+	}
+wait 0
+Goto ImportLoop
+
+;***LEGEND*****
+OpsKey:
+menu window title CyberPope's LJ Radar , %space , Legend
+if %Number_of_WoodTypes > 11
+   {
+   set %temp 23 * %number_of_WoodTypes + 30
+   menu window size 420 %temp
+   }
+menu font size 7
+if %displayTextOnTile || %DisplayColorOnTile
+	{
+	set !temp 0
+	for %key 0 %Number_of_WoodTypes
+		{
+		menu font size 7
+		gosub replace %NameWoodType . %key _ $
+		set %text #strres
+		if $ notin %text
+			set %texty %key * 23 + 10
+		if $ in %text
+			set %texty %key * 23 + 5
+		menu font color black
+		menu font bgcolor btnface
+		set !ntemp Leg1_ , !temp
+		set !temp !temp + 1
+		menu text !ntemp 355 %Texty %text
+		menu font size 8
+		set %buttony %key * 23 + 5
+		if ! %DisplayTextOnTile && %DisplayColorOnTile
+			{
+			menu font bgcolor %ColorWoodType . %key
+			menu font color %ColorWoodType . %key
+			}
+		if %displayTextOnTile && %displayColorOnTile
+			{
+			menu font color %TextColorWoodType . %key
+			menu font bgcolor %ColorWoodType . %key
+			}
+		if %displayTextOnTile && ! %displayColorOnTile
+			menu font color black
+		set !ntemp Leg1_ , !temp
+		set !temp !temp + 1
+		menu button !ntemp 330 %buttony 21 21 %TextWoodType . %key
+		}
+	}
+if ! %displayTextOnTile && ! %displayColorOnTile
+	{
+	menu font color %rock_color
+	menu font bgcolor %rock_color
+	set !ntemp Leg1_ , !temp
+	set !temp !temp + 1
+	menu button !ntemp 335 5 21 21 -
+	menu font color black
+	menu font size 7
+	set !ntemp Leg1_ , !temp
+	set !temp !temp + 1
+	menu text !ntemp 360 5 CHOPABLE$LOCATION
+	}
+
+menu font size 7
+menu font color black
+menu font bgcolor btnface
+menu text opst1_0 250 5 Cave
+menu text opst1_1 250 23 Sand /$Sandstone
+menu text opst1_2 250 51 Snow / Marble
+menu text opst1_3 250 69 Dirt / Wood / $Embank
+menu text opst1_4 250 92 Water / $Noname
+menu text opst1_5 250 115 Stone / Rock /$Cobblestone
+menu text opst1_6 250 138 Void / Nodraw$Unused
+menu text opst1_7 250 161 Grass / Forest$Jungle
+menu text opst1_8 250 189 Lava / Brick
+menu text opst1_9 250 207 Undefined$Tile , #spc , Type
+
+set !ntemp Leg1_ , !temp
+; set %del1 16 ; Marker for multi-item names
+
+If #charname <> n/a
+	menu text !ntemp 245 240 #charname
+Else
+	menu text !ntemp 245 240 You
+
+menu shape opst1_10 220 0 22 22 6 6 10 %Cave 7 %cave
+menu shape opst1_11 220 23 22 22 6 6 10 %sand 7 %sand
+menu shape opst1_12 220 46 22 22 6 6 10 %snow 7 %snow
+menu shape opst1_13 220 69 22 22 6 6 10 %dirt 7 %dirt
+menu shape opst1_14 220 92 22 22 6 6 10 %water 7 %water
+menu shape opst1_15 220 115 22 22 6 6 10 %stone 7 %stone
+menu shape opst1_16 220 138 22 22 6 6 10 %void 7 %void
+menu shape opst1_17 220 161 22 22 6 6 10 %grass 7 %grass
+menu shape opst1_18 220 184 22 22 6 6 10 %lava 7 %lava
+menu shape opst1_19 220 207 22 22 6 6 10 %noname_color 7 %noname_color
+menu shape opst1_20 220 230 22 22 6 6 10 %center_tile 7 %center_tile
+; set %del1 20 ; Marker for multi-item names
+menu font size 8
+KeyLoop:
+wait 0
+if #menubutton = OpsExit
+	{
+	for !temp 0 20
+		{
+		menu delete Leg1_ , !temp
+		menu delete opst1_ , !temp
+		}
+	menu window size 420 285
+	gosub OpsButtons
+	goto OpsLoop
+	}
+if button in #menubutton
+	{
+	display ok You cannot chop until you Exit $the Options Menu.
+	set #menubutton n/a
+	goto KeyLoop
+	}
+goto KeyLoop
+
+;****SETTINGS*******
+OpsSettings:
+menu window title CyberPope's LJ Radar , %space , Settings
+menu font color Blue
+menu font style bu
+menu font size 10
+menu font style b
+menu font size 9
+menu font color black
+menu delete Opsexit
+menu check Op3 225 1 300 20 %record Record Depleted Tiles
+menu check Op4 225 69 300 20 %testZAxis Test Z-Axis
+menu check Op5 225 52 300 20 %displayColorOnTile Display Color on Tiles
+menu check Op6 225 35 300 20 %displayTextOnTile Display Text on Tiles
+menu check Op7 225 18 300 20 %TrackWoodTypes Track Wood Types
+menu check Op12 225 86 300 20 %haltonColor Halt On Colored Wood
+menu check Op16 225 103 300 20 %UseAnyAxe Use Any Available Axe
+menu check Op19 225 232 300 20 %WeightCheck Use Weight Check
+menu text Op1_0 225 121 Grid Drawing Delay:
+menu text Op1_1 225 143 Chopping Delay:
+menu text Op1_2 225 165 Maximum Chop Range:
+menu text Op1_3 225 187 Grid Area:
+menu font color blue
+menu text Op1_4 300 187 X:
+menu text Op1_5 355 187 Y:
+menu font color black
+menu text Op1_6 225 209 Depleted Color:
+menu text Op1_7 225 256 Lines Per Cycle:
+set %del1 7 ; Marker for multi-item names
+menu font bgcolor white
+menu font size 8
+menu combo create Op8 315 184 35
+menu combo create Op15 370 184 35
+for %temp 1 12
+	{
+	menu combo add Op8 %temp
+	menu combo add Op15 %temp
+	}
+menu combo select Op8 %shardtypeX
+menu combo select Op15 %shardtypeY
+menu edit Op9 380 118 25 %delay
+menu edit Op10 380 140 25 %chop_delay
+if %record_color = n/a
+	set %record_color red
+menu edit Op11 345 206 60 %record_color
+menu edit Op13 375 253 30 %lpc
+menu edit Op17 380 162 25 %MaxChopRange
+menu edit Op18 375 229 30 %MaxChopWeight
+menu font bgcolor %record_color
+menu font color %record_color
+menu button Op14 320 206 21 21 -
+set %change #false
+set #menubutton n/a
+menu font color black
+menu font bgcolor btnface
+menu button Submit 172 262 50 20 Submit
+set %change #false
+SettingsLoop:
+wait 0
+if #menubutton = closed
+	gosub ending
+if button in #menubutton
+	{
+	display ok You cannot chop until you have $submitted your Options.
+	set #menubutton n/a
+	goto SettingsLoop
+	}
+if #menubutton = Op14
+	{
+	menu delete op14
+	menu get op11
+	menu font color #menures
+	menu font bgcolor #menures
+	menu button Op14 320 206 21 21 -
+	set #menubutton n/a
+	goto settingsloop
+	}
+if #menubutton <> submit
+	goto SettingsLoop
+menu get Op3
+if %record <> #menures
+	{
+	set %change #true
+	set %record #menures
+	gosub putGlobalVar LJSetup CPLR SAME record NOLOCK
+	}
+menu get Op7
+if %TrackWoodTypes <> #menures
+	{
+	set %TrackWoodTypes #menures
+	menu delete prospect
+	if %TrackWoodTypes
+		{
+		menu font color red
+		menu text prospect 5 270 +Track Wood+
+		menu font color black
+		}
+	gosub putGlobalVar LJSetup CPLR %shard TrackWoodTypes NOLOCK
+	}
+menu get Op6
+if %DisplayTextOnTile <> #menures
+	{
+	set %change #true
+	set %displayTextOnTile #menures
+	gosub putGlobalVar LJSetup CPLR %shard DisplayTextOnTile NOLOCK
+	}
+menu get Op5
+if %DisplayColorOnTile <> #menures
+	{
+	set %change #true
+	set %displayColorOnTile #menures
+	gosub putGlobalVar LJSetup CPLR %shard DisplayColorOnTile NOLOCK
+	}
+menu get Op4
+if %testZAxis <> #menures
+	{
+	set %change #true
+	set %TestZAxis #menures
+	gosub putGlobalVar LJSetup CPLR %shard TestZAxis NOLOCK
+	}
+menu get Op8
+if %ShardTypeX <> #menures
+	{
+	Display yesno Changing Shard Style will cause any of your$
+		         +previously saved tiles for this shard to be lost. $$
+		         +Do you still wish to change the Grid Area??
+	if #dispres = No
+		goto skipShard
+	set %change #true
+	set %recorded_tiles |
+	gosub getGlobalVar LJLoc_ , %shard , 1 CPLR SAME NumLoc NOLOCK
+	gosub TotalWipe
+	set %shardtypeX #menures
+	gosub putGlobalVar LJSetup CPLR %shard ShardTypeX NOLOCK
+	menu get op15
+	if %shardtypeY <> #menures
+		{
+		set %shardtypeY #menures
+		gosub putGlobalVar LJSetup CPLR %shard ShardTypeY NOLOCK
+		}
+	goto skipShard
+	}
+menu get Op15
+if %ShardTypeY <> #menures
+	{
+	Display yesno Changing Shard Style will cause any of your$
+		         +previously saved tiles for this shard to be lost. $$
+		         +Do you still wish to change the Grid Area??
+	if #dispres = No
+		goto skipShard
+	set %change #true
+	set %recorded_tiles |
+	gosub getGlobalVar LJLoc_ , %shard , 1 CPLR SAME NumLoc NOLOCK
+	gosub TotalWipe
+	set %shardtypeY #menures
+	gosub putGlobalVar LJSetup CPLR %shard ShardTypeY NOLOCK
+	}
+skipShard:
+menu getnum Op9 %delay
+if #menures <> %delay
+	{
+	set %delay #menures
+	gosub putGlobalVar LJSetup CPLR SAME delay NOLOCK
+	}
+menu getnum Op10 %chop_delay
+if #menures <> %chop_delay
+	{
+	set %chop_delay #menures
+	gosub putGlobalVar LJSetup CPLR %shard chop_delay NOLOCK
+	}
+menu get Op11
+if #menures <> %record_color
+	{
+	set %change #true
+	set %record_color #menures
+	gosub putGlobalVar LJSetup CPLR SAME record_color NOLOCK
+	}
+menu get Op12
+if #menures <> %HaltOnColor
+	{
+	set %HaltonColor #menures
+	gosub putGlobalVar LJSetup CPLR SAME HaltOnColor NOLOCK
+	}
+menu get Op13
+if #lpc <> #menures
+	{
+	set %lpc #menures
+	set #lpc %lpc
+	gosub putGlobalVar LJSetup CPLR SAME LPC NOLOCK
+	}
+menu get Op16
+if %UseAnyAxe <> #menures
+	{
+	set %UseAnyAxe #menures
+	gosub putGlobalVar LJSetup CPLR %shard UseAnyAxe NOLOCK
+	}
+menu getnum Op17 n/a
+if %MaxChopRange <> #menures && #menures > 0
+	{
+	if #menures > 4
+		set %maxchoprange 4
+	else
+		set %maxChopRange #menures
+	gosub putGlobalVar LJSetup CPLR %shard maxchoprange NOLOCK
+	}
+menu getnum op18 n/a
+if %MaxChopWeight <> #menures && #menures > 0 && #menures <> n/a
+	{
+	set %maxChopweight #menures
+	gosub putGlobalVar LJSetup CPLR #charid maxchopweight NOLOCK
+	}
+menu get op19
+if %WeightCheck <> #menures
+	{
+	set %WeightCheck #menures
+	gosub putGlobalVar LJSetup CPLR #charid WeightCheck NOLOCK
+	}
+menu font color black
+menu font bgcolor btnface
+set #menubutton n/a
+for %del 0 19
+	{
+	; Lets check %del[n] for marker
+	set !temp del , %del ; Build the Varname
+	set !temp % . !temp ; Cast the name as var
+	if !temp > 0 && !temp <> n/a ; We have a multi-item-name if we counted many items AND if the var us initialised
+		{
+		for !itemp 0 !temp
+			{
+			menu delete Op , %del , _ , !itemp ; Used to remove multi-item-names
+			}
+		set %del . %del 0 ; Reset for next drawing of multi-item names
+		}
+	else
+		{
+		menu delete Op , %del
+		}
+	}
+menu delete submit
+gosub OpsButtons
+goto OpsLoop
+
+;****UOAM SETTINGS****
+OpsUOAM:
+if exec notin #opts
+	{
+	display ok You cannot use the UOAM functions$
+		+until you allow EUO to Execute.$$
+		+1) Go to the Tools Menu and select Options,$
+		+2) Go to the Permissions Tab.$
+		+3) Make sure "Disable Execute" is UN-Checked.
+	set #menubutton n/a
+	gosub OpsButtons
+	goto OpsLoop
+	}
+menu window title CyberPope's LJ Radar , %space , Loading UOAM Settings
+menu text UOAM0_0 225 3 Path for UOAM File
+menu text UOAM0_1 225 50 Select Icon Type:
+menu text UOAM0_2 225 85 UOAM Style:
+menu text UOAM0_3 225 113 Icon Offsets:
+menu text UOAM0_4 225 113 Icon Offsets:
+menu text UOAM0_5 225 145 Shard
+menu text UOAM0_6 225 170 Number of Locations:
+menu text UOAM0_7 225 185 Last Location Written:
+menu font color blue
+menu text UOAM0_8 325 113 X:
+menu text UOAM0_9 375 113 Y:
+set %del0 9 ; Marker for multi-item names
+menu text UOAM7 350 170 -
+menu text UOAM8 350 185 -
+menu font color black
+gosub getGlobalVar LJSetup CPLR UOAM Path NOLOCK
+If ! #result
+	set %path C:\PROGRA~1\UOAM\
+menu font bgcolor white
+menu edit UOAM1 225 15 190 %path
+menu list create UOAM2 345 40 70 32
+menu list add UOAM2 Terrain
+menu list add UOAM2 Wood Type
+gosub getGlobalVar LJSetup CPLR UOAM IconType NOLOCK
+if ! #result
+	menu list select UOAM2 1
+else
+	menu list select UOAM2 %IconType
+menu list create UOAM3 355 75 60 32
+menu list add UOAM3 Tilted
+menu list add UOAM3 Square
+gosub getGlobalVar LJSetup CPLR UOAM UOAMStyle NOLOCK
+if ! #result
+	menu list select UOAM3 1
+else
+	menu list select UOAM3 %UOAMStyle
+gosub getGlobalVar LJSetup CPLR UOAM Off_X NOLOCK
+if ! #result
+	{
+	set %off_x 4
+	set %off_y 4
+	gosub putGlobalVar LJSetup CPLR UOAM Off_X NOLOCK
+	gosub putGlobalVar LJSetup CPLR UOAM Off_Y NOLOCK
+	}
+gosub getGlobalVar LJSetup CPLR UOAM Off_Y NOLOCK
+menu font bgcolor white
+menu edit UOAM4 340 110 25 %off_x
+menu edit UOAM5 390 110 25 %off_y
+menu shape UOAM12 225 135 190 2 3 7 5 red 3 red
+gosub getGlobalVar LJSetup CPLR SAME NumShard NOLOCK
+gosub getGlobalVar LJSetup CPLR SAME %shard NOLOCK
+menu Combo Create UOAM6 260 140 157
+gosub FillShardCombo %numshard % . %shard UOAM6
+menu get UOAM6
+gosub FillShardStats #menures
+menu window title CyberPope's LJ Radar , %space , UOAM Settings
+menu get UOAM2
+set %curUOAM2 #menures
+menu get UOAM3
+set %curUOAM3 #menures
+menu get UOAM6
+set %curUOAM6 #menures
+OpsUOAMLoop:
+wait 0
+if #menubutton = OpsExit
+	{
+	gosub SaveUOAMSettings
+	for %del 0 12
+		{
+		; Lets check %del[n] for marker
+		set !temp del , %del ; Build the Varname
+		set !temp % . !temp ; Cast the name as var
+		if !temp > 0 && !temp <> n/a ; We have a multi-item-name if we counted many items AND if the var us initialised
+			{
+			for !itemp 0 !temp
+				{
+				menu delete UOAM , %del , _ , !itemp ; Used to remove multi-item-names
+				}
+			set %del . %del 0 ; Reset for next drawing of multi-item names
+			}
+		else
+			{
+			menu delete UOAM , %del
+			}
+		}
+	gosub OpsButtons
+	goto OpsLoop
+	}
+menu get UOAM6
+if %curUOAM6 <> #menures
+	{
+	set %curUOAM6 #menures
+	gosub FillShardStats #menures
+	}
+if #menubutton = UOAM11
+	Gosub WriteUOAMFile
+if #result = RestartUOAM
+  {
+  for %del 0 12
+		{
+		menu delete UOAM , %del
+		}
+	goto OpsUOAM
+	}
+goto OpsUOAMLoop
+
+;***Exit*********
+OpsExit:
+menu window title CP's LJ Radar
+if %record
+	menu button reset 172 240 50 20 Reset
+menu button options 172 262 50 20 Options
+menu delete OpsUOAM
+menu delete OpsExit
+menu delete OpsKey
+menu delete OpsSettings
+menu delete select1
+menu window size 225 285
+if ! %change
+	Return
+gosub cleargrid
+gosub drawgrid
+set %change #false
+Return
+
+;****SUB DELWOODTYPEMENU****
+sub DelWoodTypeMenu
+menu delete Edit , %1
+menu delete c , %1
+menu delete n , %1
+menu delete f , %1
+menu delete del , %1
+Return
+
+;****SUB ADDWOODTYPEMENU****
+sub AddWoodTypeMenu
+namespace push
+namespace local AddWoodTypeMenu
+set !w %1
+set !o !w % 11
+if !o = 0
+   set !o 11
+set !x ( !w - 1 ) / 11 * 180 + 405
+set !y ( !o - 1 ) * 24 + 10
+menu font color blue
+menu font align right
+menu text cw , !w !x !y !w
+menu font align left
+menu font color black
+menu font size 7
+set !x ( !w - 1 ) / 11 * 180 + 430
+set !y ( !o - 1 ) * 24 + 6
+menu text c , !w !x !y %NameWoodType . !w
+set !x ( !w - 1 ) / 11 * 180 + 430
+set !y ( !o - 1 ) * 24 + 17
+menu text f , !w !x !y %WoodFindcol . !w
+menu font bgcolor %colorWoodType . !w
+menu font color %TextColorWoodType . !w
+menu font size 8
+set !x ( !w - 1 ) / 11 * 180 + 405
+set !y ( !o - 1 ) * 24 + 6
+menu button Edit , !w !x !y 21 21 %TextWoodType . !w
+menu font bgcolor btnface
+menu font color black
+set !x ( !w - 1 ) / 11 * 180 + 510
+menu button Edit , !w !x !y 30 21 Edit
+set !x ( !w - 1 ) / 11 * 180 + 540
+menu button Del , !w !x !y 30 21 Del
+namespace clear
+namespace pop
+Return
+
+
+;****SUB WRITEUOAMFILE*********
+sub WriteUOAMFile
+set #menubutton n/a
+menu get UOAM1
+if ( #dot in #menures || #spc in #menures || \ notin #menures ) && %PathCheck
+	{
+	Display ok Invalid Path for UOAM File. Please Make Sure$
+		+you are using DOS folder names. There should$
+		+be no spaces. $$
+		+Also there is no need to denote a file name. This$
+		+script will name the file for you. Only enter the$
+		+destination path.$ Example: C:\PROGRA~1\UOAM\
+	Return
+	}
+str right #menures 1
+if #strres <> \
+	{
+	Display YesNo Your UOAM File Path must end with a Backslash ( \ ).$$
+		          +Would you like to append one to the end of your current path?$$
+		          +Yes = #menures , \ $
+		          +No = Will not write to file until you change UOAM file Path.
+	if #dispres = yes
+		{
+		set %path #menures , \
+		menu set UOAM1 %path
+		}
+	if #dispres = no
+		Return
+	}
+gosub SaveUOAMSETTINGS
+menu get UOAM6
+set %shardIndex #menures
+set #menures n/a
+menu get UOAM10
+if #menures = n/a || #menures = 1
+	{
+	set %append #false
+	set %startUOAM 1
+	}
+else
+	set %append #true
+set %filename %shard . %shardindex , _wood , #dot , map
+if %UOAMStyle = 1
+	set %filename %shard . %shardindex , _Wood_Tilt , #dot , map
+menu window title CyberPope's LJ Radar , %space , Writing UOAM File
+set %locRemain %numloc + 1 - %startUOAM
+menu delete UOAM9
+menu delete UOAM10
+menu delete UOAM11
+menu font color red
+menu text writeStatus 230 225 -
+menu font color black
+gosub open UOAM %path , %filename
+if ! %append
+		{
+		menu set writestatus Adding Header
+		gosub wipe UOAM
+		gosub write UOAM 3
+		gosub dump UOAM
+		if %upgradedloc
+			{
+			gosub delGlobalVar LJLoc_ , %shard . %_1 , 1 CPLR SAME UpgradedLoc NOLOCK
+			set %upgradedLoc n/a
+			}
+		}
+For %map %startUOAM %numloc
+	{
+	set %LocIndex %map / 300 + 1
+	gosub getGlobalVar LJLoc_ , %shard . %shardindex , %LocIndex CPLR SAME loc , %map NOLOCK
+	gosub string exp %loc . %map _ map
+	set %map1 %map1 + %off_x
+	set %map2 %map2 + %off_y
+	if %map4 = n/a
+		goto skipentry
+	gosub replace %NameWoodType . %map4 _ #spc
+	set %iconDesc #strres
+	set %Icon terrain
+	if %icontype = 2
+		set %Icon %IconDesc
+	menu set writestatus Adding Location , #spc , %map to Buffer.
+	gosub write UOAM + , %Icon , : , #spc , %map1 , #spc , %map2 , #spc , %map3 , #spc , %IconDesc
+	skipentry:
+	set %lastrec %map
+	menu set UOAM8 %lastrec
+	if #menubutton = OpsExit || #menubutton = closed
+		goto EndUOAMWritting
+	}
+EndUOAMWritting:
+gosub dump UOAM
+gosub putGlobalVar LJLoc_ , %shard . %shardindex , 1 CPLR SAME LastRec NOLOCK
+menu delete writestatus
+if #menubutton = closed
+	gosub ending
+set #menubutton n/a
+Return RestartUOAM
+
+;****SUB WRITEEXPORTFILE*******
+sub WriteExportFile
+set #menubutton n/a
+menu get Exp2
+if ( #dot in #menures || #spc in #menures || \ notin #menures ) && %PathCheck
+	{
+	Display ok Invalid Path for Export File. Please Make Sure$
+		+you are using DOS folder names. There should$
+		+be no spaces. $$
+		+Also there is no need to denote a file name. $This
+		+ will be done in the File Name Box. $Only enter the
+		+ destination path.$Example: C:\PROGRA~1\EXPORT\
+	Return
+	}
+str right #menures 1
+if #strres <> \
+	{
+	Display YesNo Your Export File Path must end with a Backslash ( \ ).$$
+		          +Would you like to append one to the end of your current path?$$
+		          +Yes = #menures , \ $
+		          +No = Go back and change the path by hand.
+	if #dispres = yes
+		{
+		set %exppath #menures , \
+		menu set Exp2 %Exppath
+		}
+	if #dispres = no
+		Return
+	}
+menu get Exp3
+if #dot notin #menures
+	{
+	Display YesNo Your Export File name must end with a file extension.$$
+		          +Would you like to append one to the end of your current path?$$
+		          +Yes = #menures , #dot , TXT $
+		          +No = Go back and change the file name by hand.
+	if #dispres = yes
+		{
+		set %lastfile #menures , #dot , txt
+		menu set exp3 %lastfile
+		}
+	if #dispres = no
+		Return
+	}
+namespace push
+namespace local WriteExpFile
+menu font color red
+menu text writeStatus 230 185 Saving Settings
+menu font color black
+menu get exp2
+set %expPath #menures
+gosub putGlobalVar CPLR_Export CPLR SAME ExpPath NOLOCK
+menu get Exp4
+set !shardindex #menures
+menu get Exp3
+set %lastfile #menures
+gosub putGlobalVar CPLR_Export CPLR %shard . !shardindex lastfile NOLOCK
+gosub getGlobalVar CPLR_Export CPLR %shard . !shardindex lastwrite NOLOCK
+if #result
+	set !startExp %lastwrite + 1
+set !exptempX %shardtypeX
+set !exptempY %shardtypeY
+set !expTemp_NumWoodTypes %Number_of_WoodTypes
+gosub getGlobalVar LJSetup CPLR %shard . !shardindex shardtypeX NoLock
+gosub getGlobalVar LJSetup CPLR %shard . !shardindex shardtypeY NoLock
+gosub getGlobalVar CPLR_WOODS_ , %shard . !shardindex Number_of_WoodTypes NOLOCK
+set !expNumber_of_WoodTypes %Number_of_WoodTypes
+for !temp 1 !expNumber_of_WoodTypes
+    {
+    menu set writestatus Getting Woodtype !temp , #spc , of , #spc , !expNumber_of_Woodtypes
+    set !expTempNameWoodType . !temp %NameWoodType . !temp
+    gosub getGlobalVar CPLR_WOODS_ , %shard . !shardindex CPLR CPLR NameWoodType , !temp NOLOCK
+    set !expNameWoodType . !temp %NameWoodType . !temp
+    set %NameWoodType . !temp !expTempNameWoodType . !temp
+    set !expTempTextWoodType . !temp %TextWoodType . !temp
+    gosub getGlobalVar CPLR_WOODS_ , %shard . !shardindex CPLR CPLR TextWoodType , !temp NOLOCK
+    set !expTextWoodType . !temp %TextWoodType . !temp
+    set %TextWoodType . !temp !expTempTextWoodType . !temp
+    set !expTempTextColorWoodType . !temp %TextColorWoodType . !temp
+    gosub getGlobalVar CPLR_WOODS_ , %shard . !shardindex CPLR CPLR TextColorWoodType , !temp NOLOCK
+    set !expTextColorWoodType . !temp %TextColorWoodType . !temp
+    set %TextColorWoodType . !temp !expTempTextColorWoodType . !temp
+    set !expTempColorWoodType . !temp %ColorWoodType . !temp
+    gosub getGlobalVar CPLR_WOODS_ , %shard . !shardindex CPLR CPLR ColorWoodType , !temp NOLOCK
+    set !expColorWoodType . !temp %ColorWoodType . !temp
+    set %ColorWoodType . !temp !expTempColorWoodType . !temp
+    set !expTempWoodFindcol . !temp %WoodFindCol . !temp
+    gosub getGlobalVar CPLR_WOODS_ , %shard . !shardindex CPLR CPLR WoodFindCol , !temp NOLOCK
+    set !expWoodFindCol . !temp %WoodFindCol . !temp
+    set %WoodFindCol . !temp !expTempWoodFindcol . !temp
+    }
+set !expShardtypeX %shardtypeX
+set !expShardtypeY %shardtypeY
+set %shardtypeX !exptempX
+set %shardtypeY !exptempY
+set %Number_of_WoodTypes !expTemp_NumWoodTypes
+set #menures n/a
+menu get exp8
+if #menures = n/a || #menures = 1
+	{
+	set !append #false
+	set !startExp 1
+	}
+else
+	set !append #true
+menu delete exp7
+menu delete exp8
+menu delete exp9
+gosub open Exp %expPath , %lastfile
+if ! !append
+	{
+	menu set writeStatus Adding Test Code.
+	gosub wipe Exp
+	gosub write Exp SET ! , EXPORTID %exportid
+	gosub write Exp SET ! , ExpShard %shard . !shardindex
+	gosub write Exp SET ! , ExpShardTypeX !expshardtypeX
+	gosub write Exp SET ! , ExpShardTypeY !expshardtypey
+	gosub write Exp SET ! , ExpWood #true
+	gosub write Exp SET ! , Number_of_WoodTypes !expNumber_Of_WoodTypes
+  for !q 1 %Number_of_WoodTypes
+     {
+     gosub write Exp SET ! , NameWoodType , !q !expNameWoodType . !q
+     gosub write Exp SET ! , TextWoodType , !q !expTextWoodType . !q
+     gosub write Exp SET ! , ColorWoodType , !q !expColorWoodType . !q
+     gosub write Exp SET ! , TextColorWoodType , !q !expTextColorWoodType . !q
+     gosub write Exp SET ! , WoodFindcol , !q !expWoodFindCol . !q
+     }
+	gosub write Exp IF % , 1 = TEST 2
+	gosub write Exp SET # , RESULT #true
+	gosub write exp EXIT
+	gosub dump Exp
+	gosub delGlobalVar CPLR_Export CPLR %shard . !shardindex ExpUpgrade NOLOCK
+	set %ExpUpgrade n/a
+	}
+menu set writestatus Checking for File
+gosub findfile %expPath %lastfile
+if ! #result
+	{
+	menu set write status Failed to Find Export File
+	Display ok Failed to find your export file!!!!$$
+		+Possible reasons for this include:$
+		+1) Improper Path Name. (Path name must be DOS Format).$
+		+2) The Data Path Must Already Exist.$
+		+3) Improper File Name.$$
+		+Make the nessecary changes and try again.
+	menu delete writestatus
+	namespace clear
+	namespace pop
+	Return AddShardData
+	}
+gosub getGlobalVar LJLoc_ , %shard . !shardindex , 1 CPLR SAME NumLoc NOLOCK
+for !exp !startExp %numloc
+	{
+	menu set writestatus Adding Location , #spc , !exp , #spc , to Buffer.
+	set !locIndex !exp / 300 + 1
+	gosub getGlobalVar LJLoc_ , %shard . !shardindex , !locIndex CPLR SAME loc , !exp NOLOCK
+	gosub write Exp set ! , loc , !exp %loc . !exp
+	set %lastwrite !exp
+	menu set exp6 !exp
+	if #menubutton = OpsExit || #menubutton = closed
+		goto EndExportWriting
+	}
+EndExportWriting:
+menu delete writestatus
+gosub dump exp
+gosub putGlobalVar CPLR_Export CPLR %shard . !shardindex lastwrite NOLOCK
+if #menubutton = closed
+	gosub ending
+set #menubutton n/a
+namespace clear
+namespace pop
+Return AddShardData
+
+;****SUB GETIMPORTDATA**********
+sub GetImportData
+set #menubutton n/a
+namespace clear
+menu delete OpIm12
+menu delete OpIm9
+menu delete OpIm11
+menu delete OpIm10
+menu get OpIm2
+if ( #dot in #menures || #spc in #menures || \ notin #menures ) && %PathCheck
+	{
+	Display ok Invalid Path for Import File. Please Make Sure$
+		+you are using DOS folder names. There should$
+		+be no spaces. $$
+		+Also there is no need to denote a file name. $This
+		+ will be done in the File Name Box. $Only enter the
+		+ destination path.$Example: C:\PROGRA~1\IMPORT\
+	Return
+	}
+str right #menures 1
+if #strres <> \
+	{
+	Display YesNo Your Import File Path must end with a Backslash ( \ ).$$
+		          +Would you like to append one to the end of your current path?$$
+		          +Yes = #menures , \ $
+		          +No = Go back and change the path by hand.
+	if #dispres = yes
+		menu set OpIm2 #menures , \
+	if #dispres = no
+		Return
+	}
+menu get OpIm3
+if #dot notin #menures
+	{
+	Display YesNo Your Import File name must end with a file extension.$$
+		          +Would you like to append one to the end of your current path?$$
+		          +Yes = #menures , #dot , TXT $
+		          +No = Go back and change the file name by hand.
+	if #dispres = yes
+		menu set OpIm3 #menures , #dot , txt
+	if #dispres = no
+		Return
+	}
+menu get Opim2
+set %imppath #menures
+menu get OpIm3
+set %lastfile #menures
+menu set OpIm9 Checking for File
+gosub findfile %imppath %lastfile
+if ! #result
+	{
+	menu delete OpIm9
+	menu font color $008cff
+	menu text OpIm9 240 160 File Not Found!!!!!!$
+				+Please check your path name &$
+				+your file name and try again.
+	menu font color black
+	Return
+	}
+else
+	{
+	if ! !ExpWood || !ExpWood = n/a
+		{
+		menu delete OpIm9
+		menu font color $008cff
+		menu text OpIm9 240 160 Not a LJ Import File!!!!!!$
+					+Please use the Mining Radar $
+					+to Import this file.
+		menu font color black
+		Return
+		}
+  if !Number_of_WoodTypes = n/a
+     {
+     menu delete OpIm9
+		 menu font color $008cff
+		 menu text OpIm9 240 160 Outdated Import File!!!!!!$
+					+This file is from an old LJ Radar $
+					+version and is unusable.
+     menu font color black
+		 Return
+		 }
+  set !tempWoodTypes %Number_of_WoodTypes
+  gosub getGlobalVar CPLR_WOODS_ , !ExpShard CPLR CPLR Number_of_WoodTypes NOLOCK
+  if ! #result
+     goto _skipWoodTypeCheck
+  for !loop 1 %Number_of_WoodTypes
+      {
+      set !tempName . !loop %NameWoodType . !loop
+      gosub getGlobalVar CPLR_WOODS_ , !ExpShard CPLR CPLR NameWoodType , !loop NOLOCK
+      if %NameWoodType . !loop <> !NameWoodType . !loop
+         {
+         set %NameWoodType . !loop !tempName . !loop
+         menu delete OpIm9
+		     menu font color $008cff
+		     menu text OpIm9 240 160 Wood Type Mismatch!!!!!$
+				      +One or more wood types do $
+              +not match your wood types.
+         menu font color black
+         Return
+         }
+      set %NameWoodType . !loop !tempName . !loop
+      }
+  if !number_of_WoodTypes > %Number_of_WoodTypes
+         {
+         Display YesNo The Import shard has additional Wood Types$
+                    +that you do not have. Do you wish to add$
+                    +these Wood Types to your shard info?
+         if #Dispres = Yes
+            {
+            set !start %Number_of_WoodTypes + 1
+            for !temp !start !Number_of_WoodTypes
+                {
+                set %NameWoodType . !temp !NameWoodType . !temp
+                gosub putGlobalVar CPLR_WOODS_ , !ExpShard CPLR CPLR NameWoodType , !temp NOLOCK
+                set %TextWoodType . !temp !TextWoodType . !temp
+                gosub putGlobalVar CPLR_WOODS_ , !ExpShard CPLR CPLR TextWoodType , !temp NOLOCK
+                set %ColorWoodType . !temp !ColorWoodType . !temp
+                gosub putGlobalVar CPLR_WOODS_ , !ExpShard CPLR CPLR ColorWoodType , !temp NOLOCK
+                set %TextColorWoodType . !temp !TextColorWoodType . !temp
+                gosub putGlobalVar CPLR_WOODS_ , !ExpShard CPLR CPLR TextColorWoodType , !temp NOLOCK
+                set %WoodFindCol . !temp !WoodFindCol . !temp
+                gosub putGlobalVar CPLR_WOODS_ , !ExpShard CPLR CPLR WoodFindCol , !temp NOLOCK
+                }
+            set %Number_of_WoodTypes !Number_of_WoodTypes
+            gosub putGlobalVar CPLR_WOODS_ , !ExpShard CPLR CPLR Number_of_WoodTypes NOLOCK
+            }
+         }
+  _skipWoodTypeCheck:
+  if !ExpShard <> %shard || #Dispres = No || !Number_of_WoodTypes < !tempWoodTypes
+     set %Number_of_WoodTypes !tempWoodTypes
+	}
+gosub putGlobalVar CPLR_Import CPLR Same ImpPath NOLOCK
+gosub putGlobalVar CPLR_Import CPLR Same LastFile NOLOCK
+menu delete OpIm9
+menu font color lime
+menu text OpIm9 240 160 File Found!   Getting Data!$
+				+Please wait until data is $retrieved.
+menu set OpIm5 !ExportId
+menu set OpIm6 !ExpShard
+menu set OpIm7 !ExpShardTypeX , x , !ExpShardTypeY
+set !addextras #false
+gosub getGlobalvar CPLR_Import !ExportId !ExpShard LastImp NOLOCK
+if ! #result
+	menu set OpIm8 None
+else
+	{
+	menu set OpIm8 %LastImp
+	set !ImpStart %lastimp + 1
+	set !addextras #true
+	}
+;Make sure !ExpShardType Matches %shardtype
+; and if Shard is not previously recorded add it to list.
+gosub getGlobalVar LJSetup CPLR SAME !ExpShard NOLOCK
+If ! #result
+	{
+	gosub getGlobalVar LJSetup CPLR SAME NumShard NOLOCK
+	set %numshard %numshard + 1
+	gosub putGlobalVar LJSetup CPLR SAME NumShard NOLOCK
+	set % . !ExpShard %numshard
+	gosub putGlobalVar LJSetup CPLR SAME !ExpShard NOLOCK
+	set %shard . %numshard !ExpShard
+	gosub putGlobalVar LJSetup CPLR SAME shard . %numshard NOLOCK
+	set !tempNum %Number_of_WoodTypes
+	set %Number_of_WoodTypes !Number_of_WoodTypes
+  gosub putGlobalVar CPLR_WOODS_ , !ExpShard CPLR CPLR Number_of_WoodTypes NOLOCK
+  set %Number_of_WoodTypes !tempNum
+  for !loop 1 !Number_of_WoodTypes
+      {
+      set !tempName . !loop %NameWoodType . !loop
+      set %NameWoodType . !loop !NameWoodType . !loop
+      gosub putGlobalVar CPLR_WOODS_ , !ExpShard CPLR CPLR NameWoodType , !loop NOLOCK
+      set %NameWoodType . !loop !tempName . !loop
+      set !tempText . !loop %TextWoodType . !loop
+      set %TextWoodType . !loop !TextWoodType . !loop
+      gosub putGlobalVar CPLR_WOODS_ , !ExpShard CPLR CPLR TextWoodType , !loop NOLOCK
+      set %TextWoodType . !loop !tempText . !loop
+      set !tempColor . !loop %ColorWoodType . !loop
+      set %ColorWoodType . !loop !ColorWoodType . !loop
+      gosub putGlobalVar CPLR_WOODS_ , !ExpShard CPLR CPLR ColorWoodType , !loop NOLOCK
+      set %ColorWoodType . !loop !tempName . !loop
+      set !tempTxtCol . !loop %TextColorWoodType . !loop
+      set %TextColorWoodType . !loop !TextColorWoodType . !loop
+      gosub putGlobalVar CPLR_WOODS_ , !ExpShard CPLR CPLR TextColorWoodType , !loop NOLOCK
+      set %TextColorWoodType . !loop !tempTxtCol . !loop
+      set !tempFindCol . !loop %WoodFindcol . !loop
+      set %WoodFindCol . !loop !WoodFindCol . !loop
+      gosub putGlobalVar CPLR_WOODS_ , !ExpShard CPLR CPLR WoodFindCol , !loop NOLOCK
+      set %WoodFindcol . !loop !tempFindcol . !loop
+      }
+  }
+Else
+	{
+	set !TempShardTypeX %shardtypeX
+	set !TempShardTypeY %shardtypeY
+	gosub getGlobalVar LJSetup CPLR !ExpShard shardtypeX NOLOCK
+	gosub getGlobalVar LJSetup CPLR !ExpShard shardtypeY NOLOCK
+	if ( %shardtypeX <> !ExpShardTypeX || %shardtypeY <> !ExpShardTypeY ) && #result
+		{
+		menu font color $008cff
+		menu delete OpIm9
+		menu text OpIm9 240 160 The Import File Uses !ExpShardTypeX , x , !ExpShardTypeY $
+						+for this shard and you use %shardtypeX , x , %shardtypeY $
+						+Can't Import These Locations!
+		menu font color black
+		set %shardtypeX !TempShardTypeX
+		set %shardtypeY !TempShardTypeY
+		Return
+		}
+	if ! #result
+		{
+		set %shardtypeX !ExpShardTypeX
+		set %shardtypeY !ExpShardTypeY
+		gosub putGlobalVar LJSetup CPLR !ExpShard shardtypeX NOLOCK
+		gosub putGlobalVar LJSetup CPLR !ExpShard shardtypeY NOLOCK
+		}
+	set %shardtypeX !TempShardTypeX
+	set %shardtypeY !TempShardTypeY
+	}
+wait 0
+call %ImpPath , %lastfile
+if !addextras && !loc . !impstart = n/a
+	{
+	menu font color $008cff
+	menu delete Opim9
+	menu text OpIm9 240 160 No New Locations to Import.$
+					+However you can still check$
+					+for normal wood Upgrades.
+	set !addextras #false
+	}
+else
+	{
+	menu font color $d1ce00
+	menu delete Opim9
+	menu text OpIm9 240 160 Data Recieved!! Select your
+				+$Options and Press the Import $
+				+Locations button to Continue.
+	}
+menu font color black
+if !addextras
+	{
+	menu font bgcolor white
+	menu list create OpIm10 225 210 190 32
+	menu list add OpIm10 Start with Location 1
+	menu list add OpIm10 Start with Location , #spc , !ImpStart
+	menu list select OpIm10 1
+	menu font bgcolor btnface
+	}
+gosub getGlobalvar CPLR_Import !ExportID !expShard ImpUpgrade NOLOCK
+if ! #result || %impUpgrade = n/a
+	{
+	set %impUpgrade #true
+	gosub putGlobalvar CPLR_Import !ExportID !expShard ImpUpgrade NOLOCK
+	}
+menu check OpIm11 225 243 190 17 %impUpgrade Upgrade Normal Wood Spots
+menu button Opim12 225 262 190 20 Import Locations from File
+Return
+
+;****SUB FINDFILE**********
+sub FindFile
+set #result #false
+call %1 , %2 test
+if #result
+	Return #true
+Return #false
+
+;****SUB IMPORTDATA***********
+sub ImportData
+set %change #false
+set !CurImpLoc 1
+menu get OpIm10
+if #menures = 2
+	set !CurImpLoc !ImpStart
+menu get OpIm11
+If #menures <> %impUpgrade
+	{
+	set %impUpgrade #menures
+	gosub putGlobalvar CPLR_Import !ExportID !expShard ImpUpgrade NOLOCK
+	}
+for %del 1 12
+	{
+	; Lets check %del[n] for marker
+	set !temp del , %del ; Build the Varname
+	set !temp % . !temp ; Cast the name as var
+	if !temp > 0 && !temp <> n/a ; We have a multi-item-name if we counted many items AND if the var us initialised
+		{
+		for !itemp 0 !temp
+			{
+			menu delete OpIm , %del , _ , !itemp ; Used to remove multi-item-names
+			}
+		set %del . %del 0 ; Reset for next drawing of multi-item names
+		}
+	else
+		{
+		menu delete OpIm , %del
+		}
+	}
+menu shape im1_0 225 15 190 40 4 7 1 btnface 7 btnface
+menu shape im1_1 225 70 190 85 4 7 1 btnface 7 btnface
+menu shape im1_2 225 170 190 65 4 7 1 btnface 7 btnface
+menu font color $2d52a0
+menu font style b
+menu text Im1_3 235 2 STATUS
+menu text Im1_4 235 56 CURRENT DATA
+menu text Im1_5 235 156 IMPORT STATISTICS
+menu font size 8
+menu font color $008cff
+menu text im3 300 195 0
+menu text im13 240 205 0
+menu text im12 240 215 0
+menu font color lime
+menu text ImpStatus1 235 20 -
+menu text ImpStatus2 235 33 -
+menu text im2 300 175 0
+menu text im5 300 185 0
+menu text im14 295 75 !exportID
+menu text im15 295 85 !expShard
+menu text im7 295 95 -
+menu text im8 295 105 -
+menu text im9 295 115 -
+menu text im10 295 125 -
+menu text im11 295 135 -
+menu font color black
+menu text im1_6 285 75 :
+menu text im1_7 285 85 :
+menu text im1_9 285 95 :
+menu text im1_10 285 105 :
+menu text im1_11 285 115 :
+menu text im1_12 285 125 :
+menu text im1_13 285 135 :
+menu text im1_14 235 75 From
+menu text im1_15 235 85 Shard
+menu text im1_16 235 95 Location
+menu text im1_17 235 105 X
+menu text im1_18 235 115 Y
+menu text im1_19 235 125 Facet
+menu text im1_20 235 135 Wood
+menu text im1_21 235 195 SKIPPED
+menu text im1_22 235 185 UPGRADED
+menu text im1_23 235 175 ADDED
+menu font style bi
+menu text im1_24 260 205 ALREADY IN DATABASE
+menu text im1_25 260 215 INVALID ENTRY
+set %del1 25 ; Marker for multi-item names
+menu font style b
+menu font color black
+ImportDataLoop:
+if !loc . !CurImpLoc = n/a
+	{
+	menu set impstatus1 No more locations to Process
+	menu set impstatus2 Press a button below to Exit.
+	goto ImportContinue
+	}
+menu set im7 !CurImpLoc
+gosub Import !loc . !CurImpLoc !ExpShard !ExpShardTypeX !ExpShardTypeY
+if #menubutton = OpsExit || #menubutton = closed
+	{
+	set %lastImp !CurImpLoc
+	gosub putGlobalvar CPLR_Import !ExportId !ExpShard LastImp NOLOCK
+	menu delete impstatus1
+	menu delete impstatus2
+	for %del 1 15
+		{
+		; Lets check %del[n] for marker
+		set !temp del , %del ; Build the Varname
+		set !temp % . !temp ; Cast the name as var
+		if !temp > 0 && !temp <> n/a ; We have a multi-item-name if we counted many items AND if the var us initialised
+			{
+			for !itemp 0 !temp
+				{
+				menu delete im , %del , _ , !itemp ; Used to remove multi-item-names
+				}
+			set %del . %del 0 ; Reset for next drawing of multi-item names
+			}
+		else
+			{
+			menu delete im , %del
+			}
+		}
+	return
+	}
+set !CurImpLoc !CurImpLoc + 1
+goto ImportDataLoop
+ImportContinue:
+menu button OpsImport 225 240 190 20 Return to Import Menu
+menu button OpsReturn 225 262 190 20 Return to LJ Radar
+ImpContLoop:
+wait 0
+If Ops in #menubutton || #menubutton = closed
+	{
+	set %lastImp !CurImpLoc - 1
+	gosub putGlobalvar CPLR_Import !ExportId !ExpShard LastImp NOLOCK
+	menu delete impstatus1
+	menu delete impstatus2
+	for %del 1 15
+		{
+		; Lets check %del[n] for marker
+		set !temp del , %del ; Build the Varname
+		set !temp % . !temp ; Cast the name as var
+		if !temp > 0 && !temp <> n/a ; We have a multi-item-name if we counted many items AND if the var us initialised
+			{
+			for !itemp 0 !temp
+				{
+				menu delete Im , %del , _ , !itemp ; Used to remove multi-item-names
+				}
+			set %del . %del 0 ; Reset for next drawing of multi-item names
+			}
+		else
+			{
+			menu delete Im , %del
+			}
+		}
+	menu delete OpsExit
+	menu delete OpsReturn
+	menu delete OpsImport
+	menu button OpsExit 172 262 50 20 Exit
+	Return
+	}
+goto ImpContLoop
+
+
+;****SUB SAVEUOAMSETTINGS****
+sub SaveUOAMSettings
+gosub UOAMSettingCheck 1 path
+gosub UOAMSettingCheck 2 IconType
+gosub UOAMSettingCheck 3 UOAMStyle
+gosub UOAMSettingCheck 4 off_x
+gosub UOAMSettingCheck 5 off_y
+Return
+
+;****SUB UOAMSETTINGCHECK
+sub UOAMSettingCheck
+menu get UOAM , %1
+if % . %2 <> #menures
+	{
+	set % . %2 #menures
+	gosub putGlobalVar LJSetup CPLR UOAM %2 NOLOCK
+	}
+Return
+
+;****SUB FILLEXPORTDATA*****
+sub fillexportdata
+menu delete exp7
+menu delete exp8
+menu delete exp9
+set %_1 %1
+gosub getGlobalVar LJSetup CPLR SAME shard , %1 NOLOCK
+gosub getGlobalVar LJLoc_ , %shard . %_1 , 1 CPLR SAME numloc NOLOCK
+if ! #result
+	{
+	set %numloc 0
+	menu set exp5 None
+	}
+else
+	menu set exp5 %numloc
+gosub getGlobalVar CPLR_Export CPLR %shard . %_1 lastwrite NOLOCK
+if ! #result
+	{
+	set %lastwrite 0
+	set %startExp 1
+	menu set exp6 None
+	}
+else
+	{
+	set %startExp %lastwrite + 1
+	menu set Exp6 %lastwrite
+	}
+gosub getGlobalVar CPLR_Export CPLR %shard . %_1 ExpUpgrade NOLOCK
+if #result && %ExpUpgrade
+	{
+	menu font color red
+	menu text Exp7 230 175 One or more of your Lumberjacking$
+				+locations have been upgraded.$$
+				+You must rewrite your Export $
+				+file to include this new data. $
+	goto ExpUpgrade1
+	}
+if %lastwrite = %numloc || %numloc = 0
+	{
+	menu font color red
+	if %numloc = 0
+		{
+		menu text Exp7 230 165 You have not recorded any$
+				+locations yet!!!$$
+				+You must chop at least one $
+				+location before you can export $
+				+your location data.$$
+		Return
+		}
+	menu text exp7 230 205 No New Locations to Export.
+	ExpUpgrade1:
+	menu font color black
+	menu font bgcolor btnface
+	set %startExp 1
+	menu button exp9 225 262 190 20 Re-Write Export File
+	Return
+	}
+if %startExp > 1
+	{
+	menu text Exp7_0 225 215 Create New File
+	menu text Exp7_1 225 230 Apppend to Old File
+	set %del7 1 ; Marker for multi-item names
+	menu font color red
+	menu text Exp7 320 215 Or
+	menu font color black
+	menu font bgcolor white
+	menu list create Exp8 345 213 70 32
+	menu list add Exp8 New File
+	menu list add Exp8 Append Old
+	menu list select Exp8 2
+	}
+menu font bgcolor btnface
+menu font color black
+menu button exp9 225 262 190 20 Write Export File
+Return
+
+;****SUB FILLSHARDCOMBO*****
+Sub FillShardCombo
+namespace push
+namespace local Fillshard
+set !_2 %2
+set !_3 %3
+for !uoam 1 %1
+	{
+	gosub getGlobalVar LJSetup CPLR SAME shard . !uoam NOLOCK
+	if _ in %shard . !uoam
+		{
+		gosub replace %shard . !uoam _ #spc
+		set !temp #strres
+		menu Combo Add !_3 !temp
+		}
+	else
+		menu Combo Add !_3 %shard . !uoam
+	}
+menu combo select !_3 !_2
+namespace clear
+namespace pop
+Return
+
+;****SUB FILLSHARDSTATS***
+sub FillShardStats
+menu delete UOAM9
+menu delete UOAM10
+menu delete UOAM11
+set %_1 %1
+gosub getGlobalVar LJSetup CPLR SAME shard , %1 NOLOCK
+gosub getGlobalVar LJLoc_ , %shard . %_1 , 1 CPLR SAME NumLoc NOLOCK
+if ! #result
+	{
+	set %numloc 0
+	menu set UOAM7 None
+	}
+Else
+	menu set UOAM7 %numloc
+gosub getGlobalVar LJLoc_ , %shard . %_1 , 1 CPLR SAME LastRec NOLOCK
+If ! #result
+	{
+	set %lastRec 0
+	set %startUOAM 1
+	menu set UOAM8 None
+	}
+else
+	{
+	set %startUOAM %lastRec + 1
+	menu set UOAM8 %lastRec
+	}
+gosub getGlobalVar LJLoc_ , %shard . %_1 , 1 CPLR SAME UpgradedLoc NOLOCK
+if #result && %upgradedLoc
+	{
+	menu font color red
+	menu text UOAM9_0 225 200 One or more locations have
+	menu text UOAM9_1 225 210 been upgraded since the last
+	menu text UOAM9_2 225 220 file was written. The map will
+	menu text UOAM9_3 225 230 need to be re-recorded to keep
+	menu text UOAM9_4 225 240 from placing overlapping markers.
+	menu font color black
+	goto write1
+	}
+if %lastRec = %numloc || %numloc = 0
+	{
+	menu font color red
+	menu text UOAM9_5 245 225 No New Locations to Write
+	menu font color black
+	if %lastRec = %numloc && %numloc <> 0
+		{
+		write1:
+		set %startUOAM 1
+		menu font bgcolor btnface
+		menu button UOAM11 225 262 190 20 Re-Write UO Auto Map File
+		}
+	Return
+	}
+if %startUOAM > 1
+	{
+	menu text UOAM9_6 225 215 Create New Map
+	menu text UOAM9_7 225 230 Apppend to Old Map
+	menu font color red
+	menu text UOAM9_8 320 215 Or
+	set %del9 8 ; Marker for multi-item names
+	menu font color black
+	menu font bgcolor white
+	menu list create UOAM10 345 213 70 32
+	menu list add UOAM10 New Map
+	menu list add UOAM10 Append Old
+	menu list select UOAM10 2
+	}
+menu font bgcolor btnface
+menu button UOAM11 225 262 190 20 Write to UO Auto Map File
+Return
+
+;*****SUB ENDING*****
+sub ending
+if *cyberpope_LJ_radar_vote = ThankYou
+	halt
+menu hideeuo
+menu window title CyberPope's Lumberjacking Radar
+set #menubutton n/a
+menu clear
+if exec in #opts
+	menu window size 240 310
+else
+	menu window size 240 290
+menu window title -!!-----PLEASE VOTE-----!!-
+menu window color black
+menu font bgcolor black
+menu font color yellow
+menu show
+menu font size 12
+menu text m1 5 5 Thank you for using CyberPope's
+		+$LJ Radar. Now that you have
+		+$had a chance to check it out.
+		+$please take the time to give me
+		+$your thoughts. All that I am
+		+$asking for is for you to take a
+		+$couple minutes of your time and
+		+$vote for this script.
+menu text m1 5 170 If you encountered any problems
+		+$with this script please post what
+		+$the problem was in this script's
+		+$thread.
+menu font size 14
+menu font color red
+menu text m1 100 230 CyberPope
+if exec in #opts
+	{
+	menu font size 12
+	menu font color lime
+	menu text m1 15 260 Click the button below to vote!
+	menu font color white
+	menu button vote 5 280 230 25 Push this button to be Awesome
+	vote:
+	if #menubutton = vote
+		{
+		execute http://www.easyuo.com/rate.php?id=1695
+		set *cyberpope_LJ_radar_vote ThankYou
+		halt
+		}
+	if #menubutton = closed
+		{
+		display yesno Come on man! Hook the Pope up!
+			       +$I spent a lot of time working on this
+			       +$script and all I am asking for is your vote!
+		if #dispres = yes
+			{
+			execute http://www.easyuo.com/rate.php?id=1695
+			set *cyberpope_LJ_radar_vote ThankYou
+			}
+		if #dispres = no
+			display ok You are not awesome! $ =(
+		Halt
+		}
+	goto vote
+	}
+else
+	{
+	menu font color lime
+	menu font size 8
+	menu edit edit1 5 260 230 http://www.easyuo.com/rate.php?id=1695
+	}
+halt
+
+;***SUB DBAREA***************
+sub DBarea
+set %1 %1 / %shardtypeX * %shardtypeX / ( %shardtypeX * 17 )
+set %2 %2 / %shardtypeY * %shardtypeY / ( %shardtypeY * 17 )
+set %DBwrite %1 , _ , %2
+return %shard , _ , %DBwrite , _ , %3
+
+
+;***SUB IMPORT************
+sub Import
+menu set impstatus1 Checking Variable Ranges.
+set !FacetXMax1 6143 - %3 + 1
+set !FacetYMax1 4095 - %4 + 1
+set !FacetXMax2 6143 - %3 + 1
+set !FacetYMax2 4095 - %4 + 1
+set !FacetXMax3 2303 - %3 + 1
+set !FacetYMax3 1599 - %4 + 1
+set !FacetXMax4 2559 - %3 + 1
+set !FacetYMax4 2047 - %4 + 1
+set !FacetXMax5 1447 - %3 + 1
+set !FacetYMax5 1447 - %4 + 1
+set !LocID %1
+set !shard %2
+for !s 1 3
+	{
+	str pos %1 _
+	set !position #strres
+	set !end #strres - 1
+	str left %1 !end
+	set !Import . !s #strres
+	str del %1 1 !position
+	set %1 #strres
+	}
+set !import4 %1
+set !colorID !import1 , _ , !import2 , _ , !import3
+menu set im8 !import1
+menu set im9 !import2
+menu set im10 %facet . !import3
+menu set im11 %NameWoodType . !import4
+
+;----Check to see if X/Y/Facet/Wood are acceptable
+if !import3 < 1 || !import3 > 5 || !import3 = n/a
+	{
+	menu set impstatus2 Facet Variable out of Range
+	set !InvEnt !InvEnt + 1
+	menu set im12 !InvEnt
+	goto skip
+	}
+if !import1 > !facetxmax . !import3 || !import1 < 0 || !import1 = n/a
+	{
+	menu set impstatus2 X Coordinate Out of Range.
+	set !InvEnt !InvEnt + 1
+	menu set im12 !InvEnt
+	goto skip
+	}
+if !import2 > !facetymax . !import3 || !import2 < 0 || !import2 = n/a
+	{
+	menu set impstatus2 Y Coordinate out of Range
+	set !InvEnt !InvEnt + 1
+	menu set im12 !InvEnt
+	goto skip
+	}
+if !import4 > %Number_of_Wood_Types || !import4 < 1 || !import4 = n/a
+	{
+	menu set impstatus2 Wood Color out of Range
+	set !InvEnt !InvEnt + 1
+	menu set im12 !InvEnt
+	goto skip
+	}
+set !impTempNameWoodType %NameWoodType . !import4
+gosub getGlobalVar CPLR_WOODS_ , !shard CPLR CPLR NameWoodType , !import4 NOLOCK
+if %NameWoodType . !import4 <> !NameWoodType . !Import4
+   {
+   menu set impstatus2 Wood Type Mismatch
+   set !InvEnt !InvEnt + 1
+   menu set im12 !InvEnt
+   set %nameWoodType . !import4 !impTempNameWoodType
+   goto skip
+   }
+else
+   set %nameWoodType . !import4 !impTempNameWoodType
+if ( !import1 % %3 ) <> 0 || ( !import2 % %4 ) <> 0
+	{
+	menu set impstatus2 Invalid coordinate!
+	set !InvEnt !InvEnt + 1
+	menu set im12 !InvEnt
+	goto skip
+	}
+;----Check to See if Location is already in the new database.
+menu set Impstatus1 Looking for location in Database
+gosub DBarea !import1 !import2 !import3
+set !AreaGrid !shard , _ , %dbwrite , _ , !import3
+gosub getGlobalVar LJColor_ , !areagrid CPLR SAME !colorid NOLOCK
+if #result
+	{
+	;Check to see if wood type matches
+	if % . !colorid = !import4 || ( _ in % . !colorid && !import4 = 1 )
+		{
+		menu set impstatus2 Location previously recorded.
+		set !adb !adb + 1
+		menu set im13 !adb
+		wait 0
+		goto skip
+		}
+	;Check to see if wood type needs to be upgraded.
+	if _ in % . !colorid && !import4 > 1 && %ImpUpgrade
+		{
+		menu set impstatus2 Upgrading wood Type!
+		;upgrade wood type
+		str pos % . !colorid _
+		str del % . !colorid 1 #strres
+		set !UpgradeLoc #strres
+		set % . !colorid !import4
+		set %upgradedLoc #true
+		set !LocIndex !upgradeLoc / 300 + 1
+		set %Loc . !upgradeLoc !locid
+		gosub putGlobalVar LJLoc_ , !shard , 1 CPLR SAME UpgradedLoc NOLOCK
+		gosub putGlobalVar CPLR_Export CPLR !shard ExpUpgrade NOLOCK
+		gosub putGlobalVar LJLoc_ , !shard , !LocIndex CPLR SAME Loc , !UpgradeLoc NOLOCK
+    		set !statTemp %facet . !import3 , !import4
+    		gosub getGlobalvar CPLR_Stats_ , !shard CPLR !import3 !statTemp NOLOCK
+		if ! #result
+       			set % . !statTemp 1
+    		else
+       			set % . !statTemp % . !statTemp + 1
+    		gosub putGlobalvar CPLR_Stats_ , !shard CPLR !import3 !statTemp NOLOCK
+    		set !statTemp %facet . !import3 , 1
+    		gosub getGlobalvar CPLR_Stats_ , !shard CPLR !import3 !statTemp NOLOCK
+    		set % . !statTemp % . !statTemp - 1
+    		gosub putGlobalvar CPLR_Stats_ , !shard CPLR !import3 !statTemp NOLOCK
+		set !imtemp !shard , !import3
+		if *LJDBW_ . !imtemp = n/a
+			set *LJDBW_ . !imtemp |
+ 		if | , %DBwrite , | notin *LJDBW_ . !imtemp
+			set *LJDBW_ . !imtemp *LJDBW_ . !imtemp , %DBwrite , |
+		gosub putGlobalVar LJColor_ , !AreaGrid CPLR SAME !colorid NOLOCK
+		set !upgrd !upgrd + 1
+		menu set im5 !upgrd
+		set %change #true
+		Return
+		}
+	goto skip
+	}
+;Add Location to the database
+menu set impstatus1 Importing Location to Database
+menu set impstatus2 -
+gosub getGlobalVar LJLoc_ , !shard , 1 CPLR SAME NumLoc NOLOCK
+if ! #result
+	set %numloc 0
+set %numloc %numloc + 1
+set %Loc . %numloc !locid
+set !locIndex %numloc / 300 + 1
+gosub putGlobalVar LJLoc_ , !shard , 1 CPLR SAME numloc NOLOCK
+gosub putGlobalVar LJLoc_ , !shard , !locindex CPLR SAME Loc , %numloc NOLOCK
+set !imtemp !shard , !import3
+if *LJDBW_ . !imtemp = n/a
+	set *LJDBW_ . !imtemp |
+if | , %DBwrite , | notin *LJDBW_ . !imtemp
+	set *LJDBW_ . !imtemp *LJDBW_ . !imtemp , %DBwrite , |
+set % . !colorid !import4
+if !import4 = 1
+	set % . !colorid 1_ , %numloc
+gosub putGlobalVar LJColor_ , !AreaGrid CPLR SAME !colorid NOLOCK
+set !added !added + 1
+set !statTemp %facet . !import3 , !import4
+gosub getGlobalvar CPLR_Stats_ , !shard CPLR !import3 !statTemp NOLOCK
+if ! #result
+   set % . !statTemp 1
+else
+   set % . !statTemp % . !statTemp + 1
+gosub putGlobalvar CPLR_Stats_ , !shard CPLR !import3 !statTemp NOLOCK
+menu set im2 !added
+menu set impstatus1 -
+set %change #true
+Return
+skip:
+set !skipped !skipped + 1
+menu set im3 !skipped
+menu set impstatus2 -
+Return
+
+
+;===End of My Code=================
+;==================================
+;==================================
+;==================================
+;==================================
+;==================================
+;==================================
+;==================================
+;==================================
+;==================================
+; Script Name:  CEO's * variable management subs (pseudo filesystem)
+; Author: CEO
+; Version: 1.01
+; Client Tested with: 4.0.1b
+; EUO version tested with: 1_41_103
+; Shard OSI / FS: OSI
+; Revision Date: 040219
+; Public Release: 040219
+; Globals Used: User specified (2 total)
+; Purpose: Allows you to use a * variable as a pseudo-filesystem
+;=======================================
+; CEO's global variable management subs:
+;      getGlobalVar  . putGlobalVar  . delGlobalVar
+;=======================================
+Sub getGlobalVar
+;ver 1.1
+;changed the lock file to use *variablename_lock so it'll work with any named *variable
+;
+;ver 1.0 posted 19Feb04 by CEO
+;purpose: Allows you to store multiple variables in one global variable unique to
+;             each player and script. getGlobaVar retrieves a value from a global variable.
+;@returns: #result = #false if variable not found, #true if found
+;            % . %3 contains variable value
+;%1 is the global/persistant variable to use ( %1 + 1 is used for locking)
+;%2 is the script identifer or pseudo filename
+;%3 is #charid or pseudo filename
+;%4 is the variable to search for and return in %. %3
+;%5 is for lock control. By default getGlobalVar uses a lock to return a value. In some cases you may want to
+;       retrieve a variable (mostly for speed) without needing a lock as long as you are aware of
+      any potentional conflicts, that very rarely may occur. Set this param to NOLOCK to access
+      global storage without a lock.
+;sample usage:
+;               gosub getGlobalVar 50 MyScript #charid backpackid
+; Using global var *50 finds the variable labeled MyScript#charidbackpackid and returns it in %backpackid
+;
+;               gosub getGlobalVar 50 MyScript #charid clothstat NOLOCK
+; Using global var *50 find the variable labeled MyScript#charidclothstat and returns it in %clothstat without using a lock
+; Warning: do not use *1000. * %1 + 1 is used for locking and there is no *1001!
+nameSpace push
+nameSpace local #systime , _ , %2 , _ , %3 , _ , %4 , _ , GET
+set !lock %1 , _lock
+if ( %0 = 5 ) && ( %5 = NOLOCK )
+   goto getGlobalVar_skiplock
+set !lockcount 0
+getGlobalVar_waitforlock:
+if * . !lock <> N/A && * . !lock <> #nsname
+{
+   wait 1 4
+   set !lockcount !lockcount + 1
+   if !lockcount < 10
+      goto getGlobalVar_waitforlock
+   if * . !lock <> N/A
+   {
+      set !currentlock * . !lock
+      if !currentlock = N/A
+         goto getGlobalVar_waitforlock
+      str pos !currentlock _
+      set !strres #strres - 1
+      str left !currentlock !strres
+      set !systime #systime - #strres
+      if !systime < 10000 ; if over 10 seconds assume a broken lock and take it
+      {
+         set !lockcount 0
+         goto getGlobalVar_waitforlock
+      }
+   }
+}
+set * . !lock #nsname
+wait 3 2
+if  * . !lock <> #nsname
+{
+   set !lockcount 0
+   goto getGlobalVar_waitforlock
+}
+getGlobalVar_skiplock:
+set !global * . %1
+set !varName %2 , ^ , %3 , ^ , %4 , |
+str pos !global !varName
+set #result #strres <> 0
+if #result
+{
+   set !varNamePos #strres
+   str len !varName
+   set !delString !varNamePos + #strres - 1
+   str del !global 1 !delString
+   set !global #strres
+   str pos !global |
+   set !varNamePos #strres - 1
+   str left !global !varNamePos
+   set % . %4 #strres
+}
+if ( %0 < 5 || %5 <> NOLOCK ) && * . !lock = #nsname
+   set * . !lock N/A
+nameSpace Clear
+nameSpace Pop
+return #result
+
+Sub putGlobalVar
+;ver 1.0 posted 19Feb04 by CEO
+;purpose: Allows you to store multiple variables in one global variable unique to
+;             each player and script. putGlobaVar stores a value into a global variable.
+
+;@returns: #result = #false if variable not found, #true if found
+;            % . %3 contains variable
+;%1 is the global/persistant variable to use
+;%2 is the script identifer or pseudo filename
+;%3 #charid or other identifier
+;%4 is the variable name of the variable to save into the* variable identified in %1
+;sample usage:
+;               gosub putGlovalVar 50 MyScript #chardid backpackid
+; Using global var *50 stores/updates the variable labeled MyScript#charidbackpackid  with %backpackid
+; Warning: do not use *1000. * %1 + 1 is used for locking and there is no *1001!
+nameSpace push
+nameSpace local #systime , _ , %2 , _ , %3 , _ , %4 , _  , PUT
+set !lock %1 , _lock
+set !lockcount 0
+putGlobalVar_waitforlock:
+if * . !lock <> N/A && * . !lock <> #nsname
+{
+   wait 1 4
+   set !lockcount !lockcount + 1
+   if !lockcount < 10
+      goto putGlobalVar_waitforlock
+   if * . !lock <> N/A
+   {
+      set !currentlock * . !lock
+      if !currentlock = N/A
+         goto putGlobalVar_waitforlock
+      str pos !currentlock _
+      set !strres #strres - 1
+      str left !currentlock !strres
+      set !systime #systime - #strres
+      if !systime < 10000 ; if over 10 seconds assume a hung lock and take it
+      {
+         set !lockcount 0
+         goto putGlobalVar_waitforlock
+      }
+   }
+}
+set * . !lock #nsname
+wait 4
+set !global * . %1
+set !varName %2 , ^ , %3 , ^ , %4 , |
+str pos !global !varName
+if #strres = 0
+{
+   if  * . !lock <> #nsname
+   {
+      set !lockcount 0
+      goto putGlobalVar_waitforlock
+   }
+   if  |CEO*FILESYSTEM| notin !global
+      set !global |CEO*FILESYSTEM|
+   set * . %1 !global , !varName , % . %4 , |
+   set * . !lock N/A
+   nameSpace clear
+   nameSpace pop
+   return #true
+}
+set !varNamePos #strres
+str len !varName
+set !splitString !varNamePos + #strres - 1
+str left !global !splitstring
+set !globalPart1 #strres
+str del !global 1 !splitString
+set !global #strres
+str len !global
+set !globalLen #strres
+str pos !global |
+set !splitString !globalLen - #strres + 1
+str right !global !splitstring
+set !global #strres
+if  * . !lock <> #nsname
+{
+   set !lockcount 0
+   goto putGlobalVar_waitforlock
+}
+set * . %1 !globalPart1 , % . %4 , !global
+set * . !lock N/A
+nameSpace clear
+nameSpace pop
+return #true
+
+
+Sub delGlobalVar
+;ver 1.0 posted 19Feb04 by CEO
+;purpose: Allows you to delete a variable out of the globalvar pool unique to
+;             each player and script. delGlobaVar deletes a global variable in a * variable.
+
+;@returns: #result = #false if variable not found, #true if  deleted
+;
+;%1 is the global/persistant variable to use
+;%2 is the script identifer or pseudo filename
+;%3 is #charid or other identifier
+;%4 is the variable name of the variable to save into the* variable identified in %1
+;sample usage:
+;               gosub delGlovalVar 50 MyScript #charid backpackid
+; Using global var *50 deletes  the variable label MyScript#charidbackpackid  and it's associated value.
+; Warning: do not use *1000. * %1 + 1 is used for locking and there is no *1001!
+nameSpace push
+nameSpace local #systime , _ , %2 , _ , %3 , _ , %4 , _ , DEL
+set !lock %1 , _lock
+set !lockcount 0
+delGlobalVar_waitforlock:
+if * . !lock <> N/A && * . !lock <> #nsname
+{
+   wait 1 4
+   set !lockcount !lockcount + 1
+   if !lockcount <  10
+      goto delGlobalVar_waitforlock
+
+   if * . !lock <> N/A
+   {
+      set !currentlock * . !lock
+      if !currentlock = N/A
+         goto delGlobalVar_waitforlock
+      str pos !currentlock _
+      set !strres #strres - 1
+      str left !currentlock !strres
+      set !systime #systime - #strres
+      if !systime < 10000 ; if over 10 seconds assume a broken lock and take it
+      {
+         set !lockcount 0
+         goto delGlobalVar_waitforlock
+      }
+   }
+
+}
+set * . !lock #nsname
+wait 4
+set !global * . %1
+set !varName %2 , ^ , %3 , ^ , %4 , |
+str pos !global !varName
+set #result #strres <> 0
+if #result
+{
+   set !varNamePos #strres
+   str len !varName
+   set !splitString !varNamePos + #strres - 1
+   set !delString !varNamePos - 1
+   str left !global !delString
+   set !globalPart1 #strres
+   str del !global 1 !splitString
+   set !global #strres
+   str pos !global |
+   set !delString #strres
+   str del !global 1 !delString
+   if  * . !lock <> #nsname
+   {
+      set !lockcount 0
+      goto delGlobalVar_waitforlock
+   }
+   set * . %1 !globalPart1 , #strres
+}
+if  * . !lock = #nsname
+   set * . !lock N/A
+nameSpace clear
+nameSpace pop
+return #result
+
+;========================================
+; Script Name: Replace Sub from: some Useful String Subs
+; Author: Janus
+; Version: 1.2
+; Client Tested with: 4.0.3e client
+; EUO version tested with: 1.42 B0096
+; Shard OSI / FS: Local POL
+; Revision Date: 09-10-04
+; Public Release: 09-10-04
+; Purpose: some useful string subs, new ones being added from time to time...
+;========================================
+sub replace
+namespace push
+namespace local rep
+for !i 1 1000
+   {
+   str len %2
+   set !par2len #strres
+   set !s %1
+   str len %1
+   set !len #strres
+      str pos %1 %2
+   if #strres = 0
+      {
+      set #strres %1
+      namespace clear
+      namespace pop
+      return
+      }
+   else
+      {
+      set !p #strres
+      str del %1 !p !len
+      set %1 #strres
+      set !p !p + !par2len - 1
+      str del !s 1 !p
+      set %1 %1 , %3 , #strres
+      }
+   }
+
+;==================================
+; Script Name: filesubs.txt (import version)
+; Author: Kal In Ex
+; Version: 1.09
+; Client Tested with: 4.0.6a
+; EUO version tested with: 1.42.009d
+; Shard OSI / FS: OSI
+; Revision Date: December 23, 2004
+; Public Release: November 16, 2004
+; Global Variables Used:
+; Purpose: writing to files in EUO
+; Copyright 2004 Kal In Ex
+;==================================
+
+; subs open, GetOSFileCmd, wipe, fwipe, write and dump
+; are all a part of filesubs.txt only use this script
+; in its entirety and do not modify it!
+
+sub open ; <identifier> <filename>
+	namespace push
+	namespace local _filebuffers
+	set !_filename %1 , _filename
+	set !_buffer %1 , _buffer
+	set !_dirop %1 , _dirop
+	set ! . !_filename %2
+	set ! . !_buffer
+	set ! . !_dirop >>
+	if !_filesub = n/a
+		{
+		gosub GetOSFileCmd _
+		if #result = command.com
+			{
+			set !_filesub _filesubsW1
+			set !_filecmd command.com
+			}
+		if #result = cmd.exe
+			{
+			set !_filesub _filesubsW2
+			set !_filecmd cmd.exe
+			}
+		}
+	namespace pop
+	return
+
+;==================
+;**
+;* @name GetOSFileCmd
+;* @ver 1.0 9May04
+;* @author Roadkill
+;* @purpose check the OS and set @%1 to cmd.exe or command.exe if win98/2000xp
+;* @params %1 the varname to hold the return command
+;* @returns @%1 and #result hold cmd.exe for win2k and xp, or command.exe for 98/me
+;* @example call rksubs.txt GetOSFileCmd filecmd
+;* @status done
+sub GetOSFileCmd
+	str Left #osver 1
+	set % . %1 cmd.exe
+	if #strRes = 1
+		set % . %1 command.com
+	return % . %1
+;==================
+
+sub wipe ; <identifier>
+	namespace push
+	namespace local _filebuffers
+	set !_buffer %1 , _buffer
+	set !_dirop %1 , _dirop
+	set ! . !_buffer
+	set ! . !_dirop >
+	namespace pop
+	return
+
+sub fwipe ; <identifier>
+	namespace push
+	namespace local _filebuffers
+	set !_filename %1 , _filename
+	set !_buffer %1 , _buffer
+	set ! . !_buffer
+	execute !_filecmd /c type > ! . !_filename
+	namespace pop
+	return
+
+sub write ; <identifier> <text> <text> <text...>
+	namespace push
+	namespace local _filebuffers
+	if %0 > 2
+		{
+		for !_ 3 %0
+			{
+			set %2 %2 , #spc , % . !_
+			}
+		}
+	goto !_filesub
+	namespace pop
+	return
+
+_filesubsW1:
+	set !_filename %1 , _filename
+	set !_dirop %1 , _dirop
+	execute !_filecmd /c echo %2 ! . !_dirop ! . !_filename
+	set ! . !_dirop >>
+	namespace pop
+	return
+
+_filesubsW2:
+	str len %2
+	for !_ #strres 1
+		{
+		str mid %2 !_ 1
+		if #strres in &|()^<>
+			{
+			str ins %2 ^ !_
+			set %2 #strres
+			}
+		}
+	set !_filename %1 , _filename
+	set !_buffer %1 , _buffer
+	set !_dirop %1 , _dirop
+	str len ! . !_buffer
+	set !_ #strres
+	str len %2
+	if !_ + #strres >= 1900
+		{
+		execute !_filecmd /c ! . !_buffer
+		set ! . !_buffer
+		}
+	str len ! . !_buffer
+	if #strres = 0 || ! . !_dirop = >
+		set ! . !_buffer echo , #spc , %2 , #spc , ! . !_dirop , #spc , ! . !_filename
+	else
+		set ! . !_buffer ! . !_buffer , #spc , && , #spc , echo , #spc , %2 , #spc , ! . !_dirop , #spc , ! . !_filename
+	set ! . !_dirop >>
+	namespace pop
+	return
+
+sub dump ; <identifier>
+	namespace push
+	namespace local _filebuffers
+	set !_filename %1 , _filename
+	set !_buffer %1 , _buffer
+	str len ! . !_buffer
+	if #strres > 0
+		{
+		execute !_filecmd /c ! . !_buffer
+		set ! . !_buffer
+		}
+	namespace pop
+	return
+;==================================
+; end of filesubs.txt
+;==================================
+
+;==================================
+; Script Name: Gravisoft's String Implode/Explode SUB
+; Author: Gravix
+; Version: 1.1
+; Client Tested with: 4.0.6a
+; EUO version tested with: 1.42.009F
+; Shard OSI / FS: Both
+; Revision Date: 1/19/04
+; Public Release: 1/01/04
+; Global Variables Used: None
+; Purpose: Implode: Take an array and link into a string separated by a value/char
+; Explode: Take a string and break into array based on dividers
+;==================================
+
+;SUB string exp %str %div %arry
+SUB String
+if %0 < 5
+	{
+	namespace push
+	namespace local Implode-Explode
+	set %5 #false
+	}
+IF %1 = exp
+ 	{
+  	SET !c 0
+  	SET !s %2
+	break:
+    	IF %3 in !s
+    		{
+     		SET !c !c + 1
+      		STR POS !s %3
+      		SET !p0 #STRRES
+      		SET !p1 !p0 - 1
+      		STR LEFT !s !p1
+      		if %5 <> #true
+			SET % . %4 , !c #STRRES
+		if %5
+			SET ! . %4 , !c #STRRES
+      		STR DEL !s 1 !p0
+      		SET !s #STRRES
+      		GOTO break
+    		}
+    	ELSE
+    		{
+    		SET !c !c + 1
+		if %5
+	      		SET ! . %4 , !c !s
+      		Set #result !c
+		if %5 <> #true
+	      		{
+	      		SET % . %4 , !c !s
+			Namespace clear
+      			Namepsace pop
+			}
+		RETURN #result
+    		}
+  	}
+RETURN #FALSE
+;==================================
+; Script Name: sub moveItem *ExEvent*
+; Author: Tecmo, Bad_Maniac
+; Version: 1.12
+; Client Tested with: 5.0.1a patch 21
+; EUO version tested with: 1.50 build 60
+; Shard OSI / FS: OSI and FS
+; Revision Date: 2005-Oct-07
+; Public Release: 2005-Aug-04
+; Copyright: Tecmo, Bad_Maniac
+; *********************************
+;* @packageversion   1.12
+;* @purpose   move an item from one location to another
+;* @author   Tecmo, Bad_Maniac
+;* @param
+;      %1 req Item to move
+;      %2 req Move from location
+;      %3 req Move to location
+;      %4 opt Quantity
+;* @return      Returns the value True or False
+;* @Calling Example
+;           Inside script = gosub moveItem [Item to Move] [From location] [To location] [Quantity] (nothing in qty uses #findstack)
+;         Outside calling = call subMoveItem.txt [Item to Move] [From location] [To location] [Quantity] (nothing in qty uses #findstack)
+;==================================
+SUB moveItem
+namespace push
+namespace local TecmosMoveItem
+{
+    IF %0 < 3 || %0 > 4
+        RETURN #FALSE
+    SET !_itemId %1
+    IF G_ NOTIN %2 && %2 <> C
+        SET !_itemLocation C_ , %2
+    ELSE
+        SET !_itemLocation %2
+    SET !_newItemLocation %3
+    IF %0 = 4
+        SET !_qty %4
+    ELSE
+        SET !_qty 0
+    IF !euover <> passed
+    {
+        GOSUB BmEuoVer
+        SET !euover passed
+    }
+    IF !_fShard <> #TRUE && !_fShard <> #FALSE
+        GOSUB CheckFreeShard _fShard
+    IF !_fShard
+    {
+        SET !actionwait 4
+        SET !dragdropwait 4 ; Increase this number if you recieve 'You must wait' messages
+    }
+    ELSE
+    {
+        SET !actionwait 9
+        SET !dragdropwait 1
+    }
+    REPEAT
+    {
+        SET !_XdropOffset ( #RANDOM % 2 ) - 1
+        SET !_YdropOffset ( #RANDOM % 2 ) - 1
+    }
+    UNTIL !_XdropOffset <> 0 || !_YdropOffset <> 0
+    SET !_XdropOffset #CHARPOSX + !_XdropOffset
+    SET !_YdropOffset #CHARPOSY + !_YdropOffset
+    moveLoop:
+    FINDITEM !_itemId !_itemLocation
+    IF #FINDKIND <> -1
+    {
+       SET !_litemID #FINDID
+       SET !qty !_qty
+       IF !qty = 0
+          SET !qty #FINDSTACK
+       GOSUB BMWaitAction !actionwait
+       EXEVENT drag #FINDID !qty
+       wait !dragdropwait
+       SET !droptimeout #SYSTIME + 1000
+       dropwait:
+       IF !_newItemLocation = G
+            EXEVENT DROPG !_XdropOffset !_YdropOffset
+       IF !_newItemLocation <> G
+            EXEVENT dropc !_newItemLocation
+       FINDITEM !_litemID !_itemLocation
+       IF #FINDKIND <> -1 && #SYSTIME < !droptimeout
+          GOTO dropwait
+       GOSUB BMWaitAction
+       GOTO moveLoop
+    }
+    namespace pop
+    RETURN
+}
+;===============================
+; BMWaitAction
+; %1 time to wait in 10th of a second
+; If no arguments are passed, it sets
+; the timer to the current time
+;===============================
+SUB BMWaitAction
+	IF %0 < 1 || %1 = N/A || !bmwatimer = N/A
+	{
+		SET !bmwatimer #SCNT2
+		RETURN
+	}
+bmwa_wait:
+	IF ( !bmwatimer + %1 ) > #SCNT2
+		GOTO bmwa_wait
+RETURN
+;===============================
+;* @name sub BmEuoVer
+;* @author Bad_Maniac
+;* @ver 1.0 2005-Jul-29
+;* @purpose Verifies use of Euo 1.50 or higher
+SUB BmEuoVer
+	SET !euover #EUOVER
+	FOR !i 1 2
+	{
+		STR POS !euover _
+		IF #STRRES > 0
+		{
+			STR DEL !euover #STRRES 1
+			SET !euover #STRRES
+			SET !i 1
+		}
+	}
+ IF !euover < 15000
+ {
+     DISPLAY ok You must use EUO version 1.50 or$
+     +greater to use sub moveItem$
+     +The script has been halted!
+      halt
+ }
+RETURN
+;===========
+;**
+;* @name CheckFreeShard
+;* @ver 1.0 2Feb05
+;* @author  Roadkill
+;* @purpose  checks if you're on a known OSI shard or not
+;* @params %1 optional, variablename to return #true/#false in, #true if on a freeshard
+;* @returns #result and @%1 #true if on a freeshard, #false if on a known OSI shard.
+;* @example call rksubs.txt CheckFreeShard <@%1 varname, opt><@#result #true if #shard notin osi list
+;* @status
+sub CheckFreeShard
+  set !OSIshards pacific_sonoma_baja_legends_atlantic_chesapeake_catskills_lake , #spc , austin
+  +_napa , #spc , valley_lake , #spc , superior_great , #spc , lakes_siege , #spc , perilous_europa
+  +_drachenfels_oceania_wakoku_formosa_arirang_balhae_asuka_yamato_mugen_hokuto_misuho_izumo_sakura_
+  set !result #shard notin !OSIshards
+  if %0 >= 1 && %1 <> n/a
+    set % . %1 !result
+return !result
+
+;----
+;* @name EquipAxe
+;* @author snicker7
+;* @ver 0.1 16Jan05
+;* @purpose Equip the axe in your backpack.
+;* @params none
+;* @returns none
+;* @notes eventually plan to standardize to EquipWeapon, passing weapon
+;*	ID and lefthandedness/righthandedness of the weapon to equip it.
+;* @example: gosub EquipAxe
+;* @status done
+;----
+sub EquipAxe
+  namespace push
+  namespace local S7EquipAxe
+	finditem %axes C_ , #backpackid
+	set #lhandid #findid
+	set #rhandid yc
+	deletejournal
+	set !wepjs #jindex + 1
+	event macro 24 1
+	wait 40
+	set !wepje #jindex + 1
+	for !wepji %wepjs %wepje
+	{
+		scanjournal !wepji
+		if one_weapon_at_a_time in #journal || you_must_have_both_hands_free in #journal
+		{
+			wait 40
+			event macro 24 2
+		}
+	}
+	if #lhandid <> #findid || #rhandid <> YC
+	{
+		set #lhandid #findid
+		wait 40
+		event macro 24 1
+	}
+	namespace clear
+	namespace pop
+return
+
+;----
+;* @name s7DropG
+;* @author snicker7
+;* @ver ??
+;* @purpose To Drop Items to the Ground
+;* @params  %1 Item to Drop
+;* @returns none
+;* @notes eventually plan to standardize to EquipWeapon, passing weapon
+;*	ID and lefthandedness/righthandedness of the weapon to equip it.
+;* @example: gosub EquipAxe
+;* @status done
+;----
+sub s7DropG
+  NameSpace push
+  NameSpace Local s7DropG
+	for !dXT -1 1
+	{
+		for !dYT -1 1
+		{
+			if !dXT <> 0 && !dYT <> 0
+			{
+				set !dX #charposx + !dXt
+				set !dY #charposY + !dYt
+				set !dTi #false
+				tile cnt !dX !dY #curskind
+				for !dTc 1 #tileCnt
+				{
+					tile get !dx !dy !dTc #curskind
+					if impassable in #tileFlags
+						set !dTi #true
+				}
+				if ! !dTi
+				{
+					exevent drag %1 65535
+					exevent dropg !dX !dy
+					exevent dropc #backpackid
+					wait %dropwait
+					finditem %1 C_ , #backpackid
+					if #findkind = -1
+            {
+            namespace clear
+            namespace pop
+            return #true
+            }
+				}
+			}
+		}
+	}
+namespace clear
+namespace pop
+return #false

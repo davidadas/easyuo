@@ -1,0 +1,47 @@
+     Set *30 0
+        Wait:
+                If *30 = 1
+                {
+                        Chooseskill *10
+                        Set %skill #skill
+                        Goto Scan
+                }
+        Goto Wait
+ 
+        Scan:
+                If %skill < #skill
+                {
+                        Set %location #charposy - 8
+                        Set %gain #skill - %skill
+                        Set *40 *40 + %gain
+                        Set *50 *50 + 1
+                        Check:
+                                If %location < 0
+                                {
+                                        Set *60 1
+                                        Set *30 1
+                                        Goto Wait
+                                }
+                                If %location => #charposy
+                                {
+                                        Msg Stop$
+                                        if %location <> #Charposy
+                                        {
+                                                wait 20
+                                                Msg Back One$
+                                                wait 20
+                                                Goto Check
+                                        }
+                                        Set *20 1
+                                        Set *30 1
+                                        Goto Wait
+                                }
+                                If *80 = 1
+                                {
+                                        Set *30 1
+                                        Goto Wait
+                                }
+                        Goto Check
+                }
+        Goto Scan
+ 

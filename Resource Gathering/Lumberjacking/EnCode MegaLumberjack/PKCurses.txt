@@ -1,0 +1,10 @@
+set %curses 9
+set %curse1 fukoov
+set %curse2 -cries-
+set %curse3 plz, , #spc , attacking , #spc , a , #spc , worker
+set %curse4 you , #spc , go , #spc , ... , #spc , yourself!
+set %curse5 leave , #spc , me
+set %curse6 lol... , #spc , chopping , #spc , worker , #spc , heads
+set %curse7 suck , #spc , my...
+set %curse8 Jackass!
+set %curse9 Son , #spc , of , #spc , a , #spc , bitch!

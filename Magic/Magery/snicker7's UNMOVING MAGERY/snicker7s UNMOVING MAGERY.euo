@@ -1,0 +1,169 @@
+;==================================
+; Script Name: snicker7's UNMOVING MAGERY.
+; Author: snicker7
+; Version: 100,000.3
+; Client Tested with: 4.0.9b
+; EUO version tested with: 1.42.009D
+; Shard OSI / FS:  FS
+; Revision Date: 3/19/06
+; Public Release: 11/25/04
+; Global Variables Used:
+; Purpose: Train magery without moving for freeshards.
+;==================================
+initevents
+
+chooseskill mage
+set %startingskill #skill
+set %currentskill #skill
+if %currentskill < 300 2
+  display ok You need greater than 30.0 Magery to start this script.
+  halt
+
+gosub showmenu
+
+loop:
+gosub choosespell
+gosub cast
+goto loop:
+
+sub choosespell
+  if %currentskill < 1000
+  {
+    set %spell 50
+    set %manatocast 40
+    set %castdelay 50
+    set %masochistic 1
+    menu delete currentspell
+    menu text currentspell 68 55 Flamestrike
+  }
+  if %currentskill < 875
+  {
+    set %spell 43
+    set %manatocast 20
+    set %castdelay 48
+    set %masochistic 0
+    menu delete currentspell
+    menu text currentspell 68 55 Invis
+  }
+  if %currentskill < 530
+  {
+    set %spell 29
+    set %manatocast 11
+    set %castdelay 43
+    set %masochistic 1
+    menu delete currentspell
+    menu text currentspell 68 55 Lightning
+  }
+  set %healspell 28
+  if %currentskill < 50
+    set %healspell 3
+return
+
+sub cast
+  gosub openhealthbar
+  if %masochistic = 1
+    gosub checkhealth
+  gosub checkmana %manatocast
+  recast:
+  event macro 15 %spell
+  target 3s
+  event macro 23 0
+  wait 5
+  gosub checkskill
+  wait %castdelay
+return
+
+sub checkskill
+  chooseskill mage
+  if #skill > %currentskill
+  {
+    set %currentskill #skill
+    sound
+    str len %currentskill
+    str ins %currentskill #dot #strRes
+    menu delete currentskill
+    menu text currentskill 68 25 #strRes
+    set %totalgains %currentskill - %startingskill
+    str len %totalgains
+    str ins %totalgains #dot #strRes
+    menu delete totalgains
+    menu text totalgains 68 40 #strRes
+  }
+return
+    
+sub checkhealth
+  gosub openhealthbar
+  checkhealth:
+  if #hits = #maxhits
+    return
+  set %healat #maxhits - ( #maxhits / 5 )
+  if #hits < %healat
+  {
+    gosub checkmana 11
+    event macro 15 %healspell
+    target 3s
+    event macro 23 0
+    goto checkhealth
+  }
+return
+
+sub checkmana
+  manacheckloop:
+  if #mana > %1
+    return
+  event macro 13 46
+  set %medstart #scnt
+  wait 10 
+  scanjournal 1 
+  if meditative in #journal 
+    goto manaloopmain
+  wait:
+  if #scnt < %medstart + 11 2
+    wait 1
+    goto wait
+  goto manacheckloop
+  manaloopmain:
+  if #mana < #maxmana 2
+    wait 1  
+    goto manaloopmain
+return    
+
+
+sub openhealthbar
+  if #charname = N/A
+  {
+    event macro 8 2
+    wait 10
+  }
+return
+
+sub showmenu
+  menu clear
+  menu window title Unmoving Magery
+  menu window size 180 95
+  menu window color black
+  menu font name arial
+  menu font size 12
+  menu font color Red
+  menu font bgcolor black
+  menu text title 5 5 UNMOVING MAGERY.
+  menu font size 8
+  menu font color lime
+  menu text mageryskill 5 25 Current skill:
+  menu text gains 5 40 Total gains:
+  menu text casting 5 55 Casting:
+  menu font color green
+    str len %currentskill
+    str ins %currentskill #dot #strRes
+    menu delete currentskill
+    menu text currentskill 68 25 #strRes
+    set %totalgains %currentskill - %startingskill
+    str len %totalgains
+    str ins %totalgains #dot #strRes
+    menu delete totalgains
+    menu text totalgains 68 40 #strRes
+  menu font align right
+  menu text credit 176 80 by snicker7.
+  menu font align left
+  menu show
+return

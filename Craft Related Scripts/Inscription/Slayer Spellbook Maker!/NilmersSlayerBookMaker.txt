@@ -1,0 +1,87 @@
+x = + 281
+y = + 413
+
+
+initevents
+display ok Target your scrolls in secure/bankbox
+set #targcurs 1
+wait 3
+banktarget:
+if #targcurs = 1
+goto banktarget
+finditem #ltargetid
+set %bankbox #FINDBAGID
+display ok move your cursor EXACTLY over the scrolls in your backpack. you have 5 Seconds
+wait 5s
+set %scrolldropx #CURSORX
+set %scrolldropy #CURSORY
+display ok Move your cursor Exactly over the trashcan/barrell near you. you have 5 seconds.
+wait 5s
+set %trashx #CURSORX
+set %trashy #CURSORY
+display ok Click ok to begin!
+top:
+if #scnt > 250
+{
+gosub TrashBooks
+set #scnt 0
+}
+finditem dpf C_ . #BACKPACKID
+if #findstack < 30
+gosub getFromBank
+
+if #contsize = 530_437
+{
+set %makelastx #CONTPOSX + 281
+set %makelasty #CONTPOSY + 413
+click %makelastx %makelasty
+}
+if #contsize <> 530_437
+wait 15
+if #contsize <> 530_437
+wait 15
+if #contsize <> 530_437
+{
+finditem pbG C
+if #findkind = -1 2
+display ok put more pen in your backpack and hit play
+halt
+set #lobjectid #findid
+event macro 17 0
+}
+goto top
+
+
+sub GetFromBank
+finditem dpf C_ . %bankbox
+if #findstack < 250 2
+gosub TrashBooks
+halt
+event drag #findid
+wait 5
+msg 250
+wait 15
+msg $
+click %scrolldropx %scrolldropy
+wait 5
+return
+
+sub TrashBooks
+trash:
+wait 15
+if #contsize = 530_437
+click 286 105 r
+wait 15
+finditem mpf C_ . #BACKPACKID
+if #findkind = -1
+return
+event property #findid
+if slayer notin #property
+{
+event drag #findid
+wait 5
+click %trashx %trashy
+}
+ignoreitem #findid
+wait 5
+goto trash

@@ -1,0 +1,2261 @@
+;================================== 
+; Script Name:   Dilbert's Corsair 
+; Author:  Dilbert 
+; Version: 1.12f
+; Client Tested with: 4.07b
+; EUO version tested with: 1.42.009b 
+; Shard OSI / FS: OSI 
+; Revision Date: 16 Jan 2005
+; Public Release: 27 Nov 2003 
+; Purpose: menu driven 8x8 boat tool, keeps channel, unblocks, dynamic training delay 
+;			premade subs for training magery, chiv, necro, spirit, hiding 
+;================================== 
+;© COPYRIGHT Dilbert 2003 
+;You MAY NOT PUBLISH any script that uses this code, OR any derivative work without written permission from Dilbert. 
+;You may only use this for private, unpublished work. 
+;You may NOT DISTRIBUTE this script, its available to everyone at http://www.easyuo.com/forum/viewtopic.php?p=14827#14827
+;================================== 
+SET %debug #false
+SET %version 1.12f
+;************************************************* 
+;********* I N I T I A L I S A T I O N ********** 
+;************************************************* 
+
+initevents 
+
+SET %sound #true
+;active medi decision 
+chooseskill meditation 
+IF #skill > 50 
+	SET %medi yes 
+
+SET %traindelay 1 
+
+;open status gump 
+event macro 8 7 
+
+SET %instruments _LQF_MQF_QRF_OQF_KRF_PRF_RGP_NRF
+SET %speed normal 
+SET %oldcharposY #charposY 
+SET %skilltimeout #time 
+SET %progress #time 
+SET %unblock on
+SET %dodge on
+SET %sailstatus sailing 
+SET %gainchainretry  0 
+SET %maxgainchainretry 5 
+SET %BestGainCnt 0
+SET %speed slow 
+SET %trainsub N/A 
+SET %tillermantype ENX_HNX_JNX_ONX 
+;tillernorth is a tillerman on a ship FACING north
+SET %tillernorth ENX
+SET %tillersouth HNX
+SET %tillerwest JNX
+SET %tillereast ONX
+;hatchnorth is a hatch on a ship FACING north
+SET %hatchnorth UVX
+SET %hatchsouth LWX
+SET %hatchwest ZUX
+SET %hatcheast ZNX
+SET %tillermantype ENX_HNX_JNX_ONX 
+SET %masttype PSX_ETX_YNX_IOX 
+SET %plankNStype GWX_DWX_ISX_HSX 
+SET %plankWEtype SUX_DUX_EUX_PUX 
+SET %shipkeytypes _SEG_REG_CFG_DFG
+SET %MageryPenalty #false
+SET %MageryPenaltyActive #false
+SET %mageweapon mage , #spc , weapon
+SET #menubutton n/a
+SET %WpTL OSF_LSF_MSF_BSF_ISF_NSF_CSF_ZRF_ASF_FSF_SMH_RMH_MPH_LPH_KSF_
++HSF_ZTO_LPO_NPO_XPO_YTH_XTH_EDP_GUO_KPO_BUO_VPO_FDP_ZCP_CUO_WPO_
++AQF_PPF_HDP_YRH_XRH_LTF_MTF_LDP_GFF_FFF_PMH_QMH_IDP_CQF_ZPF_EMH_DMH_
++DDP_ADP_QPO_SPO_PPO_RPO_XCP_
+SET %WpTR KDP_FUO_JPO_ZSF_ATF_FMH_GMH_INF_HNF_KPH_JPH_OMH_NMH_
++KTF_JTF__CPH_NPF_QPF_POH_SOH_BNF_CNF_EPH_BPH_YCP_TSF_WSF_WRH_
++VRH_OPO_YPO_SRH_RRH_QOH_VOH_WTH_VTH_XSF_YSF_HFF_CFF_IFF_BFF_CUH_BUH_
++AUO_MPO_TLH_OLH_GBG_FBG_UOH_JOH_URH_TRH_TOH_WOH_USF_JSF_MMH_LMH_AUH_ZTH_
+SET %WpT %WpTR , %WpTL
+	
+GOSUB initmenu 
+GOSUB initship 
+ignoreitem %tillerman 1
+GOSUB RefreshShip
+GOSUB CheckKey
+GOSUB drawship 
+GOSUB stop
+GOSUB shard
+
+WAIT 20 
+;loop:
+;GOSUB SailToCell 635 205
+;goto loop:
+;halt
+
+GOSUB status Orders_Captain?	
+INITLOOP: 
+GOSUB MenuAction 
+GOSUB drawship 
+GOSUB channelcheck 
+IF %trainsub = N/a 
+	GOTO initloop 
+
+;************************************************ 
+; *********** M A I N L O O P **************** 
+;************************************************ 
+
+mainloop: 
+GOSUB MenuAction 
+GOSUB CheckProgress 
+GOSUB train 
+GOSUB StopOnGain 
+GOSUB TrainingDelay 
+GOSUB HitTheTillerman 
+GOSUB drawship 
+GOSUB channelcheck 
+GOSUB dodgeship
+goto mainloop 
+
+
+
+;****************************************************** 
+;******************** M E N U *********************** 
+;******************************************************* 
+
+SUB InitMenu 
+	menu clear 
+	menu hideeuo 
+	menu show 
+	menu window size 505 270
+	menu window title Dilbert's Corsair %version
+	menu Window Color btnface
+	menu font color blue
+	menu font style bu 
+	menu text headline 0 0 Lookout
+	menu font style
+	menu font color
+	SET %dodgebuttonX 0
+	SET %dodgebuttonY 20
+	menu font color blue
+	menu font style bu
+	menu text headline 0 70 Tillerman
+	menu font style
+	menu font color
+	GOSUB drawTillerman
+	GOSUB speedbuttons 
+	GOSUB statusinit
+	GOSUB drawtrainer 380 0
+	set #menubutton n/a 
+	GOSUB drawMap 140 0
+	GOSUB status MENU_INIT_DONE 
+RETURN 
+
+SUB statusinit
+	SET %statuscol1 0
+	SET %statuscol2 35
+;	SET %statusrow1 %statusy 
+;	SET %statusrow2 %statusy + 20 
+;	SET %statusrow3 %statusy + 40 
+	menu font size 7 
+	menu text statushead %statuscol1 45 Dodge 
+	menu text statushead %statuscol1 55 Status: 
+	SET %dodgeStatusX %statuscol2
+	SET %dodgeStatusY 50
+	menu text statushead %statuscol1 220 Ship 
+	menu text statushead %statuscol1 230 Status: 
+	SET %shipStatusX %statuscol2
+	SET %shipStatusY 225
+	menu text statushead %statuscol1 250 Script 
+	menu text statushead %statuscol1 260 Status: 
+	SET %scriptStatusX %statuscol2
+	SET %scriptStatusY 255
+	menu font style u
+	menu text statushead 380 150 Training Status:
+	menu font style
+	menu text statushead 380 165 Current
+	menu text statushead 380 175 Skill:
+	SET %trainstatusX  420
+	SET %trainstatusY 170
+	menu text statushead 380 185 Current Chain:
+	SET %currentchainstatusX  380
+	SET %currentchainstatusY 195
+	menu text statushead 380 210 Last Chain:
+	SET %lastchainstatusX  380
+	SET %lastchainstatusY 220
+	menu text statushead 380 235 Longest Chain:
+	SET %longestchainstatusX  380
+	SET %longestchainstatusY 245
+	menu font size 10 
+	GOSUB status refresh
+RETURN
+
+SUB status 
+	IF %1 <> refresh
+		SET %statusmsg %1
+	Menu Delete status 
+	IF %trainsub <> n/a 
+		{ 
+		chooseskill %trainsub
+		SET %skilleffective #skill
+		chooseskill %trainsub real
+		SET %skillreal #skill
+		SET %gainedskill %skillreal - %startskill 
+		Menu text status %trainstatusX %trainstatusY %skilleffective (+ %gainedskill ) 
+		} 
+	Menu text status %dodgestatusX %dodgestatusY %dodgestatus 
+	Menu text status %shipstatusX %shipstatusY %sailstatus 
+	Menu text status %scriptStatusX %scriptStatusY %statusmsg
+RETURN 
+
+SUB chainstatus
+	menu delete chainstatus
+	menu font size 7
+	menu text chainstatus %currentchainstatusX %currentchainstatusY %CurrentGainCnt gains N of %CurrentGainCellX %CurrentGainCellY
+	menu text chainstatus %lastchainstatusX %lastchainstatusY %LastGainCnt gains N of %LastGainCellX %LastGainCellY
+	menu text chainstatus %longestchainstatusX %longestchainstatusY %BestGainCnt gains N of %BestGainCellX %BestGainCellY
+	menu font size 10 
+RETURN
+
+SUB statusError 
+	menu font color red 
+	menu font style b 
+	Menu Delete status 
+	Menu text status %StatusX %StatusY %1 
+	pause 
+RETURN 
+
+SUB drawTillerman
+	;draws direction, speed, turn and anchor buttons 
+	SET %rudderx 0 
+	SET %ruddery 90 
+	SET %buttonsize 25 
+	SET %buttonspacing 1 
+	SET %buttonsize2 %buttonsize * 5 / 2 
+	SET %dodgebuttonsize %buttonsize * 5 
+	SET %row1 %ruddery 
+	SET %row2 %ruddery + %buttonsize + %buttonspacing 
+	SET %row3 %ruddery + %buttonsize * 2 + %buttonspacing * 2 
+	SET %row4 %ruddery + %buttonsize * 3 + %buttonspacing * 3 
+	SET %row5 %ruddery + %buttonsize * 4 + %buttonspacing * 4 
+	SET %row6 %ruddery + %buttonsize * 5 + %buttonspacing * 5 
+	SET %row7 %ruddery + %buttonsize * 6 + %buttonspacing * 6 
+	SET %row8 %ruddery + %buttonsize * 7 + %buttonspacing * 7 
+	SET %col1 %rudderx 
+	SET %col2 %rudderx + %buttonsize + %buttonspacing 
+	SET %col3 %rudderx + %buttonsize * 2 + %buttonspacing * 2 
+	SET %col4 %rudderx + %buttonsize * 3 + %buttonspacing * 3 
+	SET %col5 %col4 + %buttonsize2 + %buttonspacing + %buttonspacing + %buttonspacing 
+	menu button forwardleft %col1 %row1 %buttonsize %buttonsize FL 
+	menu button forward %col2 %row1 %buttonsize %buttonsize F 
+	menu button forwardright %col3 %row1 %buttonsize %buttonsize FR 
+	menu button left %rudderx %row2 %buttonsize %buttonsize L 
+	menu button stop %col2 %row2 %buttonsize %buttonsize S 
+	menu button right %col3 %row2 %buttonsize %buttonsize R 
+	menu button backleft %col1 %row3 %buttonsize %buttonsize BL 
+	menu button back %col2 %row3 %buttonsize %buttonsize B 
+	menu button backright %col3 %row3 %buttonsize %buttonsize BR 
+	menu button turnleft %col1 %row5 %buttonsize %buttonsize TL 
+	menu button turnaround %col2 %row5 %buttonsize %buttonsize TA 
+	menu button turnright %col3 %row5 %buttonsize %buttonsize TR 
+RETURN
+
+SUB GetMaxGainChainRetry
+	menu GetNum retryfield 5
+	SET %maxgainchainretry #menuRes
+;	display ok %maxgainchainretry
+RETURN 
+
+SUB drawMap 
+SET %mapx %1
+SET %mapy %2
+menu font color blue
+menu font style bu 
+menu text headline %mapx %mapy Navigator
+menu font style
+menu font color
+SET %line0 %mapy 
+SET %lineheight 10 
+SET %linenumber 24 
+For %m 1 %linenumber 
+	{ 
+	SET %line , %m %lineheight * %m 
+	} 
+menu font size 7 
+menu text map %mapx %line2 ____________________________________ serverborder 
+menu text map %mapx %line22 ____________________________________ serverborder 
+SET %posx %mapx + 60
+SET %leftchannelborder %posx
+FOR %i 3 22 
+	{ 
+	menu text map %posx %line . %i : 
+	} 
+SET %posx %mapx + 100
+SET %centerchannel %posx
+FOR %i 3 22 
+	{
+	menu text map %posx %line . %i | 
+	} 
+SET %posx %mapx + 140
+SET %rightchannelborder %posx
+FOR %i 3 22 
+	{ 
+	menu text map %posx %line . %i : 
+	} 
+SET %line1plus %line1 + 7
+SET %posx %mapx + 40
+menu text map %posx %line1plus 5040=x 
+SET %posx %mapx + 75
+menu text map %posx %line1plus 5117=x=0 
+SET %posx %mapx + 135
+menu text map %posx %line1plus x=80
+SET %posx %mapx + 185
+menu text map %posx %line3 y=0 
+menu text map %posx %line8 y=1273 
+menu text map %posx %line10 y=1285 
+menu text map %posx %line12 y=2029 
+menu text map %posx %line14 y=2040 
+menu text map %posx %line21 y=4092 
+SET %posx %mapx + 102
+menu text map %posx %line9 .......................... serverborder 
+menu text map %posx %line13 .......................... serverborder 
+SET %posx %mapx + 60
+menu text map %posx %line24 | <-- CHANNEL --> | 
+menu font color 808080 
+SET %posx %mapx + 20
+menu text map %posx %line17 Isle $  of the $ Avatar 
+menu text map %posx %line7 Moon- $ glow 
+menu text map %mapx %line4 Dagger $ Isle 
+SET %posx %mapx + 200
+menu text map %posx %line19 Jhelom 
+SET %posx %mapx + 160
+menu text map %posx %line15 Skara $ Brae 
+SET %posx %mapx + 150
+menu text map %posx %line6 Yew 
+menu text map %posx %line10 Main $ land $ mass 
+menu font color black
+menu text positionhead %posx %line24 Position: 
+SET %positiondisplayX %posx + 40
+SET %positiondisplayY %line24
+menu text positionhead %mapx %line24 8x8: 
+SET %celldisplayX %mapx + 23
+SET %celldisplayY %line24
+menu font size 10 
+GOSUB drawship 
+RETURN 
+
+SUB drawship 
+	;parameters 1 and 2 are world coordinates. 
+	;need to calculate pixels for map 
+	;map channel is 272 to 350 pixels horizontal 
+	; and 31 to 230 vertical 
+	SET %shipworldposY #charposY 
+	SET %shipworldposX #charposX 
+	SET %shipY %shipworldposY * 100 / 4096 * 200 / 100 + 31 
+	IF #charposX < 4000 && #charposX > 1200 
+		{ 
+		;ship not on map 
+		} 
+	IF #charposX => 4000 && %shipworldposX < 5040 
+		SET %shipX ( %shipworldposX - 4000 ) * 100 / 1040 * 50 / 100 + %mapX + 10 
+	IF #charposX => 5040 && #charposX < 5117 
+		SET %shipX ( %shipworldposX - 5040 ) * 100 / 77 * 40 / 100 + %leftchannelborder 
+	IF #charposX => 0 && %shipworldposX < 80 
+		SET %shipX %shipworldposX * 100 / 80 * 40 / 100 + %centerchannel 
+	IF #charposX => 80 && %shipworldposX <= 1200 
+		SET %shipX %shipworldposX * 100 / 1120 * 50 / 100 + %rightchannelborder
+	SET %shipsizeX 3
+	SET %shipsizeY 6
+;	display ok %shipX %shipY 
+	menu delete ship 
+	menu button ship %shipX %shipY %shipsizeX %shipsizeY 
+	;SHOWPOSITION
+	menu font size 7 
+	menu delete position
+	menu text position %positiondisplayX %positiondisplayY #charposx #charposy
+	SET %cellx ( #charposx / 8 )
+	SET %celly ( #charposy / 8 )
+	menu text position %celldisplayX %celldisplayY %cellx %celly
+	menu font color black 
+	menu font size 10 
+RETURN
+
+SUB speedbuttons 
+	menu font style 
+	IF %speed = normal 
+		menu font style b 
+	menu button speednormal %col4 %row1 %buttonsize2 %buttonsize Normal 
+	menu font style 
+	IF %speed = slow 
+		menu font style b 
+	menu button speedslow %col4 %row2 %buttonsize2 %buttonsize Slow 
+	menu font style 
+	IF %speed = one 
+		menu font style b 
+	menu button speedone %col4 %row3 %buttonsize2 %buttonsize One 
+	menu font style 
+	IF %anchor = dropped 
+		menu font style b 
+	menu button anchor %col4 %row4 %buttonsize2 %buttonsize Anchor 
+	menu font style 
+	IF %unblock = on
+		menu font style b 
+	menu button unblocktoggle %col4 %row5 %buttonsize2 %buttonsize Unblock
+	menu font style 
+	IF %dodge = on
+		menu font style b 
+	menu button dodgetoggle %dodgebuttonX %dodgebuttonY %dodgebuttonsize %buttonsize Dodge Ships
+	menu font style 
+RETURN 
+
+SUB drawtrainer
+	SET %trainerPosX %1
+	SET %trainerPosY %2
+	menu font color blue
+	menu font style bu 
+	menu text trainhead %trainerPosX %trainerposY Trainer 
+	menu font style
+	menu font color
+	SET %traincol1 %trainerPosX
+	SET %traincol2 %trainerPosX + %buttonsize2
+	SET %traincol3 %traincol2 + 30
+	SET %trainrow1 %trainerPosy + 20
+	SET %trainrow2 %trainerPosy + %buttonsize + %buttonspacing  + 20
+	SET %trainrow3 %trainerPosy + %buttonsize * 2 + %buttonspacing * 2 + 20
+	SET %trainrow4 %trainerPosy + %buttonsize * 3 + %buttonspacing * 3 + 20
+	SET %trainrow5 %trainerPosy + %buttonsize * 4 + %buttonspacing * 4 + 20
+	SET %trainrow6 %trainerPosy + %buttonsize * 5 + %buttonspacing * 5 + 20
+	SET %trainrow7 %trainerPosy + %buttonsize * 6 + %buttonspacing * 6 + 20
+	SET %trainrow8 %trainerPosy + %buttonsize * 7 + %buttonspacing * 7 + 20
+	GOSUB trainsubbuttons 
+	menu font size 7 
+	IF %debug
+		menu button trainsetup %traincol2 %trainerPosY 30 15 Setup
+	menu button trainquit %traincol3 %trainerPosY 30 15 Quit
+	menu font size 10
+RETURN
+
+SUB drawtrainsetup
+; RETRY BUTTON NOT WORKING!!!
+	menu delete trainmagery
+	menu delete traineval
+	menu delete trainnecro
+	menu delete trainspirit
+	menu delete trainchiv
+	menu delete trainhiding
+	menu delete trainmusic
+	menu delete trainpeace
+	menu button GetMaxGainChainRetry %traincol1 %trainrow1 %buttonsize2 %buttonsize Set Retry
+	menu edit retryfield %traincol2 %trainrow1 %buttonsize2 5
+	menu button trainsetupsave %traincol1 trainrow 6 Save
+RETURN
+
+SUB deletetrainingmenu
+	menu delete trainmagery
+	menu delete traineval
+	menu delete trainnecro
+	menu delete trainspirit
+	menu delete trainchiv
+	menu delete trainhiding
+	menu delete trainmusic
+	menu delete trainpeace
+	menu delete GetMaxGainChainRetry
+	menu delete retryfield 
+	menu delete trainsetupsave
+RETURN
+
+SUB trainsubbuttons 
+	IF %trainsub = magery 
+		menu font style b 
+	menu button trainmagery %traincol1 %trainrow1 %buttonsize2 %buttonsize Magery 
+	menu font style 
+	IF %trainsub = eval 
+		menu font style b 
+	menu button traineval %traincol2 %trainrow1 %buttonsize2 %buttonsize Eval Int
+	menu font style 
+	IF %trainsub = necro 
+		menu font style b 
+	menu button trainnecro %traincol1 %trainrow2 %buttonsize2 %buttonsize Necro 
+	menu font style 
+	IF %trainsub = spirit 
+		menu font style b 
+	menu button trainspirit %traincol2 %trainrow2 %buttonsize2 %buttonsize Spirit 
+	menu font style 
+	IF %trainsub = chiv 
+		menu font style b 
+	menu button trainchiv %traincol1 %trainrow3 %buttonsize2 %buttonsize Chivalry 
+	menu font style 
+	IF %trainsub = hiding 
+		menu font style b 
+	menu button trainhiding %traincol2 %trainrow3 %buttonsize2 %buttonsize Hiding 
+	menu font style 
+	IF %trainsub = music 
+		menu font style b 
+	menu button trainmusic %traincol1 %trainrow4 %buttonsize2 %buttonsize Music 
+	menu font style 
+	IF %trainsub = peace 
+		menu font style b 
+	menu button trainpeace %traincol2 %trainrow4 %buttonsize2 %buttonsize Peace 
+	menu font style 
+	IF %trainsub = resist 
+		menu font style b 
+	menu button trainresist %traincol1 %trainrow5 %buttonsize2 %buttonsize Resist
+	menu font style 
+	IF %trainsub = bushido
+		menu font style b 
+	menu button trainbushido %traincol2 %trainrow5 %buttonsize2 %buttonsize Bushido
+	menu font style 
+RETURN 
+
+SUB unblocktoggle
+	menu delete unblocktoggle
+	IF %unblock = on 
+		{ 
+		SET %unblock off 
+		GOSUB status UNBLOCK_OFF 
+	GOSUB speedbuttons 
+		RETURN 
+		} 
+	ELSE 
+		{ 
+		SET %unblock on 
+		GOSUB status UNBLOCK_ON 
+	GOSUB speedbuttons 
+		RETURN 
+		} 
+RETURN 
+
+SUB dodgetoggle
+	menu delete dodgetoggle
+	IF %dodge = on 
+		{ 
+		SET %dodge off 
+	ignoreItem reset 2
+		GOSUB status Dodge_OFF 
+	GOSUB speedbuttons 
+		RETURN 
+		} 
+	ELSE 
+		{ 
+		SET %dodge on 
+		GOSUB status Dodge_ON 
+	GOSUB speedbuttons 
+		RETURN 
+		} 
+RETURN 
+
+;************************************************** 
+;******* T R A I N I N G	S U B S  *********** 
+;************************************************** 
+
+SUB Resist 
+	event macro 15 7
+	;2s makes spells hit every 4 tiles, 4 should be 8 tiles
+	target 4s
+	event macro 23 0
+RETURN
+
+SUB Eval 
+	;magic arrow
+	chooseskill eval real 
+	event macro 15 4
+	;tillerman will be hit
+	;we leave the main loop to avoid the 8x8 engine, 
+	;therefore this line is needed.
+	GOSUB HitTheTillerman 
+RETURN
+
+SUB hiding 
+	chooseskill hiding 
+	GOSUB status TRAINING_HIDING 
+	event macro 13 21 
+RETURN 
+
+SUB music 
+	GOSUB findinstrument 
+RETURN 
+	 
+SUB peace 
+	IF %sailstatus <> GAIN
+		GOSUB status TRAINING_PEACEMAKING
+	event macro 13 9 
+	target 2s 
+	event macro 23 0 
+	FOR %i 1 10 
+		{ 
+		scanjournal %i 
+		IF The_instrument_you_are_trying in #journal 
+			{ 
+				  deleteJournal 
+			GOSUB OpenBackpack 
+			GOSUB FindInstrument 
+			RETURN 
+			  } 
+		IF That_is_not_a_musical_instrument in #journal 
+			{ 
+				  deleteJournal 
+			GOSUB OpenBackpack 
+			GOSUB FindInstrument 
+			RETURN 
+			  } 
+		IF What_instrument_shall_you_play in #journal 
+			{ 
+				  deleteJournal 
+			GOSUB OpenBackpack 
+			GOSUB FindInstrument 
+			RETURN 
+			  } 
+		} 
+RETURN 
+
+SUB SPIRIT 
+	IF %sailstatus <> GAIN
+		GOSUB status TRAINING_SPIRIT_SPEAK 
+	chooseskill Spirit real 
+	;use skill spirit speak 
+	event macro 13 32 
+RETURN 
+
+SUB CHIV 
+	IF %sailstatus <> GAIN
+		GOSUB status TRAINING_CHIVALRY 
+	chooseskill Chivalry real 
+	;0-30 Buy it 
+	IF #skill < 301 
+		{ 
+		display ok Please find the chivalry npc  $ next to the Luna moongate, $ buy the skill chivalry, $ then resume the boat training. 
+		HALT 
+		} 
+	;30-40 Consecrate Weapon 
+	if #skill < 401 
+		{ 
+		event macro 15 203 
+		RETURN 
+		} 
+	;40-55 Divine Fury 
+	if #skill < 551 
+		{ 
+		event macro 15 205 
+		RETURN 
+		} 
+	;55-69 Enemy of One/Dispel Evil 
+	if #skill < 691 
+		{ 
+		event macro 15 206 
+		RETURN 
+		} 
+	;69-88 Holy Light  
+	if #skill < 881 
+		{ 
+		event macro 15 207 
+		RETURN 
+		} 
+	;88-120 Noble Sacrifice 
+	if #skill < 1200 
+		{ 
+		event macro 15 208 
+		RETURN 
+		} 
+RETURN 
+
+SUB NECRO 
+	IF %sailstatus <> GAIN
+		GOSUB status TRAINING_NECROMANCY
+	chooseskill Necro real 
+	;0-30 Buy/Curse Weapon 
+	;cast spell [N] Curse Weapon 104 
+	if #skill < 301 
+		{ 
+		event macro 15 104 
+		RETURN 
+		} 
+
+	;30-54 Pain Spike or Wraith Form 
+	;cast spell [N] Wraith Form 116 
+	if #skill < 541 
+		{ 
+		event macro 15 116 
+		RETURN 
+		} 
+
+	;54-71 Horrific Beast 
+	;cast spell [N] Horrific Beast 106 
+	;event macro 15 106 
+	if #skill < 711 
+		{ 
+		event macro 15 106 
+		RETURN 
+		} 
+
+	;71-81 Wither 
+	;cast spell [N] Wither 115 
+	;event macro 15 115 
+	if #skill < 811 
+		{ 
+		event macro 15 115 
+		RETURN 
+		} 
+
+	;81-110 Lich Form 
+	;cast spell [N] Lich Form 107 
+	;event macro 15 107 
+	if #skill < 1101 
+		{ 
+		event macro 15 107 
+		RETURN 
+		} 
+
+	;110-120 Vampiric Embrace 
+	;cast spell [N] Vampiric Embrace 113 
+	;event macro 15 113 
+	if #skill < 1201 
+		{ 
+		event macro 15 113 
+		RETURN 
+		} 
+RETURN 
+
+SUB BUSHIDO
+	GOSUB status TRAINING_BUSHIDO
+	chooseskill bushido real 
+	IF #skill < 250 
+		{ 
+		display ok Please find a samurai in Tokuno and buy the skill up to 25. $
+		+You may have to try several NPC's to get to 25.0, $ then resume the boat training. 
+		HALT 
+		} 
+	;confidence 25 min skill
+	if #skill < 450
+		{ 
+		event macro 15 146
+		RETURN 
+		} 
+	;counterattack 40 min skill
+	if #skill < 620
+		{ 
+		event macro 15 148
+		RETURN 
+		} 
+	;evasion  60 min skill
+	if #skill < 1100
+		{ 
+		event macro 15 147
+		RETURN 
+		} 
+RETURN
+
+SUB MAGERY 
+	GOSUB status TRAINING_MAGERY 
+	GOSUB CheckMageryPenalty
+	chooseskill magery 
+	;0-30 Buy it usually, but due to mage penalty weapons spells should be set for lower skills levels
+	IF #skill < 280
+		{ 
+		;harm
+		event macro 15 29 
+		RETURN 
+		} 
+	IF #skill < 350 
+		{ 
+		;fireball
+		event macro 15 29 
+		RETURN 
+		} 
+	IF #skill < 451 
+		{ 
+		;lightning 
+		event macro 15 29 
+		RETURN 
+		} 
+	IF #skill < 685 
+		{ 
+		;para 
+		event macro 15 37 
+		RETURN 
+		} 
+	IF #skill < 901
+		{ 
+		;ebolt 
+		event macro 15 41 
+		RETURN 
+		} 
+	IF #skill < 1001 
+		{ 
+		;flame strike
+		event macro 15 50 
+		RETURN 
+		} 
+	IF #skill < 1200 
+		{ 
+		;earthquake
+		event macro 15 56 
+		RETURN 
+		} 
+RETURN 
+
+SUB CheckMageryEval 
+	chooseskill magery real 
+	IF #skill = #skillcap 
+		{ 
+		chooseskill evaluating 
+		IF #skill < #skillcap 
+			{ 
+			;This will continue, but will watch eval 
+			RETURN 
+			} 
+		display ok Magery and Eval are both at skillcap. 
+		halt 
+		} 
+	chooseskill magery 
+RETURN 
+
+
+SUB trainmagery 
+	IF %trainsub = magery 
+		{ 
+		GOSUB stoptraining 
+		RETURN 
+		} 
+	GOSUB SetPenaltyItem
+	SET %sailstatus sailing 
+	SET %trainsub magery 
+	chooseskill magery real
+	SET %startskill #skill
+	GOSUB trainsubbuttons 
+RETURN 
+
+SUB traineval
+	IF %trainsub = eval
+		{ 
+		GOSUB stoptraining 
+		RETURN 
+		} 
+	chooseskill eval
+	SET %evalskill #skill
+	IF %evalskill <> #skillcap
+		{
+		display ok Please ensure that you are wearing jewellery that increases
+					+$your skill in Evalunating Intelligance to the skillcap.
+					+$If you do that, you will just need to find one non-GGS gainspot
+					+$to reach your skillcap.
+		halt
+		}
+	SET %sailstatus sailing 
+	SET %trainsub eval
+	chooseskill eval real
+	SET %startskill #skill 
+	GOSUB trainsubbuttons 
+RETURN 
+
+SUB trainresist
+	IF %trainsub = resist
+		{ 
+		GOSUB stoptraining 
+		RETURN 
+		} 
+	chooseskill resist
+	SET %resistskill #skill
+	IF %resistskill <> #skillcap
+		{
+		display ok Please ensure that you are wearing jewellery that increases
+					+$your skill in Magic Resist to the skillcap.
+					+$If you do that, you will just need to find one non-GGS gainspot
+					+$to reach your skillcap.
+		halt
+		}
+	SET %sailstatus sailing 
+	SET %trainsub resist
+	chooseskill resist real
+	SET %startskill #skill 
+	GOSUB trainsubbuttons 
+RETURN 
+
+SUB trainnecro 
+	IF %trainsub = necro 
+		{ 
+		GOSUB stoptraining 
+		RETURN 
+		} 
+	SET %sailstatus sailing 
+	SET %trainsub necro 
+	chooseskill necromancy 
+	SET %startskill #skill 
+	GOSUB trainsubbuttons 
+RETURN 
+
+SUB trainbushido
+	IF %trainsub = bushido
+		{ 
+		GOSUB stoptraining 
+		RETURN 
+		} 
+	SET %sailstatus sailing 
+	SET %trainsub bushido
+	chooseskill bushido real 
+	SET %startskill #skill 
+	GOSUB trainsubbuttons 
+RETURN 
+
+SUB trainspirit 
+	IF %trainsub = spirit 
+		{ 
+		GOSUB stoptraining 
+		RETURN 
+		} 
+	SET %sailstatus sailing 
+	SET %trainsub spirit 
+	chooseskill spirit 
+	SET %startskill #skill 
+	GOSUB trainsubbuttons 
+RETURN 
+
+SUB trainchiv 
+	IF %trainsub = chiv 
+		{ 
+		GOSUB stoptraining 
+		RETURN 
+		} 
+	SET %sailstatus sailing 
+	SET %trainsub chiv 
+	chooseskill chivalry 
+	SET %startskill #skill 
+	GOSUB trainsubbuttons 
+RETURN 
+
+SUB trainhiding 
+	IF %trainsub = hiding 
+		{ 
+		GOSUB stoptraining 
+		RETURN 
+		} 
+	SET %sailstatus sailing 
+	SET %trainsub hiding 
+	chooseskill hiding 
+	SET %startskill #skill 
+	GOSUB trainsubbuttons 
+RETURN 
+
+SUB trainmusic 
+	IF %trainsub = music 
+		{ 
+		GOSUB stoptraining 
+		RETURN 
+		} 
+	SET %sailstatus sailing 
+	SET %trainsub music 
+	chooseskill musicianship 
+	SET %startskill #skill 
+	GOSUB trainsubbuttons 
+RETURN 
+
+SUB trainpeace 
+	IF %trainsub = peace 
+		{ 
+		GOSUB stoptraining 
+		RETURN 
+		} 
+	SET %sailstatus sailing 
+	SET %trainsub peace 
+	chooseskill peacemaking 
+	SET %startskill #skill 
+	GOSUB trainsubbuttons 
+RETURN 
+
+SUB stoptraining
+	SET %trainsub n/a
+	SET %sailstatus stopped
+	GOSUB trainsubbuttons
+RETURN
+
+SUB trainquit
+	GOSUB stop 
+	event macro 3 ^ drop anchor
+	menu hide
+	halt
+RETURN	 
+
+;************************************************ 
+; ******** A U X I L I A R Y	S U B S ****** 
+;************************************************ 
+	
+SUB MenuActionWaitSec
+	SET %menuwaitdelay %1
+	IF %menuwaitdelay <> n/a
+		{
+		SET %menuwait ( #time + %menuwaitdelay )
+		menuaction_wait:
+		IF #menubutton <> n/a 
+			{ 
+			GOSUB #menubutton 
+			SET #menubutton n/a 
+			} 
+		IF #time > %menuwait
+		RETURN
+	 goto menuaction_wait
+		}
+	ELSE
+		{
+		IF #menubutton <> n/a 
+			{ 
+			GOSUB #menubutton 
+			SET #menubutton n/a 
+			RETURN 
+			} 
+		 }	 
+RETURN 
+
+SUB menuaction
+	IF #menubutton <> n/a 
+		{ 
+		GOSUB #menubutton 
+		SET #menubutton n/a 
+		RETURN 
+		} 
+RETURN
+
+SUB train 
+	;used for timing checks 
+	IF %trainsub = n/a		
+		RETURN
+	IF %skilltimeout <= #time 
+		{ 
+		chooseskill %trainsub real
+		SET %lastskillvalue #skill
+		GOSUB SkillCapCheck
+		GOSUB %trainsub 
+		set %skilltimeout #time + %traindelay 
+		} 
+RETURN	 
+
+SUB SkillCapCheck
+	chooseskill %trainsub real
+	IF #skill = #skillcap
+		{
+		GOSUB stoptraining
+		SET %gratsmsg Congratulations!_Your_skill_in_ , %trainsub , _is_ , #skill
+		FOR %i 0 5
+			{
+			IF %sound 
+				sound ding.wav
+			wait 1s
+			GOSUB status %gratsmsg
+			}
+		
+		RETURN
+		}
+RETURN
+
+SUB trainingdelay 
+for %i 1 10 
+	{ 
+	scanjournal %i 
+	if turbulent_water in #journal 
+		{ 
+			  deleteJournal 
+		GOSUB forward 
+		SET %sailing turbulent 
+		RETURN 
+		  } 
+	if Insufficient_mana in #journal 
+		{ 
+			  deleteJournal 
+		GOSUB stop 
+		GOSUB MANAwait 
+		RETURN 
+		  } 
+	if to_use_this_ability in #journal 
+		{ 
+			  deleteJournal 
+		GOSUB stop 
+		GOSUB MANAwait 
+		RETURN 
+		  }
+	if You_are_already_casting_a_spell in #journal 
+		{ 
+			  deleteJournal 
+		SET %traindelay %traindelay + 1 
+		RETURN 
+		  } 
+	if You_have_not_yet_recovered_from in #journal 
+		{ 
+			  deleteJournal 
+		SET %traindelay %traindelay + 1 
+		RETURN 
+		  } 
+	if You_must_wait_a_few_moments_to in #journal 
+		{ 
+			  deleteJournal 
+		SET %traindelay 12 
+		RETURN 
+		  } 
+	} 
+RETURN 
+
+SUB OpenBackpack 
+	;OPEN BACKPACK 
+	event macro 9 7	 
+	event macro 8 7 
+	SET %gumpwait 1 
+	ArrangeGumps_BackpackWait: 
+	IF #conttype <> ZJF 
+		{ 
+		SET %gumpwait %gumpwait + 1 
+		IF %gumpwait > %maxgumpwait 
+			{ 
+			GOSUB statuserror CANT_OPEN_BACKPACK 
+			HALT 
+			} 
+		GOTO ArrangeGumps_BackPackWait 
+		} 
+	contpos %MainBackpackGumpX %MainBackpackGumpY 
+	SET %backpack #contid 
+	wait 20 
+RETURN 
+
+SUB FindInstrument 
+	;FIND INSTRUMENT 
+	finditem %instruments C_ , %backpack 
+	IF #findkind = -1 
+		{ 
+		GOSUB Openbackpack 
+		wait 10 
+		finditem %instruments C_ , %backpack 
+		IF #findkind = -1 
+			{ 
+			display ok Corsair cant find any instrument to play in your backpack, $ please get some, or check if the instruments $ type is listed in the variable 'instruments'. 
+			event macro 3 ^ stop 
+			halt 
+			} 
+		} 
+	SET #lobjectid #findid 
+	event macro 17 0 
+	wait 20 
+RETURN 
+
+SUB hitthetillerman 
+	IF %trainsub <> N/A
+		{
+		IF #targcurs = 1 
+			{ 
+			GOSUB status HITTING_TILLERMAN 
+			SET #ltargetkind 1
+			SET #ltargetid %tillerman 
+			event macro 22 0 
+			} 
+		}
+RETURN 
+
+SUB MANAwait 
+	GOSUB status WAITING_FOR_MANA 
+	;use skill Meditation 
+	manawaitmeditate: 
+	IF %medi = yes 
+		event macro 13 46 
+	FOR %i 1 10 
+		{ 
+		scanjournal %i 
+		IF You_cannot_focus_your in #journal 
+			{ 
+				  deleteJournal 
+			goto manawaitmeditate 
+			  } 
+		} 
+	manawait: 
+	IF #mana < #maxmana 
+		{ 
+		goto manawait 
+		} 
+	SET %sailstatus sailing 
+RETURN 
+
+SUB CheckMageryPenalty
+	Chooseskill magery real
+	SET %MagerySkillReal #skill
+	Chooseskill magery
+	SET %MagerySkill #skill
+	IF %MagerySkillReal > %MagerySkill && %MagerySkillReal > 0
+		{
+		SET %MageryPenalty #true
+		SET %MageryPenaltyActive #true
+		RETURN
+		}
+	IF %MagerySkillReal <= %MagerySkill && %MagerySkillReal > 0
+		{
+		SET %MageryPenaltyActive #false
+		}
+	IF %MageryPenalty && ! %MageryPenaltyActive
+		{
+		GOSUB stop 
+		SET %sailstatus stop 
+		GOSUB status STOPPING_TO_RESET_MAGERY_PENALTY
+		GOSUB OpenBackpack 
+		Finditem %PenaltyItem C_ , #backpackID
+		IF #findcnt = 0
+			{
+			IF %PenaltyHand = L
+				{
+				SET #LhandID %penaltyitem
+				event macro 24 1
+				wait 60
+				event macro 24 1
+				}
+			IF %PenaltyHand = R
+				{
+				SET #RhandID %penaltyitem
+				event macro 24 2
+				wait 60
+				event macro 24 2
+				}
+			}
+		IF #findcnt = 1
+			{
+			IF %PenaltyHand = R
+				{
+				SET #RHANDID %penaltyitem
+				event macro 24 2
+				}
+			IF %PenaltyHand = L
+				{
+				SET #LHANDID %penaltyitem
+				event macro 24 1
+				}
+			}
+		SET %sailstatus sailing
+		}
+RETURN
+
+SUB SetPenaltyItem
+	GOSUB Status Searching_for_Mage_weapon
+	;paperdoll and backpack need to be open
+	Finditem %WpT C_ , #charid
+	IF #findcnt = 0
+		goto SetPenaltyItem_Backpack
+	For %f 0 #findcnt
+		{
+		finditem %WpT %f C_ , #charid 
+		event property #findid
+		IF %mageweapon in #property
+			{
+			SET %PenaltyItem #findid
+			IF #findtype in %WpTR
+				SET %PenaltyHand R
+			IF #findtype in %WpTL
+				SET %PenaltyHand L
+			IF %PenaltyHand <> R && %PenaltyHand <> L
+				{
+				display ok PentaltyItemType Error
+					+can not find magerypenalty item's type
+					+in the list of right or left hand items
+				halt
+				}
+			SET %MageryPenalty #true 
+			SET %MageryPenaltyActive #true 
+			RETURN
+			}
+		}
+	SetPenaltyItem_Backpack:
+	Finditem %WpT C_ , #backpackid
+	IF #findcnt = 0
+		goto SetPenaltyItem_Error
+	For %f 1 #findcnt
+		{
+		finditem %WpT %f C_ , #backpackid
+		event property #findid
+		SET %mageweapon mage , #spc , weapon
+		IF %mageweapon in #property
+			{
+			SET %PenaltyItem #findid
+			IF #findtype in %WpTR
+				SET %PenaltyHand R
+			IF #findtype in %WpTL
+				SET %PenaltyHand L
+			IF %PenaltyHand <> R && %PenaltyHand <> L
+				{
+				display ok PentaltyItemType Error
+					+can not find magerypenalty item's type
+					+in the list of right or left hand items
+				halt
+				}
+			SET %MageryPenalty #true 
+			SET %MageryPenaltyActive #false 
+			RETURN
+			}
+		}
+	SetPenaltyItem_Error:
+	;since this is optional, no halt
+	SET %MageryPenalty #false
+	display ok Could not find a mage weapon with a penalty to the magery skill.$
+		+A weapon or wand with the property 'mage weapon -29 skill' 
+	GOSUB Status No_Mage_weapon_found
+RETURN
+
+SUB shard
+	SET %shards_north AOL , #spc , Legends_Arirang_Asuka_Atlantic_Baja_Balhae_Catskills_Chesapeake_Drachenfels_
+	+Formosa_Great , #spc , Lakes_Hokuto_Izumo_Lake , #spc , Austin_Lake , #spc , Superior_Mizuho_Mugen_Napa , #spc , Valley_
+	+Oceania_Pacific_Sakura_Siege , #spc , Perilous_Sonoma_Wakoku_Yamato
+	SET %shards_south Europa_Origin
+	SET %shards %shards_north , _ , %shards_south
+	IF #shard notin %shards
+		{
+ 		display yesno This script is designed for use on OSI UO shards. You are playing on a freeshard.$
+ 		+This can cause the script to malfunction in unpredictable ways.$
+ 		+$
+ 		+Do you want to continue even though this script is not made  for this shard and might malfunction?
+ 		IF #dispres = no
+ 			HALT
+		display yesno Ok, have it your way then, BUT:$
+ 		+Please DO NOT post about freeshard problems in the Corsair  thread!$
+ 		+Please DO NOT rate Corsair negatively if problems occur on  your freeshard!$
+ 		+Please DO solve your freeshard problem yourself!$
+ 		+$
+ 		+Do you understand that Corsair does not support freeshards  in any way?$
+ 		IF #dispres = no
+ 			HALT
+		}
+RETURN
+
+;***************************************************** 
+; ****** BOAT CONTROL SUBS **************** 
+;**************************************************** 
+
+SUB InitShip
+	finditem %tillermantype G_4 
+	IF #findcnt = 0
+		finditem %tillermantype G_8
+	IF #findcnt = 0 
+		{
+		display ok SUB InitShip Error 2:
+		+No tillerman found in the area eight tiles around you.$
+		+Please board a ship and stand between mast and tillerman.
+		menu hide
+		halt
+		}		
+	IF #findcnt > 1
+		{
+		display ok SUB InitShip Error 3: 
+		+More than one tillerman found. Another ship is too close nearby.
+		+$Please move your ship away from the other ship, so that its tillerman
+		+$and mast are at least 8 tiles away from your position.
+		menu hide
+		halt
+		}
+	IF #FINDKIND = -1 
+		{ 
+		display ok SUB InitShip Error 4: 
+		+$Please board a boat, stand between mast and  
+		+$ the tillerman. ELSE check "%tillerType" in the config section. 
+		menu hide
+		halt 
+		} 
+	SET %tillerman #FINDID 
+	SET %tillermanX #findX 
+	SET %tillermanY #findY 
+	SET %anchor dropped
+	GOSUB anchor
+	wait 40
+	GOSUB HeadTo N
+RETURN
+
+SUB RefreshShip
+	GOSUB status Refreshing_ship
+	finditem %plankNStype G_8
+	IF #findcnt < 2
+		{ 
+		display ok SUB RefreshShip Error 1: 
+		+$Please board a boat, stand between mast and  
+		+$ the tillerman. ELSE check "%plankNStype" in the config section. 
+		menu hide
+		halt 
+		} 
+	IF #findcnt > 2
+		{
+		display ok SUB RefreshShip Error 2: 
+		+More than one tillerman found. Another ship is too close nearby.
+		+$Please move your ship away from the other ship, so that its planks
+		+$are at least 8 tiles away from your position.
+		menu hide
+		halt
+		}	
+	IF #findcnt = 2
+		{
+		SET #lobjectID #findid
+		event macro 17 0
+		wait 30
+		}
+RETURN
+
+SUB CheckKey
+	GOSUB status Check_Shipkey
+	GOSUB OpenBackpack 
+	Finditem %shipkeytypes C_ , %backpack
+	IF #findkind = -1
+		{
+		display yesno SUB CheckKey Error 1: 
+		+No Key found in your main backpack. 
+		+$Please move the key into your main backpack and try again, 
+		+$or check %shipkeytypes in the config section.
+		+$Do you want to ignore this warning? (not recommended)
+		IF #dispres = yes
+		RETURN
+		menu hide
+		halt
+		}	
+	CHECKKEY_FINDAGAIN:
+	Finditem %shipkeytypes C_ , %backpack
+	IF #findkind = -1
+		RETURN
+	event property #findid
+	IF ship in #property && insured in #property
+		{
+		;fine
+		ignoreitem #findid
+		GOTO CHECKKEY_FINDAGAIN
+		wait 2
+		}
+	ELSE
+		{
+		;lets insure it.
+		display yesno SUB CheckKey Error 2: 
+		+An UNINSURED ship key was found in your main backpack.
+		+$Should you die, you can allways stuck call to town, res and 
+		+$recall back right away, IF your ship key was insured.
+		+$Please insure it now!
+		+$Do you want to ignore this warning? (not recommended)
+		IF #dispres = yes
+		RETURN
+		menu hide	
+		halt
+		}
+RETURN
+		
+SUB anchor 
+	IF %anchor = dropped 
+		{ 
+		event macro 3 ^ raise anchor 
+		SET %anchor raised 
+		GOSUB speedbuttons 
+		GOSUB status ANCHOR_RAISED 
+		RETURN 
+		} 
+	IF %anchor = raised 
+		{ 
+		event macro 3 ^ drop anchor 
+		SET %anchor dropped 
+		GOSUB speedbuttons 
+		GOSUB status ANCHOR_DROPPED 
+		RETURN 
+		} 
+RETURN 
+
+SUB stop 
+	event macro 3 ^ stop 
+;	SET %sailstatus stop 
+	GOSUB status STOPPING 
+RETURN 
+
+SUB speedslow 
+	SET %speed slow 
+	GOSUB speedbuttons 
+	GOSUB status SPEED_SET_TO_SLOW 
+RETURN 
+
+SUB speednormal 
+	SET %speed normal 
+	GOSUB speedbuttons 
+	GOSUB status SPEED_SET_TO_NORMAL 
+RETURN 
+
+SUB speedone 
+	SET %speed one 
+	GOSUB speedbuttons 
+	GOSUB status SPEED_SET_TO_ONE 
+RETURN 
+
+SUB forward 
+	IF %speed = normal 
+		event macro 3 ^ forward 
+	IF %speed = slow
+		event macro 3 ^ slow forward 
+	IF %speed = one
+		event macro 3 ^ one forward 
+	GOSUB status FORWARD 
+RETURN 
+
+SUB forwardright 
+	IF %speed = normal 
+		event macro 3 ^ forward right 
+	IF %speed = slow
+		event macro 3 ^ slow forward right 
+	IF %speed = one
+		event macro 3 ^ one forward right 
+	GOSUB status FORWARD_RIGHT 
+RETURN 
+
+SUB forwardleft 
+	IF %speed = normal 
+		event macro 3 ^ forward left 
+	IF %speed = slow
+		event macro 3 ^ slow forward left 
+	IF %speed = one
+		event macro 3 ^ one forward left 
+	GOSUB status FORWARD_LEFT 
+RETURN 
+
+SUB right 
+	IF %speed = normal 
+		event macro 3 ^ right 
+	IF %speed = slow
+		event macro 3 ^ slow right 
+	IF %speed = one
+		event macro 3 ^ one right 
+	GOSUB status RIGHT 
+RETURN 
+
+SUB left 
+	IF %speed = normal 
+		event macro 3 ^ left 
+	IF %speed = slow
+		event macro 3 ^ left 
+	IF %speed = one
+		event macro 3 ^ one left 
+	GOSUB status LEFT 
+RETURN 
+
+SUB back 
+	IF %speed = normal 
+		event macro 3 ^ back 
+	IF %speed = slow
+		event macro 3 ^ slow back 
+	IF %speed = one
+		event macro 3 ^ one back 
+	GOSUB status BACK 
+RETURN 
+
+SUB backleft 
+	IF %speed = normal 
+		event macro 3 ^ back left 
+	IF %speed = slow
+		event macro 3 ^ slow left
+	IF %speed = one
+		event macro 3 ^ one left
+	GOSUB status BACK_LEFT 
+RETURN 
+
+SUB backright 
+	IF %speed = normal 
+		event macro 3 ^ back right 
+	IF %speed = slow
+		event macro 3 ^ slow back right 
+	IF %speed = one
+		event macro 3 ^ slow back right 
+	GOSUB status BACK_RIGHT 
+RETURN 
+
+SUB turnleft 
+	event macro 3 ^ turn left 
+	GOSUB status TURN_LEFT 
+RETURN	 
+
+SUB turnright 
+	event macro 3 ^ turn right 
+	GOSUB status TURN_RIGHT 
+RETURN	 
+
+SUB turnaround 
+	event macro 3 ^ turn around 
+	GOSUB status TURN_AROUND 
+RETURN	 
+
+SUB channelcheck 
+	IF #charposX => 5040 || #charposX <= 80 
+		{ 
+		IF #charposX < 700 
+			{ 
+			IF #charposY < 2050 && #charposY > 2029 
+				SET %sailing turbulent 
+			IF #charposY < 1300 && #charposY > 1273 
+				SET %sailing turbulent 
+			IF #charposY < 15 && #charposY > 0 
+				SET %sailing turbulent 
+			} 
+		IF #charposX > 4500 
+			{ 
+			IF #charposY < 15 && #charposY > 0 
+				SET %sailing turbulent 
+			} 
+		RETURN
+		} 
+	IF #charposX > 80 && #charposX < 1450 
+		{ 
+		;east of channel 
+		GOSUB checktillerman 
+		GOSUB channelcheckwarning 
+		GOSUB SailWestToChannel 
+		RETURN 
+		} 
+	IF #charposX < 5040 && #charposX > 3500 
+		{ 
+		;west of channel 
+		GOSUB checktillerman 
+		GOSUB channelcheckwarning 
+		GOSUB SailEastToChannel 
+		RETURN 
+		} 
+RETURN 
+
+SUB channelcheckwarning 
+display ok ATTENTION! 
++$This script supports sailing to the 'channel' on the serverborder 
++$as shown on the map. It does NOT support sailing around 
++$isles, continents or anything else big. 
++$ 
++$Please board your ship on the west side of Skara Brae, 
++$or on the east side of Moonglow. 
++$ 
++$Yours sincerely, 
++$	Dilbert 
+RETURN 
+
+SUB checktillerman 
+	ignoreitem reset 1
+	SET %tillermantype ENX_HNX_JNX_ONX 
+	finditem %tillermantype G_8
+	IF #findkind = -1 
+		{ 
+		GOSUB status LEFT_SHIP 
+		menu hide 
+		HALT 
+		} 
+	ignoreitem %tillerman 1
+RETURN 
+
+SUB SailWestToChannel 
+	GOSUB checktillerman 
+	GOSUB stop 
+	wait 2s 
+	GOSUB turnleft 
+	wait 2s 
+	SET %speed normal 
+	GOSUB speedbuttons 
+	wait 2s 
+	GOSUB forward 
+	SailWestToChannel_wait: 
+	for %i 1 10 
+		{ 
+		scanjournal %i 
+		if ve_stopped_sir in #journal 
+			{ 
+				  deleteJournal 
+			GOSUB backwards 
+			wait 3s 
+			GOSUB right 
+			wait 5s 
+			GOSUB forward 
+			} 
+		  } 
+	IF #charposX < 40 
+		{ 
+		GOSUB stop 
+		wait 2s 
+		SET %speed slow 
+		GOSUB speedbuttons 
+		wait 2s 
+		GOSUB turnright		 
+		SET %sailstatus sailing 
+		RETURN 
+		} 
+	goto SailWestToChannel_wait 
+RETURN 
+
+SUB SailEastToChannel 
+	GOSUB checktillerman 
+	GOSUB stop 
+	wait 2s 
+	GOSUB turnright 
+	wait 2s 
+	SET %speed normal 
+	GOSUB speedbuttons 
+	GOSUB forward 
+	wait 2s 
+	SailEastToChannel_wait: 
+	for %i 1 10 
+		{ 
+		scanjournal %i 
+		if ve_stopped_sir in #journal 
+			{ 
+				  deleteJournal 
+			GOSUB backwards 
+			wait 3s 
+			GOSUB left 
+			wait 5s 
+			GOSUB forward 
+			} 
+		  } 
+	IF #charposX > 5080 
+		{ 
+		GOSUB stop 
+		wait 2s 
+		SET %speed slow 
+		GOSUB speedbuttons 
+		wait 2s	 
+		GOSUB turnleft 
+		SET %sailstatus sailing 
+		RETURN 
+		} 
+	goto SailEastToChannel_wait 
+RETURN
+
+SUB checkprogress 
+IF %unblock = off 
+	RETURN	 
+IF %progress < #time 
+	{ 
+	IF %oldcharposY = #charposY 
+		{ 
+		GOSUB blocked 
+		} 
+	SET %oldcharposY #charposY 
+	SET %progress #time + 2 
+	} 
+RETURN 
+
+SUB blocked
+	IF %sailstatus <> sailing 
+		RETURN 
+	GOSUB status UNBLOCK 
+	SET %blockstartx #charposx 
+	SET %blockstarty #charposy 
+	event macro 3 ^ slow forward 
+	GOSUB MenuActionWaitSec 2
+	IF %blockstarty <> #charposy 
+		{ 
+		RETURN 
+		} 
+	SET %blockx #charposx 
+	SET %blocky #charposy 
+	event macro 3 ^ forward right one 
+	GOSUB MenuActionWaitSec 1
+	IF %blocky > #charposy 
+		{ 
+		event macro 3 ^ slow forward right 
+		GOSUB MenuActionWaitSec 3
+		event macro 3 ^ slow forward 
+		RETURN 
+		}
+	event macro 3 ^ forward left one 
+	GOSUB MenuActionWaitSec 1
+	IF %blocky > #charposy 
+		{ 
+		event macro 3 ^ slow forward left 
+		GOSUB MenuActionWaitSec 3
+		event macro 3 ^ slow forward 
+		RETURN 
+		} 
+	Event macro 3 ^ right one 
+	GOSUB MenuActionWaitSec 1
+	IF %blockx < #charposx 
+		{ 
+		event macro 3 ^ right
+		GOSUB MenuActionWaitSec 2
+		RETURN 
+		} 
+	event macro 3 ^ left one 
+	GOSUB MenuActionWaitSec 1
+	IF %blockx > #charposx 
+		{ 
+		event macro 3 ^ left
+		GOSUB MenuActionWaitSec 2
+		RETURN 
+		} 
+	event macro 3 ^ back left one
+	GOSUB MenuActionWaitSec 1
+	IF %blockX > #charposX && %blockY < #charposY
+		{ 
+		event macro 3 ^ slow back left
+		GOSUB MenuActionWaitSec 3
+		event macro 3 ^ stop
+		RETURN 
+		} 
+	event macro 3 ^ back right one
+	GOSUB MenuActionWaitSec 1
+	IF %blockX < #charposX && %blockY < #charposY
+		{ 
+		event macro 3 ^ slow back right
+		GOSUB MenuActionWaitSec 3
+		event macro 3 ^ stop
+		RETURN 
+		} 
+	GOSUB MenuActionWaitSec 1
+	event macro 3 ^ backwards 
+	GOSUB MenuActionWaitSec 5
+	event macro 3 ^ right 
+	GOSUB MenuActionWaitSec 5
+	event macro 3 ^ stop 
+RETURN	 
+
+SUB stopongain 
+chooseskill %trainsub real
+IF #skill > %lastskillvalue 
+	{ 
+	IF %sound
+		sound ding.wav
+	GOSUB stop 
+	;if no prior gain was there, it will be N/A, which is fine for display.
+	SET %LastGainCellX %CurrentGainCellX
+	SET %LastGainCellY %CurrentGainCellY
+	SET %LastGainCnt %CurrentGainCnt
+	IF %BestGainCnt < %LastGainCnt
+		{
+		SET %BestGainCnt %LastGainCnt
+		SET %BestGainCellY %LastGainCellY
+		SET %BestGainCellX %LastGainCellX
+		}
+	SET %CurrentGainCellX ( #charposx / 8 )
+	SET %CurrentGainCellY ( #charposy / 8 )
+	SET %CurrentGainCnt 1
+	GOSUB chainstatus
+	IF %trainsub = resist || %trainsub = eval
+		{
+		SET %trainstatus GAINSPOT
+		SET %sailstatus stopped
+		GOSUB trainspotdry
+		RETURN
+		}
+	SET %trainstatus GAIN 
+	SET %sailstatus GAIN
+	GOSUB gainchain 
+	} 
+RETURN 
+
+SUB trainspotdry
+	IF %debug
+		pause
+	SPOTDRY:
+	SET %lastvalue #skill
+	GOSUB %trainsub
+	wait 3s
+	IF #skill = #skillcap
+		halt
+	IF #skill = %lastvalue
+		RETURN
+	GOTO SPOTDRY
+RETURN
+
+SUB gainchain 
+	IF %sailstatus <> GAIN 
+		RETURN 
+	GOSUB status GAIN_CHAIN_STARTED 
+	gainchainsuccessful:
+	chooseskill %trainsub real
+	SET %gainchainskill #skill 
+	SET %gainchainstartX #charposX 
+	SET %gainchainstartY #charposY 
+	SET %nextgainX #charposX 
+	SET %nextgainY #charposY + 8 
+	GOSUB forwardeight 
+	IF #charposX = %nextgainX && #charposY = %nextgainY 
+		{ 
+		GOSUB status WAIT_TRAINDELAY 
+		GOSUB MenuActionWaitSec %traindelay
+		GOSUB status CHAIN_ATTEMPT 
+		gainchainretry: 
+		GOSUB %trainsub 
+		SET %skilltimeout #time + %traindelay 
+		;wait until the gain can be made 
+		waitfortraindelay2: 
+		IF %skilltimeout => #time 
+			{ 
+			goto waitfortraindelay2: 
+			} 
+		;make sure spell is off 
+		IF #targcurs = 1 
+			{ 
+			SET #ltargetid %tillerman 
+			event macro 22 0 
+			wait 10 
+			} 
+		chooseskill %trainsub real
+		IF #skill > %gainchainskill 
+			{ 
+			;gain was recieved 
+			SET %CurrentGainCnt %CurrentGainCnt + 1
+			GOSUB chainstatus
+			SET %gainchainretry 0 
+			GOSUB status CHAIN_SUCCESS
+			IF %sound
+				sound ding.wav
+			GOTO gainchainsuccessful 
+			} 
+		ELSE 
+			{ 
+			SET %gainchainretry %gainchainretry + 1	 
+			IF %gainchainretry => %maxgainchainretry 
+				{ 
+				; gain was not recieved after max retries 
+				SET %gainchainretry 0 
+				SET %sailstatus sailing	 
+				GOSUB status CHAIN_OVER 
+				RETURN 
+				} 
+			GOSUB status CHAIN_RETRY_ , %gainchainretry , _OF_ , %maxgainchainretry 
+			goto gainchainretry 
+			} 
+RETURN 
+
+SUB ForwardEight 
+	GOSUB status NEXT_CHAINSPOT 
+	FOR %i 1 8 
+		{ 
+		event macro 3 ^ Forward one 
+		wait 20 
+		} 
+RETURN
+
+SUB BackEight 
+	GOSUB status NEXT_CHAINSPOT 
+	FOR %i 1 8 
+		{ 
+		event macro 3 ^ back one 
+		wait 20 
+		} 
+RETURN
+
+SUB DodgeShip
+	IF %dodge <> on
+		RETURN
+	IF #charposY => ( %ignoretillermanY - 20 )
+		{
+		ignoreItem reset 2
+		;GOSUB status dodge_ignore_reset
+		}
+	SET %dodgestatus Scanning
+	GOSUB status refresh
+	SET %dodgetypes ENX_LWX_JNX_ONX
+	finditem %dodgetypes G
+	IF #findkind = -1
+		RETURN
+	SET %dodgestatus A_SHIP!
+	GOSUB status refresh
+	;Tillerman north
+	IF #findtype = ENX
+		{
+		;GOSUB status dodge_tiller_north
+		;detected ship is facing north
+		;#findX - 3 to #findX+1 are blocked
+		;a ship is 5 tiles wide so we need 2 tiles space around #charposX
+		IF #charposX >= ( #findX - 5 ) && #charposX <= ( #findX + 3 )
+			{
+			;we will hit the ship if we dont do anything
+			SET %BlockXmin #findX - 5
+			SET %BlockXmax #findX + 3
+			GOSUB Evade %BlockXmin %BlockXmax #findY #findid
+			}
+		ELSE
+			{
+			SET %dodgestatus Path_is_clear!
+			GOSUB status refresh
+			}
+		}
+	;hatch south
+	IF #findtype = LWX
+		{
+		;GOSUB status dodge_hatch_south
+		;detected ship is facing south
+		;#findX - 2 to #findX + 2 are blocked
+		;a ship is 5 tiles wide so we need 2 tiles space around #charposX		
+		IF #charposX >= ( #findX - 4 ) && #charposX <= ( #findX + 4 )
+			{
+			;we will hit the ship if we dont do anything
+			SET %BlockXmin #findX - 4
+			SET %BlockXmax #findX + 4
+			GOSUB Evade %BlockXmin %BlockXmax #findY #findid
+			}
+		ELSE
+			{
+			SET %dodgestatus Path_is_clear!
+			GOSUB status refresh
+			}
+		}
+	IF #findtype = ONX
+		{
+		;GOSUB status dodge_tiller_west
+		;detected ship is facing west
+		;#findX - 9 to #findX + 1 are blocked, assuming a small ship
+		;#findX - 11 to #findX + 1 are blocked, assuming a large ship
+		;a ship is 5 tiles wide so we need 2 tiles space around #charposX
+		IF #charposX >= ( #findX - 13 ) && #charposX <= ( #findX + 3 )
+			{
+			;we will hit the ship if we dont do anything
+			SET %BlockXmin #findX - 13
+			SET %BlockXmax #findX + 3
+			GOSUB Evade %BlockXmin %BlockXmax #findY #findid
+			}
+		ELSE
+			{
+			SET %dodgestatus Path_is_clear!
+			GOSUB status refresh
+			}
+		}
+	IF #findtype = JNX
+		{
+		;GOSUB status dodge_tiller_east
+		;detected ship is facing east
+		;#findX - 1 to #findX + 9 are blocked, assuming a small ship +11 for a large ship
+		;a ship is 5 tiles wide so we need 2 tiles space around #charposX
+		IF #charposX > ( #findX - 3 ) && #charposX <= ( #findX + 13 )
+			{
+			SET %BlockXmin #findX - 3
+			SET %BlockXmax #findX + 11
+			GOSUB Evade %BlockXmin %BlockXmax #findY #findid
+			}
+		ELSE
+			{
+			SET %dodgestatus Path_is_clear!
+			GOSUB status refresh
+			}
+		}
+RETURN
+
+SUB Evade
+	SET %westblock %1
+	SET %eastblock %2
+	SET %blockY %3
+	SET %blockID %4
+	SET %dodgestatus Avoiding_collision
+	GOSUB status refresh
+	IF #charposX => 40 && #charposX <= 80
+		{
+		event macro 3 ^ slow forward left
+		}
+	IF #charposX => 0 && #charposX < 40
+		{
+		event macro 3 ^ slow forward right
+		}
+	IF #charposX => 5040 && #charposX <= 5080
+		{
+		event macro 3 ^ slow forward right
+		}
+	IF #charposX > 5080 && #charposX <= 5117
+		{
+		event macro 3 ^ slow forward left
+		}
+	FOR %i 1 50
+		{
+		wait 5
+		IF #charposX < %westblock || #charposX > %eastblock
+			{
+			event macro 3 ^ slow forward
+			FOR %i 1 50
+				{
+				wait 5
+				IF #charposY < %blockY
+					{
+					ignoreitem %blockID 2
+					GOSUB status dodge_ignore
+					SET %ignoretillermanY #charposY
+					}
+				}
+			}
+		}
+	RETURN
+RETURN 
+
+SUB HeadTo
+	;%1 should be N, S, W or E
+	SET %Saildirection %1
+;	GOSUB stop
+	;first find out in which direction the boat is currently headed
+	SET %plankNStype GWX_DWX_ISX_HSX 
+	SET %plankWEtype SUX_DUX_EUX_PUX 
+	Finditem %plankNStype G_4
+	IF #FINDKIND <> -1 
+		{ 
+		;since plankNStype found, ship must be facing either north or south 
+		IF %tillermanY > #findY 
+			{ 
+			;tiller is south of planks, so boat is pointing north 
+			SET %currentHeading N
+			} 
+		ELSE 
+			{ 
+			;tiller is north of planks, so boat is pointing south 
+			SET %currentHeading S
+			} 
+		}
+	Finditem %plankWEtype G_8 
+	IF #FINDKIND <> -1
+		{ 
+		;since plankWEtype found, ship must be facing either west or east 
+		IF %tillermanX > #findX 
+			{ 
+			;tiller is east of planks, so boat is pointing west 
+			SET %currentHeading W
+			}
+		ELSE 
+			{ 
+			;tiller is west of planks, so boat is pointing east 
+			SET %currentHeading E
+			} 
+		}
+	IF %currentheading = %SailDirection
+		RETURN
+	SET %turnwait 20
+	IF %currentheading = S && %SailDirection = N
+		{
+		GOSUB turnaround
+		wait %turnwait
+		RETURN
+		}
+	IF %currentheading = N && %SailDirection = S
+		{
+		GOSUB turnaround
+		wait %turnwait
+		RETURN
+		}
+	IF %currentheading = W && %SailDirection = E
+		{
+		GOSUB turnaround
+		wait %turnwait
+		RETURN
+		}
+	IF %currentheading = E && %SailDirection = W
+		{
+		GOSUB turnaround
+		wait %turnwait
+		RETURN
+		}
+	IF %currentheading = N && %SailDirection = W
+		{
+		GOSUB turnleft
+		wait %turnwait
+		RETURN
+		}
+	IF %currentheading = N && %SailDirection = E
+		{
+		GOSUB turnright
+		wait %turnwait
+		RETURN
+		}
+	IF %currentheading = S && %SailDirection = W
+		{
+		GOSUB turnright
+		wait %turnwait
+		RETURN
+		}
+	IF %currentheading = S && %SailDirection = E
+		{
+		GOSUB turnleft
+		wait %turnwait
+		RETURN
+		}
+	IF %currentheading = W && %SailDirection = N
+		{
+		GOSUB turnright
+		wait %turnwait
+		RETURN
+		}
+	IF %currentheading = W && %SailDirection = S
+		{
+		GOSUB turnleft
+		wait %turnwait
+		RETURN
+		}
+	IF %currentheading = E && %SailDirection = N
+		{
+		GOSUB turnleft
+		wait %turnwait
+		RETURN
+		}
+	IF %currentheading = E && %SailDirection = S
+		{
+		GOSUB turnright
+		wait %turnwait
+		RETURN
+		}
+RETURN 
+
+SUB SailToCell 
+	;%1 should be cellX value for destination
+	;%2 should be celly value for destination
+	SET %DestiCellX %1
+	SET %DestiCellY %2
+	SET %sailstatus Sail_to_destination
+	GOSUB STATUS Sailing_to_ , %DestiCellX , _ , %DestiCellY
+	;get current position
+	SET %cellX #charposX / 8
+	SET %cellY #charposY / 8
+	GOSUB drawship
+	;how fast, well depends on distance, keeping in mind we are using 8x8 tile cells
+	GOSUB SetSailToSpeed
+	;compare current position vs destination
+	;most frequent use should be sail north, followed by sail south
+	IF %DestiCellX = %CellX && %DestiCellY < %CellY
+		{
+		;north
+		GOSUB HeadTo N
+		GOSUB forward
+		}
+	IF %DestiCellX = %CellX && %DestiCellY > %CellY
+		{
+		;south
+		GOSUB HeadTo S
+		GOSUB forward
+		}
+	IF %DestiCellY = %CellY && %DestiCellY = %CellY
+		{
+		;right here
+		GOSUB STOP
+		}
+	IF %DestiCellX > %CellX && %DestiCellY < %CellY
+		{
+		;north east
+		GOSUB HeadTo N
+		GOSUB forwardright
+		}
+	IF %DestiCellX < %CellX && %DestiCellY < %CellY
+		{
+		;north west
+		GOSUB HeadTo N
+		GOSUB forwardleft
+		}
+	IF %DestiCellX < %CellX && %DestiCellY > %CellY
+		{
+		;south west
+		GOSUB HeadTo S
+		GOSUB forwardright		
+		}
+	IF %DestiCellX > %CellX && %DestiCellY > %CellY
+		{
+		;south east
+		GOSUB HeadTo S
+		GOSUB forwardleft
+		}
+	IF %DestiCellX < %CellX && %DestiCellY = %CellY
+		{
+		;west
+		GOSUB HeadTo W
+		GOSUB forward
+		}
+	IF %DestiCellX > %CellX && %DestiCellY = %CellY
+		{
+		;east
+		GOSUB HeadTo E
+		GOSUB forward
+		}
+	wait 30
+RETURN
+
+SUB SetSailToSpeed
+	IF %DestiCellX > %CellX
+		SET %DistX %DestiCellX - %CellX
+	ELSE
+		SET %DistX %CellX - %DestiCellX
+	IF %DestiCellY > %CellY
+		SET %DistY %DestiCellY - %CellY
+	ELSE 
+		SET %DistY %CellY - %DestiCellY
+	IF %DistX < 3 && %DistY < 3
+		SET %speed slow
+	ELSE
+		SET %speed normal
+	GOSUB speedbuttons
+RETURN

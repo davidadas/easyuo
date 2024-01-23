@@ -1,0 +1,1414 @@
+	; this is the amount of everything you take to your pack, I suggest you leave it as is.
+	set %dragAmount 50
+	;  Do Not Edit Beyond This Point!
+	set %wait 20
+	set %ver 2.15
+	set %debug #false
+	event sysmessage Menu Loading...
+	gosub showEUOMenu1
+	gosub closeMenu
+loop:
+	wait 0
+	gosub QuickEUOMenu1Update
+	if %running
+	{
+		set %hours ( #scnt - %time_start ) / 3600
+		set %minutes ( #scnt - %time_start ) / 60
+		gosub ensurePaperdoll
+		gosub ensureStatusBar
+		gosub ensureSecureContianer
+		gosub ensureBackPack
+		gosub penCheck
+		gosub skillCheck
+		gosub scrollCheck
+		gosub regCheck
+		gosub closeResource
+		gosub make
+		gosub closeMenu
+	}
+	goto loop
+
+; ==================================
+sub ensureStatusBar
+	if #hits = N/A
+	{
+		event macro 8 2
+		gosub wait %longwait Pause , #spc , StatusBar
+		contpos 370 420
+	}
+	set %_maxMana #maxMana - 15
+return
+
+; ==================================
+sub ensureSecureContianer
+reOpenSecureContainer:
+	finditem * C_ , %secureID
+	if #findkind = -1
+	{
+		nextCPos 620 150
+		if %useBank
+		{
+			event macro 3 0 bank
+			gosub wait %longWait Bank , #spc , Pause
+			set %secureID #contid
+		}
+		if ! %useBank
+		{
+			finditem %secureID
+			if #findkind = -1
+			{
+				display ok your secure container is not setup correctly.  Script halting
+				halt
+			}
+		}
+		if ( #contposx <> 620 || #contposy <> 150 ) && #contid = %secureID
+			goto reOpenSecureContainer
+	}
+return
+
+; ==================================
+sub ensureBackPack
+	if %backpackID = N/A && %debug
+		set %backpackID FUJRJMD
+	if %backpackID = N/A && ! %debug
+		set %backpackID #backpackID
+	finditem * C_ , %backpackID
+	if #findkind = -1
+	{
+		nextCPos 580 400
+		event macro 8 7
+		gosub wait %longWait Backpack , #spc , Pause
+	}
+return
+
+; ==================================
+sub closeMenu
+	gosub waitForSysVar contname = generic_gump contsize = 530_437 1
+	if #result
+	{
+		set !exitX #contposx + 25
+		set !exitY #contposy + 415
+		click !exitX !exitY f
+		gosub waitForSysVar contname <> generic_gump contsize <> 530_437
+	}
+	click 65 455
+	wait %wait
+return
+
+; ==================================
+sub ensurePaperdoll
+	finditem * C_ , #charid
+	if #findkind = -1 || %paperDollX = N/A || %paperDollY = N/A
+	{
+		event macro 8 1
+		gosub wait %longWait Paperdoll , #spc , Pause
+		contpos 615 -200
+		wait 5
+		set %paperDollX #contposx + 135
+		set %paperDollY #contposy + 220
+	}
+return
+
+; ==================================
+sub openResource
+openResource:
+	finditem * C_ , %ResourceID
+	if #findkind = -1
+	{
+		finditem %ResourceID
+		if #findkind = -1
+		{
+			display ok Resource container is not visible and/or not setup Correctly - Pausing
+			gosub PauseLoop
+			goto openResource
+		}
+		set #lobjectid #findid
+		nextCPos 620 150
+		event macro 17
+		gosub waitForSysVar contid = %ResourceID
+		gosub wait %longwait Pause , #spc , Resource
+	}
+return
+
+; ==================================
+sub closeResource
+closeResource:
+	finditem * C_ , %ResourceID
+	click #findx #findy r
+	gosub waitForSysVar contid <> %ResourceID
+return
+
+; ==================================
+sub initialSetup
+	; contName / contSize
+	set %CN_dragAmount stack_gump
+	set %CN_drag drag_gump
+	set %CN_menu generic_gump
+	set %CS_dragAmount 168_74
+	set %CS_Menu 530_437
+
+
+	set %longWait %Wait * 3
+
+	; Item types for scrolls
+	set %scribePen PBG
+	set %blankScrolls DPF
+	set %TinkerToolKits JTL_KTL
+	set %Ingots ENK
+	set %IronIngotColour 0
+
+	; chest item types
+	set %chesttypes JIF_HIF_IIF_KIF
+
+	; Scroll Types
+	set %recall WTL
+	set %EBolt GUL
+	set %flameStrike NUL
+	set %resurrection VUL
+	set %totalScrolls %recall , _ , %EBolt , _ , %flameStrike , _ , %resurrection
+
+	; item types for regs
+	set %blackPearl KUF
+	set %bloodMoss JUF
+	set %garlic KZF
+	set %ginseng JZF
+	set %mandrakeRoot MZF
+	set %nightshade WZF
+	set %spiderSilk RZF
+	set %sulphurousAsh SZF
+	set %KUF black , #spc , Pearl
+	set %JUF blood , #spc , Moss
+	set %KZF garlic
+	set %JZF Ginseng
+	set %MZF Mandrake , #spc , Root
+	set %WZF nightshade
+	set %RZF Spider , #spc , Silk
+	set %SZF sulphurous , #spc , ash
+	set %totalRegs %blackPearl , _ , %bloodMoss , _ , %garlic , _ , %ginseng
+	+ , _ , %mandrakeRoot , _ , %nightshade , _ , %spiderSilk , _ , %sulphurousAsh
+	set %refresh #scnt
+	set #lpc 50
+
+	set %Amount_KUF 0
+	set %Amount_JUF 0
+	set %Amount_KZF 0
+	set %Amount_JZF 0
+	set  %Amount_MZF 0
+	set %Amount_WZF 0
+	set %Amount_RZF 0
+	set  %Amount_SZF 0
+	set %Amount_Total 0
+	set %Amount_Scroll 0
+return
+
+; ==================================
+sub penCheck
+	gosub changeStatus pen , #spc , check
+penCheckLoop:
+	finditem %scribePen C_ , %backpackID
+	if #findkind <> -1
+	{
+		set %currPen #findid
+		menu delete currStatus
+		return
+	}
+	if %tinkerPens
+	{
+		gosub tinkerPens
+		goto penCheckLoop
+	}
+	gosub changeStatus Getting , #spc , a , #spc , Pen
+	gosub ensureSecureContianer
+	gosub openResource
+	finditem %scribePen C_ , %resourceID
+	if #findkind = -1
+	{
+		display ok Out of pens, Paused!
+		gosub PauseLoop
+		goto penCheckLoop
+	}
+	gosub moveItemToPos #findid %paperDollX %paperDollY N/A #true
+	gosub wait %longWait dropping , #spc , pen
+goto penCheckLoop
+
+; ==================================
+sub tinkerPens
+	gosub changeStatus tinker , #spc , pens
+tinkerPensLoop:
+	gosub changeStatus checking , #spc , Pens
+	finditem %Ingots C_ , %backpackID
+	if #findcol <> %IronIngotColour
+	{
+		ignoreitem #findid
+		goto tinkerPensLoop
+	}
+	if #findkind = -1
+	{
+		gosub openResource
+		finditem %Ingots C_ , %resourceID
+		if #findkind = -1
+		{
+			display ok your out of ingots, pausing
+			gosub pauseLoop
+			goto tinkerPensLoop
+		}
+		gosub wait %longWait Dragging , #spc , Pause
+		gosub moveItemToPos #findid %paperDollX %paperDollY %dragAmount #true
+		gosub wait %longWait Dragging , #spc , Pause
+	}
+	finditem %tinkerToolKits C_ , %backpackID
+	if #findkind = -1
+	{
+		display ok you need a tinker tool kit in your backpack, Pausing
+		gosub pauseLoop
+	}
+	event property #findid
+	str pos #property :
+	set %strres #strres + 1
+	str del #property 1 %strres
+	set %strres #strres
+	str pos %strres $
+	str del %strres #strres #strres
+	if #strres < 3 && #findcnt < 2
+	{
+		gosub changeStatus making , #spc , toolkit
+		set #lobjectid #findid
+		event macro 17
+		gosub waitForSysVar contname = generic_gump contsize = 530_437
+		if ! #result
+			goto tinkerPensLoop
+		gosub craftitem 2 4 #true
+		gosub wait %Wait Craft , #spc , Pause
+		goto tinkerPensLoop
+	}
+	finditem %tinkerToolKits C_ , %backpackID
+	set #lobjectid #findid
+	event macro 17
+	gosub waitForSysVar contname = generic_gump contsize = 530_437
+	if ! #result
+		goto tinkerPensLoop
+	gosub craftItem 2 22 #true
+	gosub wait %Wait Craft , #spc , Pause
+return
+
+
+; ==================================
+sub skillCheck
+skillCheckLoop:
+	chooseskill insc
+	if #skill = 1000
+	{
+		display ok You have GM Inscription!$ Please vote for this script at www.easyuo.com.$Pausing
+		if exec in #opts
+			execute www.easyuo.com/rate.php?t=1271
+		gosub PauseLoop
+		goto skillCheckLoop
+	}
+	if #skill < 320
+	{
+		display ok you have to buy your skill up from an NPC$ your skill is too low for this script
+		gosub pauseLoop
+		goto skillCheckLoop
+	}
+	if #skill => 320 && #skill < 650
+	{
+		set %circle 4
+		set %selection 8
+		set %reg1 %blackPearl
+		set %reg2 %bloodMoss
+		set %reg3 %mandrakeRoot
+		set %regCnt 3
+		if %makestr <> Recall
+			gosub clearRegs
+		set %changeAt 650
+		set %mana 34
+		set %makestr Recall
+		set %makerng 32.0-64.9
+
+	}
+	if #skill => 650 && #skill < 850
+	{
+		set %circle 6
+		set %selection 2
+		set %reg1 %nightshade
+		set %reg2 %blackPearl
+		set %regCnt 2
+		if %makestr <> E-Bolt
+			gosub clearRegs
+		set %changeAt 850
+		set %mana 34
+		set %makestr E-Bolt
+		set %makerng 65.0-84.9
+	}
+	if #skill => 850 && #skill < 940
+	{
+		set %circle 7
+		set %selection 3
+		set %reg1 %sulphurousAsh
+		set %reg2 %spiderSilk
+		set %regCnt 2
+		if %makestr <> Flamestrike
+			gosub clearRegs
+		set %changeAt 940
+		set %mana 40
+		set %makestr Flamestrike
+		set %makerng 85.0-93.9
+	}
+	if #skill => 940
+	{
+		set %circle 8
+		set %selection 3
+		set %reg1 %garlic
+		set %reg2 %ginseng
+		set %reg3 %bloodMoss
+		set %regCnt 3
+		if %makestr <> Resurrection
+			gosub clearRegs
+		set %changeAt 1000
+		set %mana 50
+		set %makestr Resurrection
+		set %makerng 94.0-100.0
+	}
+return
+
+; ==================================
+sub regCheck
+	for %i 1 %regCnt
+	{
+		finditem %reg . %i C_ , %backpackID
+		if #findkind = -1
+			gosub getReg %reg . %i
+	}
+return
+
+; ==================================
+sub getReg
+	set %currRegType %1
+	gosub openResource
+	finditem %currRegType C_ , %resourceID
+	if #findkind = -1
+	{
+		str lower % . %currRegType
+		display ok Out of #strres , , , #spc , Pausing.
+		gosub pauseLoop
+	}
+	gosub changeStatus Collecting , #spc , %currRegType
+	gosub wait %longWait Dragging , #spc , Pause
+	gosub moveItemToPos #findid %paperDollX %paperDollY %dragAmount #true
+	gosub wait %longWait Dragging , #spc , Pause
+return
+
+; ==================================
+sub clearRegs
+clearRegsLoop:
+	finditem %totalRegs C_ , %backpackID
+	if #findkind <> -1
+	{
+		set %ignoreRegs
+		for %i 1 %RegCnt
+		{
+			set %ignoreRegs %ignoreRegs , _ , %reg . %i
+		}
+		if #findtype in %ignoreRegs
+		{
+			ignoreitem #findid
+			goto clearRegsLoop
+		}
+		set %regID #findid
+		finditem %resourceID C_ , %secureID
+		if #findkind = -1
+		{
+			display ok please move your resource bag into your secure container
+			gosub pauseLoop
+			goto clearRegsLoop
+		}
+		set #findmod 25_7
+		if #findtype in %chesttypes
+			set #findmod 32_19
+		gosub wait %longWait Dragging , #spc , Pause
+		gosub moveItemToPos %regID #findx #findy N/A #true
+		goto clearRegsLoop
+	}
+	set #findmod 0_0
+	ignoreitem reset
+return
+
+; ==================================
+sub make
+	set %failMake #false
+makeLoop:
+	gosub wait %longWait short , #spc , Pause
+	gosub QuickEUOMenu1Update
+	finditem %Reg1 C_ , %backpackID
+	if #findkind = -1
+		return
+	set %DummyRegCounter #findStack
+	finditem %currPen C_ , %backpackID
+	if #findkind = -1
+		return
+	set #lobjectid #findid
+	event macro 17
+	gosub waitForSysVar contname = generic_gump contsize = 530_437
+	if ! #result
+		goto makeLoop
+	gosub craftItem %circle %selection #false
+	finditem %Reg1 C_ , %backpackID
+	if #findstack = %DummyRegCounter
+	{
+		if %failMake
+			return
+		set %failMake #true
+		goto makeLoop
+	}
+	gosub incrementUse
+   gosub makeRepeat
+return
+
+; ==================================
+sub makeRepeat
+makeRepeat:
+	str lower %makestr
+	gosub changeStatus Crafting , #spc , #strres
+	gosub QuickEUOMenu1Update
+	if #skill = %changeAt
+		return
+	finditem %currPen C_ , %backpackID
+	if #findkind = -1
+		return
+	for %i 1 %regCnt
+	{
+		finditem %reg . %i C_ , %backpackid
+		if #findkind = -1
+			return
+	}
+	finditem %blankScrolls C_ , %backpackID
+	if #findkind = -1
+		return
+	gosub waitForSysVar contname = generic_gump contsize = 530_437
+	if ! #result
+		return
+	if #mana < %mana
+	{
+		gosub wait %Wait Repeat , #spc , Pause
+		gosub MeditateFull
+		goto makeRepeat
+	}
+	gosub incrementUse
+	gosub makeLast
+	goto makeRepeat
+
+; ==================================
+sub scrollCheck
+scrollCheck:
+	finditem %blankScrolls C_ , %backpackID
+	if #findkind <> -1
+		return
+	gosub openResource
+	finditem %blankScrolls C_ , %resourceID
+	if #findkind = -1
+	{
+		display ok Out of Blank Scrolls. pausing
+		gosub pauseLoop
+		goto scrollCheck
+	}
+	finditem %blankScrolls C_ , %resourceID
+	gosub changeStatus Getting , #spc , Blank , #spc , Scrolls
+	gosub wait %longWait Dragging , #spc , Pause
+	gosub moveItemToPos #findid %paperdollx %paperDollY %dragAmount #true
+	gosub wait %longWait Dragging , #spc , Pause
+loopRemovingScrolls:
+	finditem %totalScrolls C_ , %backpackID
+	if #findkind <> -1
+	{
+		set %ID #findid
+		gosub closeResource
+		gosub changeStatus Collecting , #spc , Scrolls
+		finditem %scrollBagID C_ , %secureID
+		if #findkind = -1
+		{
+			display ok Unable to find your scroll bag$it's either not setup correctly or is not visable
+			gosub pauseLoop
+		}
+		set #findmod 25_7
+		if #findtype in %chesttypes
+        			set #findmod 32_19
+		gosub wait %longWait Dragging , #spc , Pause
+		gosub moveItemToPos %ID #findx #findy
+		gosub wait %longWait Dragging , #spc , Pause
+		goto loopRemovingScrolls
+	}
+	set #findmod 0_0
+return
+
+; ==================================
+sub MeditateFull
+	set %meditating #false
+MeditateFull:
+	wait 0
+	if #mana => %_maxMana
+		return
+	if %meditating
+		goto meditateFull
+	deletejournal
+	if H in #charstatus
+	{
+		set %meditating #true
+		goto meditateFull
+	}
+	event macro 13 46
+	set %triedMed #true
+	gosub wait %wait Meditation , #spc , Pause
+	gosub _ensureInJournal you_enter
+	if #result
+		set %meditating #true
+	gosub wait %longWait Meditation , #spc , pause
+	goto MeditateFull
+
+; ==================================
+sub incrementUse
+	for %i 1 %regCnt
+	{
+		set %string Amount , _ , %reg . %i
+		set % . %string % . %string + 1
+	}
+	set %Amount_Scroll %Amount_Scroll + 1
+return
+
+;**
+;* @name    moveItemToPos
+;* @author  Quintok
+;* @version 1.2 23 Nov 2004
+;* @purpose moves item to screen XY
+;* @params  %1 itemID	req
+;*          %2 cursorX	req move to X
+;*          %3 cursorY	req move to Y
+;*          %4 amount	opt default all
+;*				%5 mc			opt move cursor or not
+sub moveItemToPos
+	set !itemID %1
+	set !cursX %2
+	set !cursY %3
+	if %0 < 4 || %4 = N/A
+		set !ammt 0
+	else
+		set !ammt %4
+	if %0 < 5 || %5 = N/A
+		set !mc #false
+	else
+		set !mc %5
+_dragAgain:
+	gosub dragItem !itemID
+	if #result
+	{
+		if #contname = stack_gump && !ammt <> 0
+			msg !ammt
+		msg $
+		gosub waitForSysVar contname = drag_gump
+		if #result
+		{
+			if ( !mc )
+				click !cursX !cursY f mc
+			else
+				click !cursX !cursY f
+			gosub waitForSysVar contname <> drag_gump
+			if ! #result || #lLiftedKind = 1
+				goto _dragAgain
+		}
+	}
+return
+
+;**
+;* @name    dragItem
+;* @author  Quintok
+;* @version 1.0 27 march 04
+;* @purpose ensures %1 is dragged
+;* @param   %1 itemToDrag req item ID to drag
+sub dragItem
+	set !jindex #jindex
+	set !itemToDrag %1
+	deletejournal
+	event drag !itemToDrag
+	gosub waitforsysvar contid = %1 2
+	gosub _ensureInJournal that_is_too_far_away. !jindex
+	if #result
+		return #false
+	gosub _ensureInJournal you_cannot_pick_that_up. !jindex
+	if #result
+		return #false
+	gosub wait %Wait Drag , #spc , Pause
+return #true
+
+;**
+;* @name    _ensureInJournal
+;* @author  Quintok
+;* @version 1.1 31 July 04
+;* @purpose ensures %1 is somehwere in #journal up to #jindex
+;* @params  %1 scanFor req what to scan #journal for
+;*          %2 jindex  opt jindex value before calling sub
+sub _ensureInJournal
+	if %0 < 2 || %2 = N/A
+		set !cnt #jindex - 50
+	else
+		set !cnt %2
+_ensureInJournalLoop:
+	scanjournal !cnt
+	if !cnt = #jindex + 1
+		return #false
+	if %1 notin #journal
+	{
+		set !cnt !cnt + 1
+		goto _ensureInJournalLoop
+	}
+return #true
+
+;**
+;* @name    craftItem
+;* @author  Quintok (frerddy bugfix)
+;* @version 1.1 30 march 04
+;* @purpose uses the craft menu
+;* @param   %1 Category  req craft menu category
+;*          %2 Selection req craft menu selection
+;*          %3 exit      opt exit upon clicking? #true/#false
+sub craftItem
+	set !category %1
+	set !selection %2
+	if %0 < 3 || %3 = N/A
+		set !exit #false
+	else
+		set !exit %3
+	gosub waitForSysVar contname = generic_gump contsize = 530_437 1
+	if ! #result
+		return #false
+	set !categoryY ( #contposx + 70 ) + !category * 20
+	set !categoryX #contposx + 25
+	set !selectionY ( #contposy + 50 ) + ( !selection % 10 ) * 20
+	set !selectionX #contposx + 230
+	set !exitX #contposx + 25
+	set !exitY #contposy + 415
+	click !categoryX !categoryY f
+	gosub waitForSysVar contname <> generic_gump contsize <> 530_437
+	gosub waitForSysVar contname = generic_gump contsize = 530_437
+craftItemLoop:
+	if !selection > 10
+	{
+		set !nextPageX #contposx + 385
+		set !nextPageY #contposY + 270
+		click !nextPageX !nextPageY f
+		wait 5
+		set !selection !selection - 10
+		goto craftItemLoop
+	}
+	gosub wait %wait Craft, #spc , Pause
+	click !selectionX !selectionY f
+	if !exit
+	{
+		gosub waitForSysVar contname <> generic_gump contsize <> 530_437
+		gosub waitForSysVar contname = generic_gump contsize = 530_437
+		click !exitX !exitY f
+	}
+return #true
+
+;**
+;* @name    makeLast
+;* @author  Quintok
+;* @version 1.0 27 march 04
+;* @purpose make last %1 times
+;* @param   %1 repeatMakeLast opt repeat times of make last default 1
+sub makeLast
+	if %0 = 0 || %1 = N/A
+		set !times 1
+	else
+		set !times %1
+	gosub waitForSysVar contname = generic_gump contsize = 530_437 1
+	if ! #result
+		return #false
+	set !clickX #contposx + 280
+	set !clickY #contposy + 410
+	for !i 1 !times
+	{
+		if ! #result
+			return #false
+		click !clickX !clickY f
+		gosub waitForSysVar contname = generic_gump contsize = 530_437
+		if ! #result
+			return #false
+	}
+return #true
+
+;**
+;* @name    waitForSysVar
+;* @author  Quintok
+;* @version 1.0 13 march 04
+;* @purpose waits %4 seconds for # . %1 to %2 to %3
+;* @param   %1 sysvar     req system variable without '#'
+;*          %2 operation  req operation ie = <> in notin
+;*          %3 comparison req to compare with ie abcdef
+;*          %4 timeout    opt timeout in seconds
+sub waitForSysVar
+	if %0 <= 4
+	{
+		gosub waitFor %1 %2 %3 %4
+		return #result
+	}
+	set !cnt %0 / 3
+	if ( %0 % 3 = 1 )
+		set !timeOut #scnt + %0
+	else
+		set !timeOut #scnt + 5
+	for !i 1 !cnt
+	{
+		set !offset 3 * !i - 2
+		set !evaluation !offset + 1
+		set !value !offset + 2
+		if ! ( # . % . !offset % . !evaluation % . !value )
+			set !i 0
+		if #scnt > !timeout
+			return #false
+	}
+return #true
+
+;**
+;* @name    waitFor
+;* @author  Quintok
+;* @version 1.0 13 march 04
+;* @purpose waits %4 seconds for # . %1 to %2 to %3
+;* @param   %1 sysvar     req system variable without '#'
+;*          %2 operation  req operation ie = <> in notin
+;*          %3 comparison req to compare with ie abcdef
+;*          %4 timeout    opt timeout in seconds
+sub waitFor
+	if %0 < 4 || %4 = N/A
+		set !timeOut #scnt + 5
+	else
+		set !timeOut #scnt + %4
+_waitForLoop:
+	if #scnt > !timeOut
+		return #false
+	if ! ( # . %1 %2 %3 )
+		goto _waitForLoop
+return #true
+
+;--------- EasyUO Menu Designer Code Begin ---------
+sub showEUOMenu1
+	if ! %debug
+		menu hideeuo
+	set #menubutton Null
+	menu Clear
+	menu Window Title Quintok's Inscription Trainer v , %ver
+	menu Window Color BtnFace
+	menu Window Size 343 299
+	menu Font Transparent #true
+	menu Font Align Right
+	menu Shape EUOShape1 9 8 323 83 4 7 1 Black 7 White
+	menu Font Name MS Sans Serif
+	menu Font Size 12
+	menu Font Style bu
+	menu Font Color WindowText
+	menu Font Align Left
+	menu Font BGColor BtnFace
+	menu Text EUOLabel1 160 16 Setup
+	menu Shape EUOShape2 10 96 323 193 3 7 1 Black 7 White
+	menu Shape EUOShape3 170 96 1 193 3 7 1 Black 7 Black
+	menu Font Size 8
+	menu Font Style
+	menu Font BGColor BtnFace
+	gosub loadSavedData
+	menu Text EUOLabel2 156 70 Status:
+	menu Font Size 12
+	menu Font Style bu
+	menu Font Color WindowText
+	menu Font BGColor BtnFace
+	menu Text EUOLabel3 40 96 Amount Used:
+	menu Font BGColor BtnFace
+	menu Text EUOLabel4 200 96 Skill Chart:
+	menu Font Size 8
+	menu Font Style
+	menu Font BGColor BtnFace
+	menu Text EUOLabel5 16 132 Black Pearl
+	menu Font Style u
+	menu Font BGColor BtnFace
+	menu Text EUOLabel8 120 116 Amount
+	menu Font Style
+	menu Font BGColor BtnFace
+	menu Text EUOLabel9 16 146 Blood Moss
+	menu Font BGColor BtnFace
+	menu Text EUOLabel10 16 160 Garlic
+	menu Font BGColor BtnFace
+	menu Text EUOLabel11 16 174 Ginseng
+	menu Font BGColor BtnFace
+	menu Text EUOLabel12 16 188 Mandrake
+	menu Font BGColor BtnFace
+	menu Text EUOLabel13 16 202 Nightshade
+	menu Font BGColor BtnFace
+	menu Text EUOLabel14 16 216 Spider Silk
+	menu Font BGColor BtnFace
+	menu Text EUOLabel15 16 230 Sulphur Ash
+	menu Shape EUOShape4 90 265 80 1 3 7 1 Black 7 White
+	menu Font BGColor BtnFace
+	menu Text EUOLabel16 16 272 Total Regs:
+	menu Font Align Right
+	menu Text Amount_KUF 158 132 0
+	menu Text Amount_JUF 158 146 0
+	menu Text Amount_KZF 158 160 0
+	menu Text Amount_JZF 158 174 0
+	menu Text Amount_MZF 158 188 0
+	menu Text Amount_WZF 158 202 0
+	menu Text Amount_RZF 158 216 0
+	menu Text Amount_SZF 158 230 0
+	menu Text Amount_Scroll 158 244 0
+	menu Text Amount_Total 158 272 0
+	menu Font Align Left
+	menu Font BGColor BtnFace
+	menu Text EUOLabel28 16 244 Scrolls
+	menu Font Style u
+	menu Font BGColor BtnFace
+	menu Text EUOLabel7 296 124 End
+	menu Font BGColor BtnFace
+	menu Text EUOLabel17 248 124 Start
+	menu Font BGColor BtnFace
+	menu Text EUOLabel19 176 124 Scroll
+	menu Font Style
+	menu Font BGColor BtnFace
+	menu Text EUOLabel21 176 140 Recall
+	menu Font BGColor BtnFace
+	menu Text EUOLabel23 248 140 32.0
+	menu Font BGColor BtnFace
+	menu Text EUOLabel26 296 140 64.9
+	menu Font BGColor BtnFace
+	menu Text EUOLabel29 176 156 E-Bolt
+	menu Font BGColor BtnFace
+	menu Text EUOLabel31 248 156 65.0
+	menu Font BGColor BtnFace
+	menu Text EUOLabel33 296 156 84.9
+	menu Font BGColor BtnFace
+	menu Text EUOLabel35 176 172 Flame strike
+	menu Font BGColor BtnFace
+	menu Text EUOLabel36 248 172 85.0
+	menu Font BGColor BtnFace
+	menu Text EUOLabel37 296 172 93.9
+	menu Font BGColor BtnFace
+	menu Text EUOLabel38 176 188 Resurrection
+	menu Font BGColor BtnFace
+	menu Text EUOLabel39 248 188 94.0
+	menu Font BGColor BtnFace
+	menu Text EUOLabel40 290 188 100.0
+	menu Shape EUOShape5 170 206 163 1 3 7 1 Black 7 White
+	menu Check UseBank 224 16 97 17 %useBank Bank as Secure
+	menu Edit resourceID 16 16 121 %resourceID
+	menu Edit SecureID 16 40 121 %secureID
+	menu Edit ScrollBagID 16 64 121 %scrollBagID
+	menu Check TinkerPens 224 30 97 17 %tinkerPens Tinker Pens
+	menu Edit Wait 160 40 49 %Wait
+	menu Button Start 174 210 75 25 &Start
+	menu Button HideMe 254 210 75 25 &Hide Me
+	menu Button Pause 174 242 75 25 &Pause
+	menu Button Exit 254 242 75 25 E&xit
+	menu Button SaveSetup 260 47 60 16 Save Setup
+	menu Button SresourceID 139 18 14 14 R
+	menu Button SsecureID 139 42 14 14 S
+	menu Button SscrollBagID 139 68 14 14 C
+	gosub QuickEUOMenu1Update
+	menu Show 421 280
+return
+;--------- EasyUO Menu Designer Code End ---------
+
+sub QuickEUOMenu1Update
+	if %running && #scnt => %refresh
+	{
+		menu Font BGColor BtnFace
+		menu Font Align Right
+		menu Delete Amount_KUF
+		menu Text Amount_KUF 158 132 %Amount_KUF
+		menu Delete Amount_JUF
+		menu Text Amount_JUF 158 146 %Amount_JUF
+		menu Delete Amount_KZF
+		menu Text Amount_KZF 158 160 %Amount_KZF
+		menu Delete Amount_JZF
+		menu Text Amount_JZF 158 174 %Amount_JZF
+		menu Delete Amount_MZF
+		menu Text Amount_MZF 158 188 %Amount_MZF
+		menu Delete Amount_WZF
+		menu Text Amount_WZF 158 202 %Amount_WZF
+		menu Delete Amount_RZF
+		menu Text Amount_RZF 158 216 %Amount_RZF
+		menu Delete Amount_SZF
+		menu Text Amount_SZF 158 230 %Amount_SZF
+		menu Delete Amount_Scroll
+		menu Text Amount_Scroll 158 244 %Amount_Scroll
+		menu Delete Amount_Total
+		set %Amount_Total %Amount_KUF + %Amount_JUF + %Amount_KZF + %Amount_JZF + %Amount_MZF + %Amount_WZF + %Amount_RZF + %Amount_SZF
+		menu Text Amount_Total 158 272 %Amount_Total
+		menu Font Align Left
+		menu font size 10
+		menu Text StartTime 174 270 Running Time:
+		menu delete RunningTime
+		if %minutes => 10
+			menu Text RunningTime 305 270 %Hours , : , %Minutes
+		else
+			menu Text RunningTime 305 270 %Hours , :0 , %Minutes
+		set %refresh #scnt + 3
+	}
+	menu get UseBank
+	set %useBank #menures
+	menu get TinkerPens
+	set %tinkerPens #menures
+	if #menubutton <> Null
+		gosub handleButton
+return
+
+; ==================================
+sub handleButton
+	if #menubutton = closed
+		halt
+	if #menubutton = Start
+	{
+		gosub initialSetup
+		set %time_start #scnt
+		set %running #true
+	}
+	if #menubutton = Pause
+		gosub PauseLoop
+	if #menubutton = HideMe
+		gosub hideMe
+	if #menubutton = Exit
+	{
+		menu hide
+		halt
+	}
+	if #menubutton = SresourceID
+		gosub setup ResourceID
+	if #menubutton = SsecureID
+		gosub setup secureID
+	if #menubutton = SscrollBagID
+		gosub setup scrollBagID
+	if #menubutton = SaveSetup
+		gosub saveData
+	set #menubutton Null
+return
+
+; ==================================
+sub setup
+	if %1 = resourceID
+	{
+		event macro 8 2
+		set #targcurs 1
+		display ok Please Target your Resource Bag
+setupResourceIDLoop:
+		if #targcurs = 1
+			goto setupResourceIDLoop
+		set %resourceID #ltargetid
+		menu delete resourceID
+		menu Edit BackpackID 16 16 121 %resourceID
+	}
+	if %1 = secureID
+	{
+		menu get UseBank
+		set %useBank #menures
+		nextCPos 620 150
+		if ! %useBank
+		{
+			set #ltargetid null
+			set #targcurs 1
+			display ok Please Target Your Secure
+setupSecureIDLoop:
+			if #ltargetid = Null
+				goto setupSecureIDLoop
+			set #lobjectid #ltargetid
+			event macro 17
+			gosub wait 100 Secure , #spc , Opening
+			set %secureID #contid
+			menu delete SecureID
+			menu Edit SecureID 16 40 121 %secureID
+		}
+		if %useBank
+		{
+			event macro 3 0 bank
+			gosub wait 100 Bank , #spc , Pause
+			set %secureID #contid
+			menu delete SecureID
+			menu Edit SecureID 16 40 121 %secureID
+		}
+	}
+	if %1 = scrollBagID
+	{
+			set #targcurs 1
+			display ok Please Target Your Scroll Bag
+setupScrollBagIDLoop:
+			if #targcurs = 1
+				goto setupScrollBagIDLoop
+			set %scrollBagID #ltargetid
+			menu delete scrollBagID
+			menu Edit ScrollBagID 16 64 121 %scrollBagID
+	}
+return
+
+; ==================================
+sub pauseLoop
+	gosub changeStatus Paused.
+	set %pause_start #scnt
+	menu delete Pause
+	menu Font Size 8
+	menu Font Style
+	set #menubutton Null
+	menu Button Resume 174 242 75 25 &Resume
+pauseLoop:
+	if ( ! ( #menubutton = Resume || #menubutton = Closed || #menubutton = Exit || #menubutton = HideMe || #menubutton = start ) )
+		+ && #menubutton <> Null
+		set #menuButton Null
+	if #menubutton = Null
+		goto pauseLoop
+	if #menubutton = closed
+		halt
+	if #menubutton = HideMe 2
+		gosub hideMe
+		set #menubutton Null
+	if #menubutton = Exit
+	{
+		menu hide
+		halt
+	}
+	menu delete Resume
+	menu Button Pause 174 242 75 25 &Pause
+	gosub changeStatus Resumed.
+	set %time_start %time_start + ( #scnt - %pause_start )
+return
+
+; ==================================
+sub hideMe
+	if H notin #charstatus
+	{
+		event macro 13 21
+		gosub wait 260 Hide , #spc , Pause
+	}
+return
+
+; ==================================
+sub wait
+	set %timeOut #scnt2 + %1 / 2
+	set %hideType %2
+waitLoop:
+	set %waitSeconds ( %timeOut - #scnt2 ) / 10
+	str lower %hideType
+	if %oldWaitSeconds <> %waitSeconds && %waitSeconds <> 0
+	{
+		gosub changeStatus #strres , #spc , ( , %waitSeconds , )
+		set %oldWaitSeconds %waitSeconds
+	}
+	if #scnt2 < %timeOut
+		goto waitLoop
+	menu delete currStatus
+return
+
+; ==================================
+sub changeStatus
+	menu delete currStatus
+	str lower %1
+	menu font Color red
+	menu text currStatus 200 70 #strres
+	menu font color black
+return
+
+; ==================================
+sub loadSavedData
+	gosub changeStatus Loading , #spc , Data
+	gosub getGlobalVar 50 QuintokInscription #charid resourceID NOLOCK
+	gosub getGlobalVar 50 QuintokInscription #charid secureID NOLOCK
+	gosub getGlobalVar 50 QuintokInscription #charid scrollBagID NOLOCK
+	gosub getGlobalVar 50 QuintokInscription #charid TinkerPens NOLOCK
+	gosub getGlobalVar 50 QuintokInscription #charid UseBank NOLOCK
+	gosub getGlobalVar 50 QuintokInscription #charid Wait NOLOCK
+	if ! ( %resourceID = N/A || %secureID = N/A || %scrollBagID = N/A || %tinkerPens = N/A || %useBank = N/A || %wait = N/A )
+		menu delete currStatus
+	else
+		gosub changeStatus Loading , #spc , Failed
+return
+
+; ==================================
+sub saveData
+	gosub changeStatus Saving , #spc , Data(1/6)
+	menu get backpackID
+	set %backpackID #menuRes
+	gosub putGlobalVar 50 QuintokInscription #charid resourceID NOLOCK
+	gosub changeStatus Saving , #spc , Data , #spc ,(2/6)
+	menu get secureID
+	set %secureID #menuRes
+	gosub putGlobalVar 50 QuintokInscription #charid secureID NOLOCK
+	gosub changeStatus Saving , #spc , Data , #spc , (3/6)
+	menu get scrollBagID
+	set %scrollBagID #menuRes
+	gosub putGlobalVar 50 QuintokInscription #charid scrollBagID NOLOCK
+	gosub changeStatus Saving , #spc , Data , #spc , (4/6)
+	menu get TinkerPens
+	set %TinkerPens #menuRes
+	gosub putGlobalVar 50 QuintokInscription #charid TinkerPens NOLOCK
+	gosub changeStatus Saving , #spc , Data , #spc , (5/6)
+	menu get useBank
+	set %useBank #menuRes
+	gosub putGlobalVar 50 QuintokInscription #charid UseBank NOLOCK
+	gosub changeStatus Saving , #spc , Data , #spc , (6/6)
+	menu getNum Wait
+	set %wait #menuRes
+	gosub putGlobalVar 50 QuintokInscription #charid Wait NOLOCK
+	if %backpackID = N/A || %secureID = N/A || %scrollBagID = N/A || %tinkerPens = N/A || %useBank = N/A || %wait = N/A
+		gosub changeStatus Saving , #spc , Failed
+	else
+		menu delete currStatus
+return
+
+
+
+
+
+;ver 1.0 posted 19Feb04 by CEO
+;purpose: Allows you to store multiple variables in one global variable unique to
+;             each player and script. getGlobaVar retrieves a value from a global variable.
+;@returns: #result = #false if variable not found, #true if found
+;            % . %3 contains variable value
+;%1 is the global/persistant variable to use ( %1 + 1 is used for locking)
+;%2 is the script identifer or pseudo filename
+;%3 is #charid or pseudo filename
+;%4 is the variable to search for and return in %. %3
+;%5 is for lock control. By default getGlobalVar uses a lock to return a value. In some cases you may want to
+;       retrieve a variable (mostly for speed) without needing a lock as long as you are aware of
+;      any potentional conflicts, that very rarely may occur. Set this param to NOLOCK to access
+;      global storage without a lock.
+;sample usage:
+;               gosub getGlobalVar 50 MyScript backpackid
+; Using global var *50 finds the variable labeled MyScript#charidbackpackid and returns it in %backpackid
+;
+;               gosub getGlobalVar 50 MyScript clothstat NOLOCK
+; Using global var *50 find the variable labeled MyScript#charidclothstat and returns it in %clothstat without using a lock
+; Warning: do not use *1000. * %1 + 1 is used for locking and there is no *1001!
+Sub getGlobalVar
+	nameSpace push
+	nameSpace local #systime , _ , %2 , _ , %3 , _ , %4 , _ , GET
+	set !lpc #lpc
+	set #lpc 1000
+	set !lock %1 + 1
+	if ( %0 = 5 ) && ( %5 = NOLOCK )
+	   goto getGlobalVar_skiplock
+	set !lockcount 0
+getGlobalVar_waitforlock:
+	if * . !lock <> N/A && * . !lock <> #nsname
+	{
+	   wait 1 4
+	   set !lockcount !lockcount + 1
+	   if !lockcount < 10
+	      goto getGlobalVar_waitforlock
+	   if * . !lock <> N/A
+	   {
+	      set !currentlock * . !lock
+	      if !currentlock = N/A
+	         goto getGlobalVar_waitforlock
+	      str pos !currentlock _
+	      set !strres #strres - 1
+	      str left !currentlock !strres
+	      set !systime #systime - #strres
+	      if !systime < 10000 ; if over 10 seconds assume a broken lock and take it
+	      {
+	         set !lockcount 0
+	         goto getGlobalVar_waitforlock
+	      }
+	   }
+	}
+	set * . !lock #nsname
+	wait 3 2
+	if  * . !lock <> #nsname
+	{
+	   set !lockcount 0
+	   goto getGlobalVar_waitforlock
+	}
+getGlobalVar_skiplock:
+	set !global * . %1
+	set !varName %2 , ^ , %3 , ^ , %4 , |
+	str pos !global !varName
+	set #result #strres <> 0
+	if #result
+	{
+	   set !varNamePos #strres
+	   str len !varName
+	   set !delString !varNamePos + #strres - 1
+	   str del !global 1 !delString
+	   set !global #strres
+	   str pos !global |
+	   set !varNamePos #strres - 1
+	   str left !global !varNamePos
+	   set % . %4 #strres
+	}
+	if ( %0 < 5 || %5 <> NOLOCK ) && * . !lock = #nsname
+	   set * . !lock N/A
+	set #lpc !lpc
+	nameSpace Clear
+	nameSpace Pop
+return #result
+
+
+;ver 1.0 posted 19Feb04 by CEO
+;purpose: Allows you to store multiple variables in one global variable unique to
+;             each player and script. putGlobaVar stores a value into a global variable.
+
+;@returns: #result = #false if variable not found, #true if found
+;            % . %3 contains variable
+;%1 is the global/persistant variable to use
+;%2 is the script identifer or pseudo filename
+;%3 #charid or other identifier
+;%4 is the variable name of the variable to save into the* variable identified in %1
+;sample usage:
+;               gosub putGlovalVar 50 MyScript backpackid
+; Using global var *50 stores/updates the variable labeled MyScript#charidbackpackid  with %backpackid
+; Warning: do not use *1000. * %1 + 1 is used for locking and there is no *1001!
+Sub putGlobalVar
+	nameSpace push
+	nameSpace local #systime , _ , %2 , _ , %3 , _ , %4 , _  , PUT
+	set !lpc #lpc
+	set #lpc 1000
+	set !lock %1 + 1
+	set !lockcount 0
+putGlobalVar_waitforlock:
+	if * . !lock <> N/A && * . !lock <> #nsname
+	{
+		wait 1 4
+		set !lockcount !lockcount + 1
+		if !lockcount < 10
+			goto putGlobalVar_waitforlock
+		if * . !lock <> N/A
+		{
+			set !currentlock * . !lock
+			if !currentlock = N/A
+				goto putGlobalVar_waitforlock
+			str pos !currentlock _
+			set !strres #strres - 1
+			str left !currentlock !strres
+			set !systime #systime - #strres
+			if !systime < 10000 ; if over 10 seconds assume a hung lock and take it
+			{
+				set !lockcount 0
+				goto putGlobalVar_waitforlock
+			}
+		}
+	}
+	set * . !lock #nsname
+	wait 4
+	set !global * . %1
+	set !varName %2 , ^ , %3 , ^ , %4 , |
+	str pos !global !varName
+	if #strres = 0
+	{
+		if  * . !lock <> #nsname
+		{
+			set !lockcount 0
+			goto putGlobalVar_waitforlock
+		}
+		if  |CEO*FILESYSTEM| notin !global
+			set !global |CEO*FILESYSTEM|
+		set * . %1 !global , !varName , % . %4 , |
+		set * . !lock N/A
+		set #lpc !lpc
+		nameSpace clear
+		nameSpace pop
+		return #true
+	}
+	set !varNamePos #strres
+	str len !varName
+	set !splitString !varNamePos + #strres - 1
+	str left !global !splitstring
+	set !globalPart1 #strres
+	str del !global 1 !splitString
+	set !global #strres
+	str len !global
+	set !globalLen #strres
+	str pos !global |
+	set !splitString !globalLen - #strres + 1
+	str right !global !splitstring
+	set !global #strres
+	if  * . !lock <> #nsname
+	{
+		set !lockcount 0
+		goto putGlobalVar_waitforlock
+	}
+	set * . %1 !globalPart1 , % . %4 , !global
+	set * . !lock N/A
+	set #lpc !lpc
+	nameSpace clear
+	nameSpace pop
+return #true
+
+
+;ver 1.0 posted 19Feb04 by CEO
+;purpose: Allows you to delete a variable out of the globalvar pool unique to
+;             each player and script. delGlobaVar deletes a global variable in a * variable.
+
+;@returns: #result = #false if variable not found, #true if  deleted
+;
+;%1 is the global/persistant variable to use
+;%2 is the script identifer or pseudo filename
+;%3 is #charid or other identifier
+;%4 is the variable name of the variable to save into the* variable identified in %1
+;sample usage:
+;               gosub delGlovalVar 50 MyScript backpackid
+; Using global var *50 deletes  the variable label MyScript#charidbackpackid  and it's associated value.
+; Warning: do not use *1000. * %1 + 1 is used for locking and there is no *1001!
+Sub delGlobalVar
+	nameSpace push
+	nameSpace local #systime , _ , %2 , _ , %3 , _ , %4 , _ , DEL
+	set !lpc #lpc
+	set #lpc 1000
+	set !lock %1 + 1
+	set !lockcount 0
+delGlobalVar_waitforlock:
+	if * . !lock <> N/A && * . !lock <> #nsname
+	{
+		wait 1 4
+		set !lockcount !lockcount + 1
+		if !lockcount <  10
+			goto delGlobalVar_waitforlock
+
+		if * . !lock <> N/A
+		{
+			set !currentlock * . !lock
+			if !currentlock = N/A
+				goto delGlobalVar_waitforlock
+			str pos !currentlock _
+			set !strres #strres - 1
+			str left !currentlock !strres
+			set !systime #systime - #strres
+			if !systime < 10000 ; if over 10 seconds assume a broken lock and take it
+			{
+				set !lockcount 0
+				goto delGlobalVar_waitforlock
+			}
+		}
+
+	}
+	set * . !lock #nsname
+	wait 4
+	set !global * . %1
+	set !varName %2 , ^ , %3 , ^ , %4 , |
+	str pos !global !varName
+	set #result #strres <> 0
+	if #result
+	{
+		set !varNamePos #strres
+		str len !varName
+		set !splitString !varNamePos + #strres - 1
+		set !delString !varNamePos - 1
+		str left !global !delString
+		set !globalPart1 #strres
+		str del !global 1 !splitString
+		set !global #strres
+		str pos !global |
+		set !delString #strres
+		str del !global 1 !delString
+		if  * . !lock <> #nsname
+		{
+			set !lockcount 0
+			goto delGlobalVar_waitforlock
+		}
+		set * . %1 !globalPart1 , #strres
+	}
+	if  * . !lock = #nsname
+		set * . !lock N/A
+	set #lpc !lpc
+	nameSpace clear
+	nameSpace pop
+return #result

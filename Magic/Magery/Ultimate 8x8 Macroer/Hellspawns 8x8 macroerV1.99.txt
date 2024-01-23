@@ -1,0 +1,5227 @@
+; Hellspawn`s 8*8 Macroer    - based on Mitrandirs & Dumbanimals/Clovis`s
+;
+; Public Beta Version 1.99
+;
+; new in 1.75 - server boundary fix 
+;                       - magery/necro & chiv below 30 training
+;	        - Vet now reses and retargets bonded pets
+;
+;new in v1.9  - Focus, Med, Anatomy . Bushido & Ninjitsu
+;
+;new in 1.92 - Bushido now does confidence till 60 then counter to 80
+;	         then evasion .
+;	       - Ninjitsu now does mirror till 70. above 70 still broke.
+;	       - Fixed bug that crept in so macroer now follows a gainline south again properly
+;
+;new in 1.93 - Bushido now does confidence till 55 then counter till 75 then evasion
+;	       - Bushido and chiv no longer try to med if you have weapon equiped and your
+;	         casting counter / conc wep.
+;	       - Added resist to list of skills to drop
+;	       - FIXED BOATSTOPPER - MAKE SURE YOU HAVE V1.93 - 1.9 is bugged on all skills but ninjitsu/bushido
+;
+;new in 1.94 - Ninjitsu now does rat form 20-40 then mirror - 75 - focus -92.5 - deathstrike beyond.
+;	       - From 75 you need a pet and be unguilded in trammel and have a weapon in hand
+;	       - Added snicker7`s sub to kill off mirror images 
+;	       - Focus / deathstrike now works properly - thanks snicker7 
+;	       - Added jewelry option for bushido / ninjitsu (untested as i have none but should work).
+;	       - Altered training info 
+;	       - Fixed stealth invis bug (i think)
+;	       - Fixed bug with ninj/bush where %skill wasnt updating properly so it would go on casting wrong spell and not switch to new spell
+;
+;new in 1.95 - Fixed 8*8 bug where it would not register all gains
+;	       - Added code to stop ninjitsu getting stuck in focus / deathstrike loop
+;	       - Ninjitsu should now also override Activemed once you go above 75 skill.
+;
+;new in 1.96 - Changed all nested else`s to ifs, code should be more stable now.
+;	       - Momentum strike set on 97.5 now
+;	       - Success check for death strike - ninjitsu should go all the way now
+;	       - NEW BOATSTOPPER TOO
+;
+;new in 1.97 - Minor jewelry fix
+;	       - Adjusted ninjitsu to do focus till 95.
+;	       - Bushido & Ninjitsu now do all follow me when you start or unpause incase you have pet with you.
+;	       - Jewelry msg now displayed when on jewelry gainspot
+;	       - Noticed boat sometimes missed to stop on jewel gainspot, it should check back/forward a square now if it gets no gains
+;	       - Button writing nolonger goes green / yellow on boat menu when you press it.
+;	       - Bushido / Ninj check to see if dropping skill is 0.
+;	       - Auto log out feature if skill gaining reaches cap.
+;	       - Opens and closes ninj / bush books before you start so no need to do it now.
+;	       - Momentum strike removed because no way Ive found to macro it, now sticks with Evasion but 97.5 seems to be the cap with that.
+;
+;new in 1.98 - Fixed bushido issues with counter attack
+;
+;new in 1.99 - Chooseskill ninj/bush now added, no need to enter skill and choose dropping 1 now.
+;	       - New golem /uni training method added for bushido post 97.5 ;-)
+;
+; This macroer is in 2 parts be sure to load the 2nd part into another instance of
+; easyuo and press play before you begin. Happy gaining.
+; Any bugs please post them on the board.
+;
+; Simply load this macro into 1 instance of easyuo and load part 2 (called boatstopper.txt) into another instance of easyuo.
+; Start the boatstopper macro 1st and minimize it then start this one, dont minimize this one or the menu gets minimized too !
+; The boat must always face NORTH when searching for a gainline / 8*8ing. If you turn autoface off make sure you face boat North.
+; To use jewelry training method simply wear enough jewelry to cap the skill your training and select jeweltraining to on.
+;
+; ============================================================
+;			USER VARIABLES
+;	It is not necessary to set any of these as you can set all on menu but
+;	if you have any personal default prefs set them here
+; ============================================================
+;
+		set %autoface off
+; 		default = on  any other setting presumes boat facing NORTH
+; ============================================================
+		set %reverse 0			
+; 		default = 0 , set to 1 to default to sailing slow back
+; ============================================================
+		set %retries 1				
+; 		default = 1 , set from 1-10 for number of retries on success
+; ============================================================
+		set %returndistance 40	
+; 		default = 40 ,set from 16-320, this is distance to return to original gainspot after searching one way
+; ============================================================
+		set %trawl 0				
+; 		default = 0 , set to 1 to place boat in `trawl` mode to search for gainline
+; ============================================================
+		set %reagentsuit no		
+; 		default = no , set to yes if you have 100% lower reagant cost items or you dont wish to reg count
+; ============================================================
+		set %journalscan 5
+; 		default = 5 , this is number of lines in journal to scan for boat stopping.
+; 		if you find when the boat hits land it doesnt reverse course properly try lowering this figure
+; 		or if you look at the journal and its very busy (lots of names between messages) try increasing it
+;============================================================
+		set %returntogainspot on
+;		default = on set to off if you dont wish boat to return to gainspot to search other direction.
+;============================================================
+		set %anattries 5
+;		default = 5 set this to number of times to retry for gain after nogains when heal is locked.
+;		recommend 3-10
+; ============================================================
+;  	Dont Edit Beyond this line unless you know what your doing :)
+; ============================================================
+
+		set *13 OFF
+		set *14 OFF
+		set %stopcount 0
+		Set %lasty 0
+		Set %lastx 0
+		set %stealthinvisible 0
+		set %runstatus 0
+		set %lastrunstatus 1
+		if %journalscan < 0 
+			{
+			set %journalscan 1
+			}
+		if %journalscan > 10
+			{
+			set %journalscan 10
+			}
+
+		set %sk Alchemy
+
+
+		INITEVENTS
+
+checkparttwoloaded:
+
+		wait 20
+		if *13 <> ON
+			{
+			display okcancel You MUST open another instance of Easyuo$ Load the Boatstopper.txt part of the macro into it and start it before pressing ok$
+			wait 10
+			if #dispres = ok
+				{
+				goto checkparttwoloaded
+				}
+			if #dispres <> ok
+				{
+				Stop
+				}
+			}
+Restart:
+		set %medskill Magery
+		set %spiritheal 0
+		set %notloggedin 0
+		set %returningtogainspot 0
+		set %Paused 0
+		set %runstatus 0
+		set %lastrunstatus 1
+		set %speed Fast
+		set %regcountfailed 0
+		set %skill 0
+		set *15 off
+		set *16 off
+		set *64 on
+		set %uniheal off
+
+; ============================================================
+;	Menu
+; ============================================================
+		Menu HideEUO
+		Menu Clear
+		Menu Window size 500 525
+		Menu Window Color $D9D0C8
+		Menu Font bgcolor $D9D0C8
+		Menu Font Color Black
+		Menu Font Name tahoma
+		Menu Window Title The Ultimate 8*8 by Hellspawn
+		Menu Button 1 10 10 150 25 Magery
+		Menu Button 2 10 40 150 25 Hiding
+		Menu Button 3 10 70 150 25 Evaluate Intelligence
+		Menu Button 4 10 100 150 25 Healing
+		Menu Button 5 10 130 150 25 Vetinary
+		Menu Button 6 10 160 150 25 Stealth
+		Menu Button 7 10 190 150 25 Chivalry
+		Menu Button 8 10 220 150 25 Necromancy
+		Menu Button 9 10 250 150 25 Spirit Speak
+		Menu Button 10 10 280 150 25 Musicianship
+		Menu Button 11 10 310 150 25 Peacemaking
+		Menu Button 12 10 340 150 25 Bushido
+		Menu Button 13 10 370 150 25 Ninjitsu
+		Menu Button 14 10 400 150 25 Meditation
+		Menu Button 15 10 430 150 25 Focus
+		Menu Button 16 10 460 150 25 Anatomy
+		Menu Button 18 10 490 73 25 Home
+		Menu Button 19 86 490 73 25 Cancel
+		Menu Show
+		Goto S18
+Menu:
+		if %n <> 36
+			{
+			Menu Text jeweltxt 190 490 Jewelry training is
+			if *15 = on
+				{
+				menu button 49 290 485 20 20 On
+				}
+			if *15 <> on
+				{
+				menu button 49 290 485 20 20 Off
+				}
+			}
+		Set #menubutton N/A
+		Choose:
+			menu getnum jscan
+			set %journalscan #menures
+			menu getnum succretries
+			set %retries #menures
+			if %returntogainspot = on
+				{
+				menu getnum retdistance
+				set %returndistance #menures
+				if %returndistance < 16
+					{
+					set %returndistance 16
+					menu delete retdistance
+					Menu Edit retdistance 330 220 30 %returndistance
+					}
+				if %returndistance > 320
+					{
+					set %returndistance 320
+					menu delete retdistance
+					Menu Edit retdistance 330 220 30 %returndistance
+					}
+				}
+			if %journalscan < 1
+				{
+				set %journalscan 1
+				menu delete jscan
+				Menu Edit jscan 330 165 20 %journalscan
+				}
+			if %journalscan > 10
+				{
+				set %journalscan 10
+				menu delete jscan
+				Menu Edit jscan 330 165 20 %journalscan
+				}
+			if %retries < 1
+				{
+				set %retries 1
+				menu delete succretries
+				Menu Edit succretries 330 190 20 %retries
+				}
+			if %retries > 10
+				{
+				set %retries 10
+				menu delete succretries
+				Menu Edit succretries 330 190 20 %retries
+				}
+			set %shrd #SHARD
+			If #menubutton <> N/A
+				set %Page #menubutton
+				Goto S , #menubutton	
+		Goto Choose
+
+; ============================================================
+S1:
+		set %spiritheal 0
+		Set %activemed 1
+		Menu Delete box1
+		Menu Delete edit1
+		Menu Delete regsuit
+		Menu Delete medskil
+		Menu Delete txt
+		Menu delete sptxt
+		Menu Delete %n
+		Menu Delete 42
+		Menu Delete 45
+		Menu Delete 48
+		Menu Delete 50
+		Menu Font Style B
+		Menu Font size 11
+		Menu Text txt 170 12 Magery
+		Menu Font Style
+		Menu Font Size 9
+		Menu Text txt 170 40 You need lots of regs, the script will choose correct spell$Make Sure regs are in main pack or disable reg count.
+		Menu Text Actmed 170 290 Actively Meditate if required
+		if %activemed = 1
+			{
+			Menu Button 44 330 285 30 20 Yes
+			}
+		else
+			{
+			Menu Button 44 330 285 30 20 No
+			}
+		if %reagentsuit = NO
+			{	
+			Menu Button 47 170 327 56 20 I`m not
+			Menu Text regsuit 230 330 wearing a 100% reagent suit. Count my regs.
+			}
+		else
+			{	
+			Menu Button 47 170 327 56 20 I am
+			Menu Text regsuit 230 330 wearing a 100% reagent suit.Dont Count regs.
+			}
+		Set %n 21
+		Menu Button %n 250 100 150 25 Start
+		Menu Text autofacing 170 140 Autoface boat North for me
+		if %autoface <> on
+			{
+			Menu Delete 40
+			Menu Button 40 330 137 20 20 No
+			}
+		else
+			{
+			Menu Delete 40
+			Menu Button 40 330 137 30 20 Yes
+			}
+		Goto Menu
+S2:
+		Set %activemed 0
+		set %spiritheal 0
+		Menu Delete box1
+		Menu Delete edit1
+		Menu Delete Actmed
+		Menu Delete regsuit
+		Menu Delete medskil
+		Menu delete sptxt
+		Menu Delete 42
+		Menu Delete 44
+		Menu Delete 45
+		Menu Delete 47
+		Menu Delete 48
+		Menu Delete 50
+		Menu Delete txt
+		Menu Delete %n
+		Menu Font Style B
+		Menu Font size 11
+		Menu Text txt 170 12 Hiding
+		Menu Font Style
+		Menu Font Size 9
+		Menu Text txt 170 40 You Need nothing at all.
+		Set %n 22
+		Menu Button %n 250 100 150 25 Start
+		Menu Text autofacing 170 140 Autoface boat North for me
+		if %autoface <> on
+			{
+			Menu Delete 40
+			Menu Button 40 330 137 20 20 No
+			}
+		else
+			{
+			Menu Delete 40
+			Menu Button 40 330 137 30 20 Yes
+			}
+		Goto Menu
+S3:
+		Set %activemed 0
+		set %spiritheal 0
+		Menu Delete box1
+		Menu Delete edit1
+		Menu Delete Actmed
+		Menu Delete regsuit
+		Menu Delete medskil
+		Menu delete sptxt
+		Menu Delete 42
+		Menu Delete 44
+		Menu Delete 45
+		Menu Delete 48
+		Menu Delete 50
+		Menu Delete txt
+		Menu Delete %n
+		Menu Font Style B
+		Menu Font size 11
+		Menu Text txt 170 12 Evaluating Intelligence
+		Menu Font Style
+		Menu Font Size 9
+		Menu Text txt 170 40 You need Suflurous Ash.$Make Sure regs are in main pack or disable reg count.
+		if %reagentsuit = NO
+			{	
+			Menu Button 47 170 327 56 20 I`m not
+			Menu Text regsuit 230 330 wearing a 100% reagent suit. Count my regs.
+			}
+		else
+			{	
+			Menu Button 47 170 327 56 20 I am
+			Menu Text regsuit 230 330 wearing a 100% reagent suit.Dont Count regs.
+			}
+		Set %n 23
+		Menu Button %n 250 100 150 25 Start
+		Menu Text autofacing 170 140 Autoface boat North for me
+		if %autoface <> on
+			{
+			Menu Delete 40
+			Menu Button 40 330 137 20 20 No
+			}
+		else
+			{
+			Menu Delete 40
+			Menu Button 40 330 137 30 20 Yes
+			}
+		Goto Menu
+S4:
+		Set %activemed 0
+		set %spiritheal 0
+		Menu Delete box1
+		Menu Delete edit1
+		Menu Delete Actmed
+		Menu Delete regsuit
+		Menu Delete medskil
+		Menu delete sptxt
+		Menu Delete 40
+		Menu Delete 42
+		Menu Delete 44
+		Menu Delete 45
+		Menu Delete 47
+		Menu Delete 48
+		Menu Delete 50
+		Menu Delete txt
+		Menu Delete %n
+		Menu Font Style B
+		Menu Font size 11
+		Menu Text txt 170 12 Healing
+		Menu Font Style
+		Menu Font Size 9
+		Menu Text txt 170 40 You need someone / a ghost to heal$Another character in lich form is ideal$If your above 81 heal / Anatomy$Use another character as a ghost.
+		Set %n 24
+		Menu Button %n 250 100 150 25 Start
+		Menu Text autofacing 170 140 Autoface boat North for me
+		if %autoface <> on
+			{
+			Menu Delete 40
+			Menu Button 40 330 137 20 20 No
+			}
+		else
+			{
+			Menu Delete 40
+			Menu Button 40 330 137 30 20 Yes
+			}
+		Goto Menu
+S5:
+		Set %activemed 0
+		set %spiritheal 0
+		Menu Delete box1
+		Menu Delete edit1
+		Menu Delete Actmed
+		Menu Delete regsuit
+		Menu Delete medskil
+		Menu delete sptxt
+		Menu Delete 40
+		Menu Delete 42
+		Menu Delete 44
+		Menu Delete 45
+		Menu Delete 47
+		Menu Delete 48
+		Menu Delete 50
+		Menu Delete txt
+		Menu Delete %n
+		Menu Font Style B
+		Menu Font size 11
+		Menu Text txt 170 12 Veterinary
+		Menu Font Style
+		Menu Font Size 9
+		Menu Text txt 170 40 You need Bandages and 2 pets fighting each other.$Since Aos you need 2 pets with lots of hits or they die a lot$Above 80 ressurect ANOTHER CHARS bonded pet.$Just kill pet, target dead animal twice.Dont reply to res box$
+		Set %n 25
+		Menu Button %n 250 100 150 25 Start
+		Menu Text autofacing 170 140 Autoface boat North for me
+		if %autoface <> on
+			{
+			Menu Delete 40
+			Menu Button 40 330 137 20 20 No
+			}
+		else
+			{
+			Menu Delete 40
+			Menu Button 40 330 137 30 20 Yes
+			}
+		Goto Menu
+S6:
+		Set %activemed 0
+		set %spiritheal 0
+		Menu Delete box1
+		Menu Delete edit1
+		Menu Delete Actmed
+		Menu Delete regsuit
+		Menu Delete medskil
+		Menu delete sptxt
+		Menu Delete 42
+		Menu Delete 44
+		Menu Delete 45
+		Menu Delete 47
+		Menu Delete 48
+		Menu Delete 50
+		Menu Delete txt
+		Menu Delete %n
+		Menu Font Style B
+		Menu Font size 11
+		Menu Text txt 170 12 Stealth
+		Menu Font Style
+		Menu Font Size 9
+		Menu Text txt 170 40 You need at least 50% skill in Hiding.$Visit www.uopowergamers.com/s-stealth_aos.shtml$for info on what to wear to gain
+		Set %n 26
+		Menu Button %n 250 100 150 25 Start
+		Menu Text autofacing 170 140 Autoface boat North for me
+		if %autoface <> on
+			{
+			Menu Delete 40
+			Menu Button 40 330 137 20 20 No
+			}
+		else
+			{
+			Menu Delete 40
+			Menu Button 40 330 137 30 20 Yes
+			}
+		Menu Text txt 170 310 Cast Invisible instead of hiding
+		Menu Delete 42
+		if %stealthinvisible <> 0
+			{	
+			if %activemed = 1
+				{
+				Menu Text Actmed 170 290 Actively Meditate if required
+				Menu Button 44 330 285 30 20 Yes
+				}
+			if %activemed <> 1
+				{
+				Menu Text Actmed 170 290 Actively Meditate if required
+				Menu Button 44 330 285 30 20 No
+				}
+			if %reagentsuit = NO
+				{	
+				Menu Button 47 170 327 56 20 I`m not
+				Menu Text regsuit 230 330 wearing a 100% reagent suit. Count my regs.
+				}
+			if %reagentsuit <> NO
+				{	
+				Menu Button 47 170 327 56 20 I am
+				Menu Text regsuit 230 330 wearing a 100% reagent suit.Dont Count regs.
+				}
+			}
+		if %stealthinvisible = 0
+			{
+			Menu Delete Actmed
+			Menu Delete regsuit
+			Menu Delete 44
+			Menu Delete 47
+			Menu Button 42 340 310 30 20 No
+			}
+		if %stealthinvisible = 1
+			{
+			Menu Button 42 340 310 100 20 All the time
+			}
+		if %stealthinvisible = 2
+			{
+			Menu Button 42 340 310 100 20 Only on GainLine
+			}
+			
+		Goto Menu
+S7:
+		Set %activemed 1
+		set %spiritheal 0
+		Menu Delete box1
+		Menu Delete edit1
+		Menu Delete regsuit
+		Menu Delete medskil
+		Menu delete sptxt
+		Menu Delete txt
+		Menu Delete %n
+		Menu Delete 42
+		Menu Delete 45
+		Menu Delete 47
+		Menu Delete 48
+		Menu Delete 50
+		Menu Font Style B
+		Menu Font size 11
+		Menu Text txt 170 12 Chivalry
+		Menu Font Style
+		Menu Font Size 9
+		Menu Text txt 170 40 You need masses of Tithing points, the script will choose$the correct spell$Note : reagent free suits should work on tithing points too
+		Menu Text Actmed 170 290 Actively Meditate if required
+		if %activemed = 1
+			{
+			Menu Button 44 330 285 30 20 Yes
+			}
+		else
+			{
+			Menu Button 44 330 285 30 20 No
+			}
+		Set %n 27
+		Menu Button %n 250 100 150 25 Start
+		Menu Text autofacing 170 140 Autoface boat North for me
+		if %autoface <> on
+			{
+			Menu Delete 40
+			Menu Button 40 330 137 20 20 No
+			}
+		else
+			{
+			Menu Delete 40
+			Menu Button 40 330 137 30 20 Yes
+			}
+		Goto Menu
+S8:
+		Set %activemed 1
+		set %spiritheal 1
+		Menu Delete box1
+		Menu Delete edit1
+		Menu Delete regsuit
+		Menu Delete medskil
+		Menu delete sptxt
+		Menu Delete txt
+		Menu Delete 40
+		Menu Delete 42
+		Menu Delete 48
+		Menu Delete 50
+		Menu Delete %n
+		Menu Font Style B
+		Menu Font size 11
+		Menu Text txt 170 12 Necromancy
+		Menu Font Style
+		Menu Font Size 9
+		Menu Text txt 170 40 You need lots of regs, the script will choose correct spell$Make Sure regs are in main pack or disable reg count.
+		Menu Text Actmed 170 290 Actively Meditate if required
+		if %activemed = 1
+			{
+			Menu Button 44 330 285 30 20 Yes
+			}
+		else
+			{
+			Menu Button 44 330 285 30 20 No
+			}
+		Menu Text txt 170 310 Use Spirit Speak to Heal
+		if %spiritheal = 1
+			{
+			Menu Button 45 330 305 30 20 Yes
+			}
+		else
+			{
+			Menu Button 45 330 305 30 20 No
+			}
+		if %reagentsuit = NO
+			{	
+			Menu Button 47 170 327 56 20 I`m not
+			Menu Text regsuit 230 330 wearing a 100% reagent suit. Count my regs.
+			}
+		else
+			{	
+			Menu Button 47 170 327 56 20 I am
+			Menu Text regsuit 230 330 wearing a 100% reagent suit.Dont Count regs.
+			}
+		Set %n 28
+		Menu Button %n 250 100 150 25 Start
+		Menu Text autofacing 170 140 Autoface boat North for me
+		if %autoface <> on
+			{
+			Menu Delete 40
+			Menu Button 40 330 137 20 20 No
+			}
+		else
+			{
+			Menu Delete 40
+			Menu Button 40 330 137 30 20 Yes
+			}
+		Goto Menu
+S9:
+		Set %activemed 1
+		set %spiritheal 0
+		Menu Delete box1
+		Menu Delete edit1
+		Menu Delete regsuit
+		Menu Delete medskil
+		Menu delete sptxt
+		Menu Delete txt
+		Menu Delete %n
+		Menu Delete 42
+		Menu Delete 45
+		Menu Delete 47
+		Menu Delete 48
+		Menu Delete 50
+		Menu Font Style B
+		Menu Font size 11
+		Menu Text txt 170 12 Spirit Speak
+		Menu Font Style
+		Menu Font Size 9
+		Menu Text txt 170 40 You Need nothing at.
+		Menu Text Actmed 170 290 Actively Meditate if required
+		if %activemed = 1
+			{
+			Menu Button 44 330 285 30 20 Yes
+			}
+		else
+			{
+			Menu Button 44 330 285 30 20 No
+			}
+		Set %n 29
+		Menu Button %n 250 100 150 25 Start
+		Menu Text autofacing 170 140 Autoface boat North for me
+		if %autoface <> on
+			{
+			Menu Delete 40
+			Menu Button 40 330 137 20 20 No
+			}
+		else
+			{
+			Menu Delete 40
+			Menu Button 40 330 137 30 20 Yes
+			}
+		Goto Menu
+S10:
+		Set %activemed 0
+		set %spiritheal 0
+		Menu Delete box1
+		Menu Delete edit1
+		Menu Delete regsuit
+		Menu Delete Actmed
+		Menu Delete medskil
+		Menu delete sptxt
+		Menu Delete 42
+		Menu Delete 44
+		Menu Delete 45
+		Menu Delete 47
+		Menu Delete 48
+		Menu Delete 50
+		Menu Delete txt
+		Menu Delete %n
+		Menu Font Style B
+		Menu Font size 11
+		Menu Text txt 170 12 Musicianship
+		Menu Font Style
+		Menu Font Size 9
+		Menu Text txt 170 40 You need an Instument.
+		Set %n 30
+		Menu Button %n 250 100 150 25 Start
+		Menu Text autofacing 170 140 Autoface boat North for me
+		if %autoface <> on
+			{
+			Menu Delete 40
+			Menu Button 40 330 137 20 20 No
+			}
+		else
+			{
+			Menu Delete 40
+			Menu Button 40 330 137 30 20 Yes
+			}
+		Goto Menu
+S11:
+		Set %activemed 0
+		set %spiritheal 0
+		Menu Delete box1
+		Menu Delete edit1
+		Menu Delete regsuit
+		Menu Delete Actmed
+		Menu delete sptxt
+		Menu Delete medskil
+		Menu Delete 42
+		Menu Delete 44
+		Menu Delete 45
+		Menu Delete 47
+		Menu Delete 48
+		Menu Delete 50
+		Menu Delete txt
+		Menu Delete %n
+		Menu Font Style B
+		Menu Font size 11
+		Menu Text txt 170 12 Peacemaking
+		Menu Font Style
+		Menu Font Size 9
+		Menu Text txt 170 40 You need instuments.
+		Set %n 31
+		Menu Button %n 250 100 150 25 Start
+		Menu Text autofacing 170 140 Autoface boat North for me
+		if %autoface <> on
+			{
+			Menu Delete 40
+			Menu Button 40 330 137 20 20 No
+			}
+		else
+			{
+			Menu Delete 40
+			Menu Button 40 330 137 30 20 Yes
+			}
+		Goto Menu
+S12:
+		Set %activemed 1
+		set %spiritheal 0
+		Menu Delete box1
+		Menu Delete regsuit
+		Menu Delete medskil
+		Menu delete sptxt
+		Menu Delete txt
+		Menu Delete %n
+		Menu Delete 42
+		Menu Delete 45
+		Menu Delete 47
+		Menu Delete 48
+		Menu Font Style B
+		Menu Font size 11
+		Menu Text txt 170 12 Bushido
+		Menu Font Style
+		Menu Font Size 9
+		Menu Text txt 170 40 Trains From 25-97.5. From 55.0 upwards you need a$weapon equiped. Above 97.5 youll need to be in fel, have positive karma$Have a golem with you & a tamer release a uni on boat & 100% poison wep.
+		Menu Text Actmed 170 290 Actively Meditate if required
+		if %activemed = 1
+			{
+			Menu Button 44 330 285 30 20 Yes
+			}
+		else
+			{
+			Menu Button 44 330 285 30 20 No
+			}
+		Set %n 32
+		Menu Button %n 250 100 150 25 Start
+		Menu Text autofacing 170 140 Autoface boat North for me
+		if %autoface <> on
+			{
+			Menu Delete 40
+			Menu Button 40 330 137 20 20 No
+			}
+		else
+			{
+			Menu Delete 40
+			Menu Button 40 330 137 30 20 Yes
+			}
+		Menu Text txt 170 360 Above 97.5 Heal Uni method
+		if %uniheal = off
+			{
+			Menu Delete 50
+			Menu Button 50 335 357 70 20 Disabled
+			}
+		if %uniheal = chiv
+			{
+			Menu Delete 50
+			Menu Button 50 335 357 70 20 Chivalry
+			}
+		if %uniheal = mage
+			{
+			Menu Delete 50
+			Menu Button 50 335 357 70 20 Magery
+			}
+		;Menu Text txt 210 390 <<Enter Current Bushido skill here (no decimals)
+		;Menu Text txt 270 420 << Choose dropping skill & lock ALL others
+		;Menu Edit edit1 170 390 30 %skill
+		;menu Combo Create box1 170 420 90 
+		;for %xx 0 50
+		;	{
+		;	gosub getdropskill
+		;	menu Combo Add box1 *16
+		;	}
+		Goto Menu
+S13:
+		Set %activemed 1
+		set %spiritheal 0
+		Menu Delete box1
+		Menu Delete regsuit
+		Menu Delete medskil
+		Menu delete sptxt
+		Menu Delete txt
+		Menu Delete %n
+		Menu Delete 42
+		Menu Delete 45
+		Menu Delete 47
+		Menu Delete 48
+		Menu Delete 50
+		Menu Font Style B
+		Menu Font size 11
+		Menu Text txt 170 12 Ninjitsu
+		Menu Font Style
+		Menu Font Size 9
+		Menu Text txt 170 40 From 75 you will need to be unguilded,$in trammel & have a pet with you to fight.$and have a weapon in your hand.$MR suit highly recommended
+		Menu Text Actmed 170 290 Actively Meditate if required
+		if %activemed = 1
+			{
+			Menu Button 44 330 285 30 20 Yes
+			}
+		else
+			{
+			Menu Button 44 330 285 30 20 No
+			}
+		Set %n 33
+		Menu Button %n 250 100 150 25 Start
+		Menu Text autofacing 170 140 Autoface boat North for me
+		if %autoface <> on
+			{
+			Menu Delete 40
+			Menu Button 40 330 137 20 20 No
+			}
+		else
+			{
+			Menu Delete 40
+			Menu Button 40 330 137 30 20 Yes
+			}
+		;Menu Text txt 210 390 <<Enter Current Ninjitsu skill here (no decimals)
+		;Menu Text txt 270 420 << Choose dropping skill & lock ALL others
+		;Menu Edit edit1 170 390 30 %skill
+		;menu Combo Create box1 170 420 90  
+		;for %xx 0 50
+		;	{
+		;	gosub getdropskill
+		;	menu Combo Add box1 *16
+		;	}
+		Goto Menu
+S14:
+		Set %activemed 0
+		Menu Delete box1
+		Menu Delete edit1
+		Menu Delete regsuit
+		Menu Delete txt
+		Menu Delete %n
+		Menu Delete 42
+		Menu Delete 45
+		Menu Delete 50
+		Menu Font Style B
+		Menu Font size 11
+		Menu Text txt 170 12 Meditation
+		Menu Font Style
+		Menu Font Size 9
+		Menu Text txt 170 40 You need regs/tithing, the script will choose correct spell$Make Sure regs are in main pack or use LRC suit.
+		if %reagentsuit = NO
+			{	
+			Menu Button 47 170 327 56 20 I`m not
+			Menu Text regsuit 230 330 wearing a 100% reagent suit. Count my regs.
+			}
+		else
+			{	
+			Menu Button 47 170 327 56 20 I am
+			Menu Text regsuit 230 330 wearing a 100% reagent suit.Dont Count regs.
+			}
+		Menu Text medskil 170 375 Use
+		Menu Text medskil 265 375 to lower mana
+		if %medskill = Magery
+			{
+			Menu Button 48 192 372 70 20 Magery
+			}
+		if %medskill = Chivalry
+			{
+			Menu Button 48 192 372 70 20 Chivalry
+			}
+		if %medskill = Necromancy
+			{
+			Menu Button 48 192 372 70 20 Necromancy
+			Menu Text sptxt 170 310 Use Spirit Speak to Heal
+			if %spiritheal = 1
+				{
+				Menu Button 45 330 305 30 20 Yes
+				}
+			if %spiritheal <> 1
+				{
+				Menu Button 45 330 305 30 20 No
+				}
+			}
+		Set %n 34
+		Menu Button %n 250 100 150 25 Start
+		Menu Text autofacing 170 140 Autoface boat North for me
+		if %autoface <> on
+			{
+			Menu Delete 40
+			Menu Button 40 330 137 20 20 No
+			}
+		else
+			{
+			Menu Delete 40
+			Menu Button 40 330 137 30 20 Yes
+			}
+		Goto menu
+S15:
+		Set %activemed 0
+		Menu Delete box1
+		Menu Delete edit1
+		Menu Delete regsuit
+		Menu Delete txt
+		Menu Delete %n
+		Menu Delete 42
+		Menu Delete 45
+		Menu Delete 50
+		Menu Font Style B
+		Menu Font size 11
+		Menu Text txt 170 12 Focus
+		Menu Font Style
+		Menu Font Size 9
+		Menu Text txt 170 40 You need regs/tithing, the script will choose correct spell$Make Sure regs are in main pack or use LRC suit.
+		if %reagentsuit = NO
+			{	
+			Menu Button 47 170 327 56 20 I`m not
+			Menu Text regsuit 230 330 wearing a 100% reagent suit. Count my regs.
+			}
+		else
+			{	
+			Menu Button 47 170 327 56 20 I am
+			Menu Text regsuit 230 330 wearing a 100% reagent suit.Dont Count regs.
+			}
+		Menu Text medskil 170 375 Use
+		Menu Text medskil 265 375 to lower mana
+		if %medskill = Magery
+			{
+			Menu Button 48 192 372 70 20 Magery
+			}
+		if %medskill = Chivalry
+			{
+			Menu Button 48 192 372 70 20 Chivalry
+			}
+		if %medskill = Necromancy
+			{
+			Menu Button 48 192 372 70 20 Necromancy
+			Menu Text sptxt 170 310 Use Spirit Speak to Heal
+			if %spiritheal = 1
+				{
+				Menu Button 45 330 305 30 20 Yes
+				}
+			if %spiritheal <> 1
+				{
+				Menu Button 45 330 305 30 20 No
+				}
+			}
+		Set %n 35
+		Menu Button %n 250 100 150 25 Start
+		Menu Text autofacing 170 140 Autoface boat North for me
+		if %autoface <> on
+			{
+			Menu Delete 40
+			Menu Button 40 330 137 20 20 No
+			}
+		else
+			{
+			Menu Delete 40
+			Menu Button 40 330 137 30 20 Yes
+			}
+		Goto menu
+
+S16:
+;anatomy
+;display ok ANATOMY Coming Soon !
+		Set %activemed 0
+		set %spiritheal 0
+		set *15 off
+		Menu Delete box1
+		Menu Delete edit1
+		Menu Delete Actmed
+		Menu Delete regsuit
+		Menu Delete medskil
+		menu delete jeweltxt
+		Menu delete sptxt
+		Menu Delete 40
+		Menu Delete 42
+		Menu Delete 44
+		Menu Delete 45
+		Menu Delete 47
+		Menu Delete 48
+		Menu Delete 49
+		Menu Delete 50
+		Menu Delete txt
+		Menu Delete %n
+		Menu Font Style B
+		Menu Font size 11
+		Menu Text txt 170 12 Anatomy
+		Menu Font Style
+		Menu Font Size 9
+		Menu Text txt 170 40 You need someone / a ghost to heal$Another character in lich form is ideal$If your above 81 heal / Anatomy$Use another character as a ghost.
+		Set %n 36
+		Menu Button %n 250 100 150 25 Start
+		Menu Text autofacing 170 140 Autoface boat North for me
+		if %autoface <> on
+			{
+			Menu Delete 40
+			Menu Button 40 330 137 20 20 No
+			}
+		else
+			{
+			Menu Delete 40
+			Menu Button 40 330 137 30 20 Yes
+			}
+		Goto menu
+
+; ============================================================
+
+S18:
+		Menu Delete 44
+		Menu Delete 45
+		Menu Delete 47
+		Menu Delete 40
+		Menu Delete 42
+		Menu Delete actmed
+		Menu Delete regsuit
+		Menu Delete txt
+		Menu Delete %n
+		Menu Font Style B
+		Menu Font size 11
+		Menu Text txt 170 12 Introduction
+		Menu Font Style
+		Menu Font size 9
+		if %reverse = 0
+			{
+			Menu Button 43 170 260 85 20 Sail Forwards
+			}
+		else
+			{
+			Menu Button 43 170 260 85 20 Sail Backwards
+			}		
+		Menu Text option 258 265 to Begin with
+		if %trawl = 0
+			{
+			Menu Button 46 335 260 55 20 Sailing
+			Menu Text trawltxt 395 265 along slowly.
+			}
+		else
+			{
+			Menu Button 46 335 260 55 20 Trawling
+			Menu Text trawltxt 395 265 one square at a time.
+			}
+		if %returntogainspot = on
+			{
+			menu delete retdistance
+			Menu Text rettext 170 210 Max Distance to return$to original gainspot to (40)$check other direction
+			Menu Edit retdistance 330 220 30 %returndistance
+			Menu Delete 41
+			Menu Button 41 470 220 20 20 On
+			}
+		else
+			{
+			Menu Delete rettext
+			Menu Delete retdistance
+			Menu Delete 41
+			Menu Button 41 470 220 30 20 Off
+			}
+			
+		Menu Text option 363 222 Return to Gainspot :
+		Menu Text option 170 170 Journal lines to scan (3-5)
+		Menu text option 360 170 to see if boat stopped
+		Menu Text option 170 190 Retries on Success (1)
+		menu delete succretries
+		menu delete jscan
+		Menu Edit jscan 330 165 20 %journalscan
+		Menu Edit succretries 330 190 20 %retries
+		Menu Text txt 170 40 Before starting, make sure Part Two is running too.
+		Menu Text txt 170 70 When you're ready, get on a boat and make sure its$facing NORTH, then choose the skill you wish to train.
+		Menu Text txt 170 110 This 8*8er is based on a combination of Mitrandirs 8*8$and Dumbanimals/Clovis`s, with many additions of$my own to hopefully make it the best 8*8er out there :)
+		Menu Text txt 190 350 Good Luck and Happy gaining to ya all  -=Hellspawn=-
+		Goto Menu
+
+S19:
+		Menu Hide
+		set *14 ON
+		stop
+
+; ============================================================
+
+S21:
+		set *16 off
+		set *10 magery
+		chooseskill *10 
+		set %currentskill #skill 
+		if #skill < 920
+			{
+			Menu Font Style B
+			Menu Delete 47
+			Menu Delete regsuit
+			set %targettext TARGET_THE_TILLERMAN_NOW
+			Menu Text tm 170 330 %targettext
+			Menu Font Style
+			gosub TargetID
+			set %tm %returnid
+			}
+		menu hide
+		set *11 MagerySetup
+		goto finishchoose
+S22:
+		set *16 off
+		menu hide
+		set %moved 1
+		set *10 hiding
+		set *11 0
+		goto finishchoose
+S23:
+		set *16 off
+		Menu Font Style B
+		Menu Delete 47
+		Menu Delete regsuit
+		set %targettext TARGET_THE_TILLERMAN_NOW
+		Menu Text tm 170 330 %targettext
+		Menu Font Style
+		gosub TargetID
+		set %tm %returnid
+		menu hide
+		set *10 eval
+		set *11 0
+		Set %ra 1
+		Set %reagents SZF
+		goto finishchoose
+S24:
+		set *16 off
+		Menu Font Style B
+		set %targettext SELECT_HEALING_DUMMY_NOW
+		Menu Text tm 170 330 %targettext
+		Menu Font Style
+		gosub Targetid
+		set %gh %returnid
+		menu hide
+		set *10 healing
+		set *11 0
+		goto finishchoose
+S25:
+		set *16 off
+		Set #targcurs 1
+		Menu Text vet 170 300 Please Target Pet one.
+		Wait 10
+		PetOne:
+			If #targcurs = 0
+			{
+				Set %petone #ltargetid
+				Goto Vet2
+			}
+		Goto PetOne
+	Vet2:
+		Set #targcurs 1
+		Menu Delete vet
+		Menu Text vet 170 300 Please Target Pet Two - You can target the same.
+		Wait 10
+		PetTwo:
+			If #targcurs = 0
+			{
+				Set %pettwo #ltargetid
+				Goto Attack
+			}
+		Goto PetTwo
+	Attack:
+		Menu Delete vet
+		Set #ltargetid %petone
+		Wait 20
+		Msg All guard me$
+		wait 20
+		Msg All attack$
+		Target
+		Event Macro 22
+		set %pet 1
+		
+		menu hide
+		set *10 veterinary
+		set *11 0
+		goto finishchoose
+S26: 
+		set *16 off
+		menu hide
+		set *10 stlt 
+		set *11 0
+		set %moved 1
+		wait 10 
+
+		goto finishchoose 
+S27:
+		set *16 off
+		set *10 Chivalry
+		chooseskill *10 
+		set %currentskill #skill
+		menu hide
+		set *11 ChivSetup
+		goto finishchoose
+S28:
+		set *16 off
+		menu hide
+		set *10 Necromancy
+		set *11 NecroSetup
+		goto finishchoose
+S29:
+		set *16 off
+		menu hide
+		set *10 Spirit
+		set *11 0
+		set %necrohealing 0
+		set %manarequired 10
+		goto finishchoose
+S30:
+		set *16 off
+		menu hide
+		set *10 Musicianship
+		set *11 0
+		set %moved 1
+		goto finishchoose
+S31:
+		set *16 off
+		menu hide
+		set *10 Peacemaking
+		set *11 0
+		goto finishchoose
+S32:
+		set *16 off
+		;menu get edit1
+		;set %skill #menures
+		i;f %skill = 0
+		;	{
+		;	display ok you must enter your bushido skill level
+		;	goto menu
+		;	}
+		;menu get box1
+		;set %xx #menures - 1
+		;Gosub getdropskill
+		set *10 Bushido
+		chooseskill *10 
+		set %currentskill #skill
+		;chooseskill *16
+		;set %currentskill #skill
+		set %targettext TARGET_THE_GOLEM_NOW
+		Menu Text tm 170 330 %targettext
+		Menu Font Style
+		gosub TargetID
+		set %golemid %returnid
+		wait 10
+		set %targettext TARGET_THE_UNICORN_NOW
+		Menu Text tm 170 330 %targettext
+		Menu Font Style
+		gosub TargetID
+		set %uniid %returnid
+		menu hide
+		set *11 BushSetup
+		msg all follow me$
+		wait 5
+		msg all guard me$
+		;event macro 8 15
+		;set %clx #contposx + 336
+		;set %cly #contposy + 17
+		;wait 10
+		;click %clx %cly
+		;set %clx #contposx + 90
+		;set %cly #contposy + 73
+		;wait 10
+		;click %clx %cly d
+		;wait 10
+		;click %clx %cly d
+		;wait 10
+		;event macro 9 15
+		goto finishchoose
+S33:
+		set *16 off
+		;menu get edit1
+		;set %skill #menures
+		;if %skill = 0
+		;	{
+		;	display ok you must enter your ninjitsu skill level
+		;	goto menu
+		;	}
+		;menu get box1
+		;set %xx #menures - 1
+		;Gosub getdropskill
+		set *10 Ninjitsu
+		chooseskill *10 
+		set %currentskill #skill
+		;chooseskill *16
+		;set %currentskill #skill
+		;menu hide
+		set *11 NinjSetup
+		msg all follow me$
+		;event macro 8 16
+		;set %clx #contposx + 336
+		;set %cly #contposy + 17
+		;wait 10
+		;click %clx %cly
+		;set %clx #contposx + 90
+		;set %cly #contposy + 73
+		;wait 10
+		;click %clx %cly d
+		;wait 10
+		;click %clx %cly d
+		;wait 10
+		;event macro 9 16
+		goto finishchoose
+S34:
+		set *16 off
+		set *10 Meditation
+		chooseskill *10 
+		set %currentskill #skill 
+		Menu Font Style B
+		Menu Delete 47
+		Menu Delete regsuit
+		if %medskill = Magery
+			{
+			set %targettext TARGET_THE_TILLERMAN_NOW
+			Menu Text tm 170 330 %targettext
+			Menu Font Style
+			gosub TargetID
+			set %tm %returnid
+			}
+		menu hide
+		set *11 MeditationSetup
+		goto finishchoose
+S35:
+		set *16 off
+		set *10 Focus
+		chooseskill *10 
+		set %currentskill #skill 
+		Menu Font Style B
+		Menu Delete 47
+		Menu Delete regsuit
+		if %medskill = Magery
+			{
+			set %targettext TARGET_THE_TILLERMAN_NOW
+			Menu Text tm 170 330 %targettext
+			Menu Font Style
+			gosub TargetID
+			set %tm %returnid
+			}
+		menu hide
+		set *11 MeditationSetup
+		goto finishchoose
+S36:
+		set *16 off
+		Menu Font Style B
+		set %targettext SELECT_HEALING_DUMMY_NOW
+		Menu Text tm 170 330 %targettext
+		Menu Font Style
+		gosub Targetid
+		set %gh %returnid
+		menu hide
+		set *15 off
+		set *10 anatomy
+		set *11 0
+		goto finishchoose
+
+; ============================================================
+
+S40:
+		Menu Text autofacing 170 140 Autoface boat North for me
+		if %autoface <> on
+			{
+			set %autoface on
+			Menu Delete 40
+			Menu Button 40 330 137 30 20 Yes
+			}
+		else
+			{
+			set %autoface off
+			Menu Delete 40
+			Menu Button 40 330 137 20 20 No
+			}
+		goto menu
+
+S41:
+		if %returntogainspot = on
+			{
+			set %returntogainspot off
+			Menu Delete rettext
+			Menu Delete retdistance
+			Menu Delete 41
+			Menu Button 41 470 220 30 20 Off
+			}
+		else
+			{
+			set %returntogainspot on
+			menu delete retdistance
+			Menu Text rettext 170 210 Max Distance to return$to original gainspot to (40)$check other direction
+			Menu Edit retdistance 330 220 30 %returndistance
+			Menu Delete 41
+			Menu Button 41 470 220 20 20 On
+			}
+		goto menu
+
+S42:
+		Menu Delete 42
+		if %stealthinvisible = 2
+			{
+			set %stealthinvisible 0
+			Menu Button 42 340 310 30 20 No
+			Menu Delete 44
+			Menu Delete 47
+			Menu Delete regsuit
+			Menu Delete actmed
+			goto menu
+			}
+		if %stealthinvisible = 1
+			{
+			Menu Button 42 340 310 100 20 Only on GainLine
+			set %stealthinvisible 2
+			goto menu
+			}
+		if %stealthinvisible = 0
+			{
+			Menu Button 42 340 310 100 20 All the time
+			set %stealthinvisible 1
+			}
+		goto menu
+
+S43:
+	
+		if %reverse = 0
+			{
+			set %reverse 1
+			Menu Button 43 170 260 85 20 Sail Backwards
+			}
+		else
+			{
+			set %reverse 0
+			Menu Button 43 170 260 85 20 Sail Forwards
+			}	
+		goto menu
+
+S44:
+	
+		if %activemed = 0
+			{
+			set %activemed 1
+			Menu Button 44 330 285 30 20 Yes
+			}
+		else
+			{
+			set %activemed 0
+			Menu Button 44 330 285 30 20 No
+			}	
+		goto menu
+
+S45:
+	
+		if %spiritheal = 0
+			{
+			set %spiritheal 1
+			Menu Button 45 330 305 30 20 Yes
+			}
+		else
+			{
+			set %spiritheal 0
+			Menu Button 45 330 305 30 20 No
+			}	
+		goto menu
+
+S46:
+
+		Menu Delete trawltxt
+		if %trawl = 0
+			{
+			set %trawl 1
+			Menu Button 46 335 260 55 20 Trawling
+			Menu Text trawltxt 395 265 1 square at a time.
+			}
+		else
+			{
+			set %trawl 0
+			Menu Button 46 335 260 55 20 Sailing
+			Menu Text trawltxt 395 265 along slowly.
+			}	
+		goto menu
+
+S47:
+		Menu Delete regsuit
+		if %reagentsuit = no
+			{
+			set %reagentsuit yes
+			Menu Button 47 170 327 56 20 I am
+			Menu Text regsuit 230 330 wearing a 100% reagent suit.Dont Count regs.
+			}
+		else
+			{
+			set %reagentsuit no
+			Menu Button 47 170 327 56 20 I`m not
+			Menu Text regsuit 230 330 wearing a 100% reagent suit. Count my regs.
+			}
+		goto menu
+S48:
+		if %medskill = Magery
+			{
+			set %medskill Chivalry
+			set %spiritheal 0
+			menu delete sptxt
+			menu delete 45
+			Menu Button 48 192 372 70 20 Chivalry
+			goto menu
+			}
+		if %medskill = Chivalry
+			{
+			set %medskill Necromancy
+			Menu Text sptxt 170 310 Use Spirit Speak to Heal
+			if %spiritheal = 1
+				{
+				Menu Button 45 330 305 30 20 Yes
+				}
+			if %spiritheal <> 1
+				{
+				Menu Button 45 330 305 30 20 No
+				}
+			Menu Button 48 192 372 70 20 Necromancy
+			goto menu
+			}
+		if %medskill = Necromancy
+			{
+			set %medskill Magery
+			set %spiritheal 0
+			menu delete sptxt
+			menu delete 45
+			Menu Button 48 192 372 70 20 Magery
+			goto menu
+			}
+
+		goto menu
+S49:
+		if *15 = off
+			{
+			set *15 on
+			menu button 49 290 485 20 20 On
+			}
+		else
+			{
+			set *15 off
+			menu button 49 290 485 20 20 Off
+			}	
+		goto menu
+S50:
+		if %uniheal = off
+			{
+			set %uniheal chiv
+			Menu Delete 50
+			Menu Button 50 335 357 70 20 Chivalry
+			goto menu
+			}
+		if %uniheal = chiv
+			{
+			set %uniheal mage
+			Menu Delete 50
+			Menu Button 50 335 357 70 20 Magery
+			goto menu
+			}
+		if %uniheal = mage
+			{
+			set %uniheal off
+			Menu Delete 50
+			Menu Button 50 335 357 70 20 Disabled
+			goto menu
+			}
+		goto menu
+
+
+X0:
+		set *16 Alchemy
+		Return
+X1:
+		set *16 Anatomy
+		Return
+X2:
+		set *16 AniLore
+		Return
+X3:
+		set *16 Archery
+		Return
+X4:
+		set *16 Armslore
+		Return
+X5:
+		set *16 Begging
+		Return
+X6:
+		set *16 Blacsmith
+		Return
+X7:
+		set *16 Bowcraft
+		Return
+X8:
+		set *16 Camping
+		Return
+X9:
+		set *16 Carpentry
+		Return
+X10:
+		set *16 Cartography
+		Return
+X11:
+		set *16 Chivalry
+		Return
+X12:
+		set *16 Cooking
+		Return
+X13:
+		set *16 Detect
+		Return
+X14:
+		set *16 Discordance
+		Return
+X15:
+		set *16 Evaluate
+		Return
+X16:
+		set *16 Fencing
+		Return
+X17:
+		set *16 Fishing
+		Return
+X18:
+		set *16 Focus
+		Return
+X19:
+		set *16 Forensic
+		Return
+X20:
+		set *16 Healing
+		Return
+X21:
+		set *16 Herding
+		Return
+X22:
+		set *16 Hiding
+		Return
+X23:
+		set *16 Inscription
+		Return
+X24:
+		set *16 ItemID
+		Return
+X25:
+		set *16 Lockpick
+		Return
+X26:
+		set *16 Lumberjack
+		Return
+X27:
+		set *16 Maceing
+		Return
+X28:
+		set *16 Magery
+		Return
+X29:
+		set *16 Meditation
+		Return
+X30:
+		set *16 Mining
+		Return
+X31:
+		set *16 Music
+		Return
+X32:
+		set *16 Necromancy
+		Return
+X33:
+		set *16 Parrying
+		Return
+X34:
+		set *16 Peace
+		Return
+X35:
+		set *16 Poisoning
+		Return
+X36:
+		set *16 Provoking
+		Return
+X37:
+		set *16 Remove
+		Return
+X38:
+		set *16 Resist
+		Return
+X39:
+		set *16 Snooping
+		Return
+X40:
+		set *16 SpiritSpeak
+		Return
+X41:
+		set *16 Stealing
+		Return
+X42:
+		set *16 Stlth
+		Return
+X43:
+		set *16 Swordsmanship
+		Return
+X44:
+		set *16 Tactics
+		Return
+X45:
+		set *16 Tailoring
+		Return
+X46:
+		set *16 TasteID
+		Return
+X47:
+		set *16 Tinkering
+		Return
+X48:
+		set *16 Tracking
+		Return
+X49:
+		set *16 Vetenary
+		Return
+X50:
+		set *16 Wrestle
+		Return
+sub getdropskill
+		goto X , %xx
+		return
+
+; ============================================================
+
+finishchoose:
+		if *16 <> off
+			{
+			chooseskill *16
+			}
+		else
+			{
+			if *15 <> on
+				{
+				chooseskill *10
+				} 
+			if *15 = on
+				{
+				chooseskill *10 real
+				}
+			}
+		set %currentskill #skill 
+		set %startskill #skill
+		set %numlines 0
+		set %gainsthisline 0
+		set %gainavg 0
+		set %bestline 0
+		set %totalgains 0
+		Event macro 8 2
+		msg Raise Anchor$
+		wait 10
+		set *64 off
+
+
+; ============================================================
+;	Boat Menu
+; ============================================================
+		
+		Menu HideEUO
+		Menu Clear
+		Menu Window size 250 410
+		Menu Window Color Black
+		Menu Font Bgcolor Black
+		Menu Font Color Red
+		Menu Font Name tahoma
+		Menu Font Size 8
+		Menu Window Title The Ultimate 8*8 by Hellspawn
+		Menu Button 1 10 10 75 25 Turn Left
+		Menu Button 2 90 10 75 25 %Speed
+		Menu Button 3 170 10 75 25 Turn Right
+		Menu Button 4 10 40 75 25 Fwd Left
+		Menu Button 6 170 40 75 25 Fwd Right
+		Menu Font Style B
+		Menu Font Size 12
+		Menu Button 5 90 40 75 25 Forward
+		Menu Button 7 10 70 75 25 Left
+		Menu Button 8 90 70 75 25 STOP
+		Menu Button 9 170 70 75 25 Right
+		Menu Button 11 90 100 75 25 Back
+		Menu Font Size 8
+		Menu Font Style
+		Menu Button 10 10 100 75 25 Back Left
+		Menu Button 12 170 100 75 25 Back Right
+		Menu Button 13 10 130 75 25 Raise Anchor
+		Menu Button 14 90 130 75 25 Turn Around
+		Menu Button 15 170 130 75 25 Lower Anchor
+		Menu Button 16 10 160 75 25 Main Menu
+		Menu Button 17 90 160 75 25 Pause
+		Menu Button 18 170 160 75 25 Restart Macro
+		if %trawl = 0
+			{
+			Menu Button 19 10 190 75 25 Trawl
+			}
+		else
+			{
+			Menu Button 19 10 190 75 25 Sail
+			}
+		Menu Button 20 90 190 75 25 QUIT
+		Menu Button 21 170 190 75 25 Reverse
+		menu font size 10
+		Menu Text txt 10 230 Starting Skill
+		Menu Text txt 130 230 Current Skill
+		Menu Text txt 10 260 Gains this line
+		Menu Text txt 130 260 Total Gains
+		Menu Text txt 10 290 Avg Gain/line
+		Menu Text txt 130 290 Best gainline
+		Menu Text txr 10 320 Total Lines
+		Menu Text txt 130 320 X:
+		Menu Text txt 190 320 Y:
+		Menu Font Style B
+		Menu Text upd 90 230 %startskill
+		Menu Text upd 210 230 %currentskill
+		Menu Text upd 95 260 %gainsthisline
+		Menu Text upd 215 260 %totalgains
+		Menu Text upd 95 290 %gainavg
+		Menu Text upd 215 290 %bestline
+		Menu Text upd 80 320 %numlines
+		Menu Text x 140 320 #charposx
+		Menu Text x 200 320 #charposy
+		Menu Font Color Green
+			set %dirchange = 0
+			Menu Delete dir
+			if %trawl = 1
+				{
+				if %reverse = 1
+					{
+					Menu Text dir 10 350 Currently traveling Back trawling
+					}
+				if %reverse <> 1
+					{
+					Menu Text dir 10 350 Currently traveling Forward trawling
+					}
+				}
+			if %trawl = 0
+				{
+				if %reverse = 1
+					{
+					Menu Text dir 10 350 Currently travelling Slow Back
+					}
+				if %reverse <> 1
+					{
+					Menu Text dir 10 350 Currently travelling Slow Forward
+					}
+				}
+		
+		if %autoface = on
+			{
+			Menu Font Color Blue
+			Menu Text status 10 380 Facing Boat NORTH
+			}
+		else
+			{
+			Menu Font Color Yellow
+			Menu Text status 10 380 Getting Ready to Begin
+			}
+		Menu Font Color Yellow
+		Menu Font Style
+		Menu Show
+		Set #menubutton N/A
+		
+
+
+; ============================================================
+; check boats facing north
+; ============================================================
+		if %autoface <> on 
+			{
+			goto start
+			}
+		set %boaty #charposy
+		set %boatx #charposx
+		set %fwd 1
+		deletejournal
+		setboatface:
+		if %fwd = 1
+			{
+			msg one forward$
+			wait 30
+			}
+		else
+			{
+			msg one back$
+			wait 30
+			}
+		for %cnt 5 1
+			{
+			scanjournal %cnt
+			if _AR,_WE'VE_STOPPED_SIR. in #journal
+				{
+				deletejournal
+				if %fwd = 1
+					{
+					set %fwd 0
+					goto setboatface
+					}
+				display ok The boat is blocked in both directions. Please move it then try again.
+				goto restart
+				}
+			}
+		set %cnt 0
+		set %turned 0
+		if %fwd = 1
+			{
+			if %boatx > #charposx
+				{
+				set %turned 1
+				msg one back$
+				wait 30
+				msg turn right$
+				wait 30
+				}
+			if %boatx < #charposx
+				{
+				if %turned = 0
+					{
+					set %turned 1
+					msg one back$
+					wait 30
+					msg turn left$
+					wait 30
+					}
+				}
+			if %boaty < #charposy
+				{
+				if %turned = 0
+					{
+					set %turned 1
+					msg one back$
+					wait 30
+					msg turn around$
+					wait 30
+					}
+				}
+			if %boaty > #charposy
+				{
+				if %turned = 0
+					{
+					set %turned 1
+					msg one back$
+					wait 30
+					}
+				}
+			}
+		if %fwd = 0
+			{
+			if %boatx < #charposx
+				{
+				set %turned 1
+				msg one forward$
+				wait 30
+				msg turn right$
+				wait 30
+				}
+			if %boatx > #charposx
+				{
+				if %turned = 0
+					{
+					set %turned 1
+					msg one forward$
+					wait 30
+					msg turn left$
+					wait 30
+					}
+				}
+			if %boaty > #charposy
+				{
+				if %turned = 0
+					{
+					set %turned 1
+					msg one forward$
+					wait 30
+					msg turn around$
+					wait 30
+					}
+				}
+			if %boaty < #charposy
+				{
+				if %turned = 0
+					{
+					set %turned 1
+					msg one forward$
+					wait 30
+					}
+				}
+			}
+
+; ============================================================
+; ============================================================
+
+start:
+		if *11 <> 0
+			{
+			gosub *11
+			}
+		if *16 <> off
+			{
+			chooseskill *16
+			}
+		else
+			{
+			chooseskill *10
+			}
+		if *15 = on
+			{
+			chooseskill *10 real
+			}
+		set *12 off
+		if %gainsthisline > %bestline
+			{
+			set %bestline %gainsthisline
+			}
+		set %returningtogainspot 0
+		set %runstatus 2
+		set %gainsthisline 0
+		set %currentskill #skill 
+		set %nogain 0
+		set %succeeded 0
+		set %sailing 1
+		set %backwards 0
+		set %updateinfo 1
+		set %anatfail 0
+		set %jewelgains 0
+		set %jewelfails 0
+		set %jwmove 1
+		wait 20
+		if *16 = off && #skill = #skillcap
+			{
+			msg Stop$
+			msg Drop Anchor$
+			chooseskill hidi
+tryrehide:
+			event macro 13 21
+			if #skill > 50
+				{
+				if H notin #charstatus
+				goto tryrehide
+				}
+			if H notin #charstatus
+				{
+				chooseskill mage
+				if #skill >= 640
+					{
+					Set %ra 2
+					Set %reagents JUF_WZF
+					Set %target 2
+					Set %spell 43
+					Set %manarequired 20
+					set %succeeded 0
+tryreinvis:
+					gosub magery
+					if %succeeded = 0
+						{
+						goto tryreinvis
+						}
+					event macro 9 1
+					wait 10
+					event macro 8 1
+					set %clx #contposx + 218
+					set %cly #contposy + 109
+					click %clx %cly
+					wait 10
+					click 542 393
+					wait 10
+					set *14 ON
+					Menu hide
+					stop 
+					}
+				}
+			}
+		if *16 <> off && #skill = 0
+			{
+			msg Stop$
+			msg Drop Anchor$
+			display ok Either you havent set a skill to drop or$the skill dropping is now zero$Press ok to go back to main menu$
+			set %Paused 0
+			set %runstatus %pausedstatus
+			wait 10
+			msg Stop$
+			msg Lower Anchor$
+			goto Restart
+			}
+		set *64 off
+		if %trawl = 0
+			{
+			if %reverse <> 1
+				{
+				msg slow forward$
+				set %waittime 20
+				gosub waitfor
+				gosub Boatstopped
+				}
+			if %reverse = 1
+				{
+				set %backwards 1
+				msg slow back$
+				set %waittime 20
+				gosub waitfor
+				gosub Boatstopped
+				}
+			}
+		set %waittime 20
+		gosub waitfor
+		set %updateinfo 0
+		if *16 <> off
+			{
+			chooseskill *16
+			}
+		else
+			{
+			chooseskill *10
+			}
+		if *15 = on
+			{
+			chooseskill *10 real
+			}
+		set %location #charposy
+		if *10 = Hiding
+			{
+			set %waittime 40
+			gosub waitfor
+			}
+nogainloop:
+		gosub Boatstopped
+jewelgain:
+		set %succeeded 0
+		gosub checkboatmenu
+		gosub *10
+		if *10 = Spirit
+			{
+			set %waittime 40
+			gosub waitfor
+			}
+		set %lastlocation %location
+		set %location #charposy
+check:
+		if *15 = on
+			{
+			if *16 = off
+				{
+				chooseskill *10 real
+				}
+			if *16 <> off
+				{
+				chooseskill *16
+				}
+			set %waittime 5
+			gosub waitfor
+			if ( *16 = off && #skill > %currentskill ) || ( *16 <> off && #skill < %currentskill )
+				{
+				set %jewelfails 0
+				set %jewelgains 1
+				set %runstatus 8
+				set %gainsthisline %gainsthisline + 1
+				set %currentskill #skill
+				set %updateinfo 1
+				set *64 on
+				if *16 <> off
+					{
+					set %skill %skill + 1
+					}
+				goto jewelgain
+				}
+			if ( *16 = off && #skill <= %currentskill ) || ( *16 <> off && #skill >= %currentskill )
+				{
+				if %jewelgains = 1
+					{
+					if %succeeded = 1
+						{
+						set %jewelfails %jewelfails + 1
+						}
+					if %jewelfails < 20
+						{
+						goto jewelgain
+						}
+					if %jewelfails = 20
+						{
+						if %jwmove = 1
+							{
+							set %jewelgains 0
+							set %jewelfails 0
+							goto start
+							}
+						if %jwmove = 0
+							{
+							set %jwmove 1
+							set %jewelfails 0
+							if %reverse = 1
+								{
+								msg one forward$
+								}
+							if %reverse <> 1
+								{
+								msg one back$
+								goto jewelgain
+								}
+							}
+						}
+					}
+				}
+			}
+		if *16 <> off
+			{
+			chooseskill *16
+			if #skill < %currentskill
+				{ 	
+				set %waittime 20
+				gosub waitfor
+				set %sailing 0
+				set %currentskill #skill
+				set *64 on
+				set %numlines %numlines + 1
+				set %gainsthisline %gainsthisline + 1
+				set %skill %skill + 1
+				set %nogain 0
+				set %location #charposy
+				set %updateinfo 1
+				set %firstcheck 1
+				set %waittime 20
+				gosub waitfor
+				if %reverse <> 1
+					{
+					set %distance %location  - #charposy
+					set %dist 8 - %distance
+					}
+				if %reverse = 1
+					{
+					set %distance #charposy - %location
+					set %dist 8 - %distance
+					}
+				if %dist > 8
+					{
+					set %dist 8
+					}
+				if %reverse = 1
+					{
+					goto stepmoveback
+					}
+				goto stepmove
+				}
+			goto bushninjjump
+			}
+		if #skill > %currentskill
+			{ 
+			chooseskill *10  
+			set %waittime 20
+			gosub waitfor
+			set %sailing 0
+			set %currentskill #skill
+			set *64 on
+			set %numlines %numlines + 1
+			set %gainsthisline %gainsthisline + 1
+			set %nogain 0
+			set %location #charposy
+			set %updateinfo 1
+			set %firstcheck 1
+			set %waittime 20
+			gosub waitfor
+			if %reverse <> 1
+				{
+				set %distance %location  - #charposy
+				set %dist 8 - %distance
+				}
+			if %reverse = 1
+				{
+				set %distance #charposy - %location
+				set %dist 8 - %distance
+				}
+			if %dist > 8
+				{
+				set %dist 8
+				}
+			if %reverse = 1
+				{
+				goto stepmoveback
+				}
+			goto stepmove
+			}
+bushninjjump:
+		if %lastlocation = %location
+			{
+			if %trawl = 0
+				{
+				if %reverse = 1
+					{
+					msg slow back$
+					set %waittime 30
+					gosub waitfor
+					gosub Boatstopped
+					goto nogainloop
+					}
+				msg slow forward$
+				set %waittime 20
+				gosub waitfor
+				gosub Boatstopped
+				}
+			}
+		if %trawl = 1 
+			{
+			if %succeeded = 1
+				{
+				set %succeeded 0
+				if %reverse <> 1
+					{
+					msg one forward$
+					set %waittime 20
+					gosub waitfor
+					gosub Boatstopped
+					}
+				if %reverse = 1
+					{
+					set %backwards 1
+					msg one back$
+					set %waittime 20
+					gosub waitfor
+					gosub Boatstopped
+					}
+				}
+			}
+		goto nogainloop
+
+; ============================================================
+
+stepmove:
+		set %runstatus 3
+		set %skillfailed 0
+		set %moved 1
+		for %stepcnt %dist 1 
+			{ 
+			if #charposy < 16 
+				{
+				set %waittime 20
+				gosub waitfor
+				goto start
+				}
+			if %firstcheck <> 1
+				{
+				msg one forward$
+				}
+			if %firstcheck = 1
+				{
+				if #charposy > %location - 8
+					{
+					msg one forward$
+					}
+				}
+			set %waittime 15 
+			gosub waitfor
+			gosub Boatstopped
+			} 
+		set %firstcheck 0
+refail:
+		set %runstatus 3
+		gosub checkboatmenu
+		set %oldmana #mana
+		set %succeeded 0
+		for %failcounter %retries 1 
+			{ 
+			set %oldmana #mana
+			gosub *10 
+			if *10 = Spirit
+				{
+				set %waittime 40
+				gosub waitfor
+				}
+;8x8check:
+			if *16 = off
+				{
+				chooseskill *10
+				if #skill > %currentskill
+					{  
+					set %currentskill #skill
+					set %gainsthisline %gainsthisline + 1
+					if %retries > 1 
+						{
+						set %failcounter 0
+						}
+					set %nogain 1
+					set %dist 8
+					set %updateinfo 1
+					goto stepmove
+					}
+				}
+			if *16 <> off
+				{
+				chooseskill *16
+				if #skill < %currentskill
+					{   
+					set %currentskill #skill
+					set %gainsthisline %gainsthisline + 1
+					set %skill %skill + 1
+					if %retries > 1 
+						{
+						set %failcounter 0
+						}
+					set %nogain 1
+					set %dist 8
+					set %updateinfo 1
+					goto stepmove
+					}
+				}
+			if %succeeded = 1
+				{
+				if %skillfailed = 1
+					{
+					if %retries > 1 
+						{
+						set %failcounter 0
+						}
+					set %skillfailed 0
+					}
+				}
+			}
+		if %succeeded = 0 
+			{
+			set %skillfailed 1
+			goto refail
+			}
+;secondchance:
+		set %runstatus 4
+		for %stepcnt 8 1 
+			{ 
+			if #charposy < 16 
+				{
+				set %waittime 20
+				gosub waitfor
+				goto start
+				}
+			msg one forward$ 
+			set %waittime 15 
+			gosub waitfor
+			gosub Boatstopped
+			} 
+rerefail:
+		set %runstatus 4
+		gosub checkboatmenu
+		set %oldmana #mana
+		set %succeeded 0
+		for %failcounter %retries 1 
+			{ 	
+			gosub *10
+			if *10 = Spirit
+				{
+				set %waittime 40
+				gosub waitfor
+				}
+;8x8check:
+			if *16 = off
+				{
+				chooseskill *10
+				if #skill > %currentskill
+					{  
+					set %currentskill #skill
+					set %gainsthisline %gainsthisline + 1
+					if %retries > 1 
+						{
+						set %failcounter 0
+						}
+					set %nogain 1
+					set %dist 8
+					set %updateinfo 1
+					goto stepmove
+					}
+				}
+			if *16 <> off
+				{
+				chooseskill *16
+				if #skill < %currentskill
+					{   
+					set %currentskill #skill
+					set %gainsthisline %gainsthisline + 1
+					set %skill %skill + 1
+					if %retries > 1 
+						{
+						set %failcounter 0
+						}
+					set %nogain 1
+					set %dist 8
+					set %updateinfo 1
+					goto stepmove
+					}
+				}
+			if %succeeded = 1
+				{
+				if %skillfailed = 1
+					{
+					if %retries > 1 
+						{
+						set %failcounter 0
+						}
+					set %skillfailed 0
+					}
+				}
+			}
+		if %succeeded = 0 
+			{
+			set %skillfailed 1
+			goto rerefail
+			}
+		set %currentskill #skill 
+		if %nogain = 1
+			{
+			set %dist %location - #charposy
+			if %dist > %returndistance
+				{
+				set %waittime 20
+				gosub waitfor
+				goto start
+				}
+			set %nogain 0
+			}
+		if %reverse = 1
+			{
+			goto start
+			}
+		if %returntogainspot = off
+			{
+			goto start
+			}
+
+; ============================================================
+
+		wait 10
+		set %dist 0
+		set %location %location + 8
+		set %skillfailed 0
+		set %moved 1
+		if %location > 4077
+			{
+			set %waittime 20
+			gosub waitfor
+			goto start
+			}
+		wait 10
+		set %backwards 1
+		set %runstatus 0
+		msg back$
+		set %waittime 20
+		gosub waitfor
+		gosub Boatstopped
+		set %returningtogainspot 1
+stoponspot:
+		if %lasty <> #charposy
+			{
+			Menu Font Style B
+			Menu Font Color Red
+			Menu Delete y
+			Menu Text y 200 320 #charposy
+			set %lasty #charposy
+			}
+		gosub Boatstopped
+		gosub checkboatmenu
+		if #charposy < %location
+			{
+			if #charposy > 4077 
+				{
+				set %waittime 20
+				gosub waitfor
+				set %returningtogainspot 0
+				goto start
+				}
+			goto stoponspot
+			}
+		msg stop$
+		set %returningtogainspot 0
+		set %waittime 10
+		gosub waitfor
+adjustback:
+		if #charposy <> %location
+			{
+			if #charposy > %location 
+				{
+				set %dist #charposy - %location
+				for %stepcnt %dist 1
+					{
+					if #charposy < 16 
+						{
+						set %waittime 20
+						gosub waitfor
+						goto start
+						}
+					set %backwards 0
+					msg one forward$
+					set %backwards 1
+					set %waittime 15
+					gosub waitfor
+					gosub Boatstopped
+					}
+				}
+			if #charposy < %location
+				{
+				set %dist %location - #charposy
+				for %stepcnt %dist 1
+					{
+					if #charposy > 4077 
+						{
+						set %waittime 20
+						gosub waitfor
+						goto start
+						}
+					msg one back$
+					set %waittime 15
+					gosub waitfor
+					gosub Boatstopped
+					}
+				}
+			goto adjustback
+			}
+		set %backwards 1
+		set %skillfailed 0
+		set %moved 1
+		goto refailback
+stepmoveback:
+		set %runstatus 5
+		set %backwards 1
+		set %skillfailed 0
+		set %moved 1
+		for %stepcnt 8 1 
+			{
+			if #charposy > 4077 
+				{
+				set %waittime 20
+				gosub waitfor
+				goto start
+				}
+			if %firstcheck <> 1
+				{
+				msg one back$
+				}
+			if %firstcheck = 1
+				{
+				if #charposy < %location + 8
+					{
+					msg one back$
+					}
+				}
+			set %waittime 15 
+			gosub waitfor
+			gosub Boatstopped
+			} 
+		set %firstcheck 0
+refailback:
+		set %runstatus 5
+		gosub checkboatmenu
+		set %oldmana #mana
+		set %succeeded 0
+		for %failcounter %retries 1 
+			{ 
+			set %oldmana #mana
+			gosub *10 
+			if *10 = Spirit
+				{
+				set %waittime 40
+				gosub waitfor
+				}
+;8x8check:
+			if *16 = off
+				{
+				chooseskill *10
+				if #skill > %currentskill
+					{  
+					set %currentskill #skill
+					set %gainsthisline %gainsthisline + 1
+					if %retries > 1 
+						{
+						set %failcounter 0
+						}
+					set %nogain 1
+					set %updateinfo 1
+					goto stepmoveback
+					}
+				}
+			if *16 <> off
+				{
+				chooseskill *16
+				if #skill < %currentskill
+					{   
+					set %currentskill #skill
+					set %gainsthisline %gainsthisline + 1
+					set %skill %skill + 1
+					if %retries > 1 
+						{
+						set %failcounter 0
+						}
+					set %nogain 1
+					set %updateinfo 1
+					goto stepmoveback
+					}
+				}
+			if %succeeded = 1
+				{
+				if %skillfailed = 1
+					{
+					if %retries > 1 
+						{
+						set %failcounter 0
+						}
+					set %skillfailed 0
+					}
+				}
+			}
+		if %succeeded = 0 
+			{
+			set %skillfailed 1
+			goto refailback
+			}
+;secondchance:
+		set %runstatus 6
+		for %stepcnt 8 1 
+			{ 
+			if #charposy > 4077 
+				{
+				set %waittime 20
+				gosub waitfor
+				goto start
+				}
+			msg one back$
+			set %waittime 15 
+			gosub waitfor
+			gosub Boatstopped
+			} 
+rerefailback:
+		set %runstatus 6
+		gosub checkboatmenu
+		set %oldmana #mana
+		set %succeeded 0
+		for %failcounter %retries 1 
+			{ 
+			set %oldmana #mana
+			gosub *10
+			if *10 = Spirit
+				{
+				set %waittime 40
+				gosub waitfor
+				}
+;8x8checkback:
+			if *16 = off
+				{
+				chooseskill *10 
+				if #skill > %currentskill
+					{  
+					set %currentskill #skill
+					set %gainsthisline %gainsthisline + 1
+					if %retries > 1 
+						{
+						set %failcounter 0
+						}
+					set %nogain 1
+					set %updateinfo 1
+					goto stepmoveback
+					}
+				}
+			if *16 <> off
+				{
+				chooseskill *16
+				if #skill < %currentskill
+					{   
+					set %currentskill #skill
+					set %gainsthisline %gainsthisline + 1
+					set %skill %skill + 1
+					if %retries > 1 
+						{
+						set %failcounter 0
+						}
+					set %nogain 1
+					set %updateinfo 1
+					goto stepmoveback
+					}
+				}
+			if %succeeded = 1
+				{
+				if %skillfailed = 1
+					{
+					if %retries > 1 
+						{
+						set %failcounter 0
+						}
+					set %skillfailed 0
+					}
+				}
+			}
+		if %succeeded = 0 
+			{
+			set %skillfailed 1
+			goto rerefailback
+			}
+		set %waittime 20
+		gosub waitfor
+		if %nogain = 1
+			{
+			set %dist #charposy - %location
+			if %dist > %returndistance
+				{
+				set %waittime 20
+				gosub waitfor
+				goto start
+				}
+			set %nogain 0
+			}
+		if %reverse <> 1
+			{
+			goto start
+			}
+		if %returntogainspot = off
+			{
+			goto start
+			}
+
+; ============================================================
+
+		wait 10
+		set %dist 0
+		set %location %location - 8
+		set %skillfailed 0
+		set %moved 1
+		if %location < 17
+			{
+			set %waittime 20
+			gosub waitfor
+			goto start
+			}
+		wait 10
+		set %backwards 0
+		set %runstatus 0
+		msg forward$
+		set %waittime 20
+		gosub waitfor
+		gosub Boatstopped
+		set %returningtogainspot 2
+stoponspotforward:
+		if %lasty <> #charposy
+			{
+			Menu Font Style B
+			Menu Font Color Red
+			Menu Delete y
+			Menu Text y 200 320 #charposy
+			set %lasty #charposy
+			}
+		gosub Boatstopped
+		gosub checkboatmenu
+		if #charposy > %location
+			{
+			if #charposy < 17
+				{
+				set %waittime 20
+				gosub waitfor
+				set %returningtogainspot 0
+				goto start
+				}
+			goto stoponspotforward
+			}
+		msg stop$
+		set %returningtogainspot 0
+		set %waittime 10
+		gosub waitfor
+adjustforward:
+		if #charposy <> %location
+			{
+			if #charposy > %location 
+				{
+				set %dist #charposy - %location
+				for %stepcnt %dist 1
+					{
+					if #charposy < 16 
+						{
+						set %waittime 20
+						gosub waitfor
+						goto start
+						}
+					msg one forward$
+					set %waittime 15
+					gosub waitfor
+					gosub Boatstopped
+					}
+				}
+			if #charposy < %location
+				{
+				set %dist %location - #charposy
+				for %stepcnt %dist 1
+					{
+					if #charposy > 4077 
+						{
+						set %waittime 20
+						gosub waitfor
+						goto start
+						}
+					set %backwards 1
+					msg one back$
+					set %backwards 0
+					set %waittime 15
+					gosub waitfor
+					gosub Boatstopped
+					}
+				}
+			goto adjustforward
+			}
+		goto refail
+
+; ============================================================
+;*******************
+;*****Sub Routines*****
+;*******************
+; ============================================================
+
+Sub Boatstopped
+		for %cnt %journalscan 1
+			{
+			scanjournal %cnt
+			if _AR,_WE'VE_STOPPED_SIR. in #journal
+				{
+				deletejournal
+				if %backwards = 0
+					{
+					;msg Stop$
+					set %waittime 30
+					gosub waitfor
+					set %reverse 1
+					set %cnt 0
+					set %dirchange 1
+					goto start
+					}
+				set %reverse 0
+				set %dirchange 1
+				;msg Stop$
+				set %waittime 30
+				gosub waitfor
+				goto start
+				}
+			if _AR,_TURBULENT_WATER! in #journal
+				{
+				deletejournal
+				if %stopcount >= 3
+					{
+					set %stopcount 0
+					if %backwards = 0
+						{
+						;msg Stop$
+						set %waittime 30
+						gosub waitfor
+						set %reverse 1
+						set %cnt 0
+						set %dirchange 1
+						goto start
+						}
+					set %reverse 0
+					set %dirchange 1
+					;msg Stop$
+					set %waittime 30
+					gosub waitfor
+					goto start
+					}
+				if %stopcount <= 2
+					{
+					set %stopcount %stopcount + 1
+					if %backwards = 0
+						{
+						msg Slow Forward$
+						set%waittime 30
+						gosub waitfor
+						set %cnt 0
+						goto start
+						}
+					msg Slow Back$
+					set %waittime 30
+					gosub waitfor
+					set %cnt 0
+					goto start
+					}
+				}
+
+			}
+		set %cnt 0
+		Return
+
+; ============================================================
+;	Target ID.
+; ============================================================
+
+Sub TargetID
+		set %flash 0
+		Set #targcurs 1
+		Wait 10
+WaitTarget:
+		Menu Font Style B
+		if %flash = 0
+			{
+			menu Font Color Red
+			}
+		else
+			{
+			menu Font Color Black
+			}
+		set %flash %flash + 1
+		if %flash > 1 
+			{
+			set %flash 0
+			}
+		Menu Text tm 170 330 %targettext
+		If #targcurs = 0
+			{
+			Set %returnid #ltargetid
+			Return
+			}
+		Goto WaitTarget
+		return
+
+; ============================================================
+;	Reagent Check
+; ============================================================
+
+Sub Reagents
+		if %reagentsuit <> yes
+			{
+			set %bps 0
+			For %i %ra 1
+				{
+FindReagent:
+				FindItem %reagents
+				If #findkind <> 0
+					{
+					Set %bps %bps + 1
+					If %bps = 2
+						{
+						set %regcountfailed %regcountfailed + 1
+						Return
+						}
+					wait 10
+					Event Macro 8 7
+					set %Waittime 30
+					gosub waitfor
+					Goto FindReagent
+					}
+				IgnoreItem #findid
+				}
+			Set %bps 0
+			IgnoreItem Reset
+			set %regcountfailed 0
+			}
+		Return
+
+; ============================================================
+
+Sub Outofregs
+		Msg Stop$
+		msg Drop anchor$
+		display ok Out of Reagents - Macroer paused$Restock & press pause/Resume to continue
+		set %Paused 2
+		gosub checkboatmenu
+		set %regcountfailed 0
+		Return
+
+; ============================================================
+
+Sub Statusbar
+		If %meditation = 1
+			{
+			If #mana = N/A
+				{
+				Event Macro 8 2
+				Wait 10
+				}
+			}
+		return
+
+; ============================================================
+
+Sub checkboatmenu
+boatmenuloop:
+		Menu Font Color Red
+		if %shrd = #SHARD
+			{
+			if %notloggedin = 1
+				{
+				Event Macro 8 2
+				Wait 10
+				if #charname <> N/A
+					{
+					set %notloggedin 0
+					set %runstatus 1
+					set %lastrunstatus 0
+					}
+				}
+			}
+		if %shrd <> #SHARD
+			{
+			if %notloggedin = 0
+				{
+				set %pausedstatus %runstatus
+				set %Paused 1
+				Menu Delete 17
+				Menu Button 17 90 160 75 25 Resume
+				set %notloggedin 1
+				Menu Font Style B
+				Menu Font Color $9D00EE
+				Menu Delete status
+				Menu Text status 10 380 Not Logged in - Paused
+				}
+			}
+		if %notloggedin = 1
+			{
+			If #menubutton = 20
+				{
+				Set #menubutton N/A
+				display yesno Are You sure you want to Quit ?
+				if #dispres = yes 
+					{ 
+					set *14 ON
+					Menu hide
+					stop 
+					} 
+				menu show
+				}
+			Set #menubutton N/A
+			goto boatmenuloop
+			}
+		If #menubutton <> N/A
+			{
+			If #menubutton = 1
+				{
+				Set #menubutton N/A
+				msg turn left$
+				}
+			If #menubutton = 2
+				{
+				Set #menubutton N/A
+				set %spdchanged 0
+				if %Speed = One
+					{
+					set %Speed Slow
+					set %spdchanged 1
+					}
+				if %Speed = Slow
+					{
+					if %spdchanged = 0
+						{
+						set %Speed Fast
+						set %spdchanged 1
+						}
+					}
+				if %Speed = Fast
+					{
+					if %spdchanged = 0
+						{
+						set %Speed One
+						set %spdchanged 1
+						}
+					}
+				Menu Delete 2
+				Menu Button 2 90 10 75 25 %Speed
+				}
+			If #menubutton = 3
+				{
+				Set #menubutton N/A
+				msg turn right$
+				}
+			If #menubutton = 4
+				{
+				Set #menubutton N/A
+				if %speed = one
+					{
+					msg one forward left$
+					}
+				if %speed = slow
+					{
+					msg slow forward left$
+					}
+				if %speed = fast
+					{
+					msg forward left$
+					}
+				}
+			If #menubutton = 5
+				{
+				Set #menubutton N/A
+				if %speed = one
+					{
+					msg one forward$
+					}
+				if %speed = slow
+					{
+					msg slow forward$
+					}
+				if %speed = fast
+					{
+					msg forward$
+					}
+				}
+			If #menubutton = 6
+				{
+				Set #menubutton N/A
+				if %speed = one
+					{
+					msg one forward right$
+					}
+				if %speed = slow
+					{
+					msg slow forward right$
+					}
+				if %speed = fast
+					{
+					msg forward right$
+					}
+				}
+			If #menubutton = 7
+				{
+				Set #menubutton N/A
+				if %speed = one
+					{
+					msg one left$
+					}
+				if %speed = slow
+					{
+					msg slow left$
+					}
+				if %speed = fast
+					{
+					msg left$
+					}
+				}
+			If #menubutton = 8
+				{
+				Set #menubutton N/A
+				msg Stop$
+				}
+			If #menubutton = 9
+				{
+				Set #menubutton N/A
+				if %speed = one
+					{
+					msg one right$
+					}
+				if %speed = slow
+					{
+					msg slow right$
+					}
+				if %speed = fast
+					{
+					msg right$
+					}
+				}
+			If #menubutton = 10
+				{
+				Set #menubutton N/A
+				if %speed = one
+					{
+					msg one back left$
+					}
+				if %speed = slow
+					{
+					msg slow back left$
+					}
+				if %speed = fast
+					{
+					msg back left$
+					}
+				}
+			If #menubutton = 11
+				{
+				Set #menubutton N/A
+				if %speed = one
+					{
+					msg one back$
+					}
+				if %speed = slow
+					{
+					msg slow back$
+					}
+				if %speed = fast
+					{
+					msg back$
+					}
+				}
+			If #menubutton = 12
+				{
+				Set #menubutton N/A
+				if %speed = one
+					{
+					msg one back right$
+					}
+				if %speed = slow
+					{
+					msg slow back right$
+					}
+				if %speed = fast
+					{
+					msg back right$
+					}
+				}
+			If #menubutton = 13
+				{
+				Set #menubutton N/A
+				msg Raise Anchor$
+				}
+			If #menubutton = 14
+				{
+				Set #menubutton N/A
+				msg Turn Around$
+				}
+			If #menubutton = 15
+				{
+				Set #menubutton N/A
+				msg Lower Anchor$
+				}
+			If #menubutton = 16
+				{
+				Set #menubutton N/A
+				set %Paused 0
+				set %runstatus %pausedstatus
+				Menu Delete 17
+				Menu Button 17 90 160 75 25 Pause
+				wait 10
+				msg Stop$
+				msg Lower Anchor$
+				goto Restart
+				}
+			if #menubutton = 17
+				{
+				Set #menubutton N/A
+				if %Paused = 0
+					{
+					set %Paused 2
+					msg Stop$
+					wait 10
+					}
+				if %Paused = 1
+					{
+					set %Paused 0
+					set %runstatus %pausedstatus
+					Menu Delete 17
+					Menu Button 17 90 160 75 25 Pause
+					wait 10
+					msg Raise anchor$
+					if *16 <> off
+						{
+						msg all follow me$
+						}
+					if  %returningtogainspot = 0
+						{
+						if %sailing = 1
+							{
+							if %trawl = 0
+								{
+								if %reverse = 0
+									{
+									msg slow forward$
+									}
+								if %reverse <> 0
+									{
+									msg slow back$
+									}
+								}
+							}
+						}
+					if %returningtogainspot = 1
+						{
+						msg back$
+						}
+					if %returningtogainspot = 2
+						{
+						msg forward$
+						}
+					}
+				}
+			If #menubutton = 18
+				{
+				Set #menubutton N/A
+				set %Paused 0
+				set %runstatus %pausedstatus
+				Menu Delete 17
+				Menu Button 17 90 160 75 25 Pause
+				if *16 <> off
+					{
+					msg all follow me$
+					}
+				wait 10
+				goto start
+				}
+			If #menubutton = 19
+				{
+				Set #menubutton N/A
+				set %trawl %trawl + 1
+				set %dirchange 1
+				if %trawl > 1
+					{
+					set %trawl 0
+					Menu Delete 19
+					Menu Button 19 10 190 75 25 Trawl
+					}
+				if %trawl <= 1
+					{
+					Menu Delete 19
+					Menu Button 19 10 190 75 25 Sail
+					if %Paused = 0
+						{
+						msg Stop$
+						}
+					}
+				if %sailing = 1
+					{
+					if %paused = 0
+						{
+						goto start
+						}
+					}
+				}
+			If #menubutton = 20
+				{
+				Set #menubutton N/A
+				display yesno Are You sure you want to Quit ?
+				if #dispres = yes 
+					{ 
+					msg Stop$
+					msg Drop Anchor$
+					set *14 ON
+					Menu hide
+					stop 
+					} 
+				menu show
+				}
+			If #menubutton = 21
+				{
+				Set #menubutton N/A
+				set %dirchange 1
+				set %reverse %reverse + 1
+				if %reverse > 1
+					{
+					set %reverse 0
+					}
+				if %sailing = 1
+					{
+					if %paused = 0
+						{
+						goto start
+						}
+					}
+				}
+			}
+		if %Paused = 2
+			{
+			set %pausedstatus %runstatus
+			set %runstatus 1
+			set %Paused 1
+			Menu Delete 17
+			Menu Button 17 90 160 75 25 Resume
+			msg Stop$
+			wait 10
+			Display ok 8*8er Paused. Do whatever you must :$You are free to recall home etc$ Just stand on same spot before you press restart$
+			}
+		set %totalgains %currentskill - %startskill
+		if %numlines > 0
+			{
+			set %gainavg %totalgains / %numlines
+			}
+		
+		if %gainsthisline > %bestline
+			{
+			set %bestline %gainsthisline
+			}
+		Menu Font Style B
+		Menu Font Bgcolor Black
+		Menu Font Color Red
+		if %updateinfo = 1
+			{
+			set %updateinfo 0
+			Menu Delete upd
+			Menu Text upd 90 230 %startskill
+			Menu Text upd 210 230 %currentskill
+			Menu Text upd 95 260 %gainsthisline
+			Menu Text upd 215 260 %totalgains
+			Menu Text upd 95 290 %gainavg
+			Menu Text upd 215 290 %bestline
+			Menu Text upd 80 320 %numlines
+			}
+		if %lastx <> #charposx
+			{
+			Menu Delete x
+			Menu Text x 140 320 #charposx
+			set %lastx #charposx
+			}
+		if %lasty <> #charposy
+			{
+			Menu Delete y
+			Menu Text y 200 320 #charposy
+			set %lasty #charposy
+			}
+		Menu Font Color Green
+		if %dirchange = 1
+			{
+			set %dirchange = 0
+			Menu Delete dir
+			if %trawl = 1
+				{
+				if %reverse = 1
+					{
+					Menu Text dir 10 350 Currently traveling Back trawling
+					}
+				if %reverse <> 1
+					{
+					Menu Text dir 10 350 Currently traveling Forward trawling
+					}
+				}
+			if %trawl = 0
+				{
+				if %reverse = 1
+					{
+					Menu Text dir 10 350 Currently travelling Slow Back
+					}
+				if %reverse <> 1
+					{
+					Menu Text dir 10 350 Currently travelling Slow Forward
+					}
+				}
+			}
+		if %runstatus <> %lastrunstatus
+			{
+			Menu Font Color Yellow
+			Menu Delete status
+			if %runstatus = 0
+				{
+				Menu Text status 10 380 Returning to Gainspot
+				}
+			if %runstatus = 1
+				{
+				Menu Text status 10 380 Paused Press Resume to Continue
+				}
+			if %runstatus = 2
+				{
+				Menu Text status 10 380 Searching for Gain Line
+				}
+			if %runstatus = 3
+				{
+				Menu Text status 10 380 Gainline found searching forward
+				}
+			if %runstatus = 4
+				{
+				Menu Text status 10 380 No gain checking forward again
+				}
+			if %runstatus = 5
+				{
+				Menu Text status 10 380 Gainline found searching back
+				}
+			if %runstatus = 6
+				{
+				Menu Text status 10 380 No gain checking back again
+				}
+			if %runstatus = 7
+				{
+				Menu Text status 10 380 On Anatomy Gainspot
+				}
+			if %runstatus = 8
+				{
+				Menu Text status 10 380 On Jewelry Gainspot
+				}
+			}
+		set %lastrunstatus %runstatus
+		Menu Font Style
+		menu show
+		if %Paused = 1
+			{
+			goto boatmenuloop
+			}
+		return
+		
+; ============================================================
+
+sub waitfor
+		set #scnt2 0
+waitloop:
+		gosub checkboatmenu
+		if #scnt2 < %waittime
+			{
+			goto waitloop
+			}
+		return
+
+; ============================================================
+;=			Skill Subroutines				           =
+; ============================================================
+
+sub magery
+		set %regcountfailed 0
+mageryloop:
+		gosub Reagents
+		if %regcountfailed > 3
+			{
+			gosub outofregs
+			}
+		if %regcountfailed <> 0
+			{
+			set %waittime 10
+			gosub waitfor
+			goto mageryloop
+			}
+		gosub Statusbar
+		if #mana >= %manarequired 
+			{ 
+			set %oldmana #mana
+			Event Macro 15 %spell
+			If %target = 1
+				{
+				Set #ltargetid %tm
+				Target 6s
+				Event Macro 22 0
+				}
+			If %target = 2
+				{
+				Target 6s
+				set #ltargetkind 1
+				Event Macro 23 0
+				}
+			set %Waittime 15
+			gosub waitfor
+			If %target = 0
+				{
+				set %Waittime 50
+				gosub waitfor
+				}
+			if #mana < %oldmana
+				{
+				set %succeeded 1
+				}
+			Return
+			}
+		gosub checkboatmenu
+		if %activemed = 1
+			{
+			event macro 13 46
+			set %waittime 60
+			gosub waitfor
+			}
+		goto mageryloop
+
+; ============================================================
+
+sub hiding
+		deletejournal
+		if %moved = 0
+			{
+			set %waittime 110
+			gosub waitfor
+			}
+		event macro 13 21
+		set %waittime 15
+		gosub waitfor
+		for %cnt 5 1
+			{
+			scanjournal %cnt
+			if _You_have_hidden in #journal
+				{
+				deletejournal
+				set %succeeded 1
+				}
+			}
+		set %moved 0
+		return
+
+; ============================================================
+
+sub eval
+		set %regcountfailed 0
+evalloop:
+		gosub Reagents
+		if %regcountfailed > 3
+			{
+			gosub outofregs
+			}
+		if %regcountfailed <> 0
+			{
+			set %waittime 10
+			gosub waitfor
+			goto evalloop
+			}
+		gosub statusbar
+		set %waittime 5
+		gosub waitfor
+		event macro 15 4
+		Set #ltargetid %tm
+		Target
+		Event Macro 22 0
+		set %waittime 10
+		gosub waitfor
+		set %succeeded 1
+		return
+
+; ============================================================
+
+sub healing
+		Set %bpseachs 0
+healstart:
+		finditem ZLF
+		If #findkind = -1 
+			{ 
+			Event Macro 8 7
+			set %waittime 5
+			gosub waitfor
+			If %bpseachs >= 3
+				{
+				Msg Stop$
+				Msg Drop Anchor$
+				display ok No Bandages Left - Paused
+				set %Paused 2
+				gosub checkboatmenu
+				}
+			Set %bpseachs %bpseachs + 1
+			Goto healstart
+			} 
+		Set %bpseachs 0
+		set #lobjectid #findid
+		set #ltargetid %gh
+		set #ltargetkind 1
+		FindItem #ltargetid
+		event macro 17
+		target
+		event macro 22
+		Set #scnt2 0
+scanheal:
+		if you_cannot_perform_beneficial in #sysmsg
+			{
+			msg stop$
+			set %waittime 20
+			gosub waitfor
+			msg Lower Anchor$
+			set %waittime 20
+			gosub waitfor
+			display ok No valid target, your ghost has timed out. Pausing.
+			set %Paused 2
+			gosub checkboatmenu
+			Return
+			}
+		if you_are_able in #sysmsg
+			{
+			set %succeeded 1
+			set %waittime 5
+			gosub waitfor
+			return
+			}
+		If finish in #sysmsg
+			{
+			Set %succeeded 1
+			set %waittime 5
+			gosub waitfor
+			Return
+			}
+		If little in #sysmsg
+			{
+			Set %succeeded 1
+			set %waittime 5
+			gosub waitfor
+			Return
+			}
+		If barely in #sysmsg
+			{
+			Return
+			}
+		if unable in #sysmsg
+			{
+			Return
+			}
+		if fail in #sysmsg
+			{
+			Return
+			}
+		If being in #sysmsg
+			{
+			return
+			}
+		If #scnt2 >= 220
+			{
+			Return
+			}
+		else 
+			{
+			gosub checkboatmenu
+			}
+		Goto Scanheal
+		return
+
+; ============================================================
+
+sub anatomy
+		Set %bpseachs 0
+anatstart:
+		set %succeeded 0
+		chooseskill *10
+		set %prevskill #skill
+		finditem ZLF
+		If #findkind = -1 
+			{ 
+			Event Macro 8 7
+			set %waittime 5
+			gosub waitfor
+			If %bpseachs >= 3
+				{
+				Msg Stop$
+				Msg Drop Anchor$
+				display ok No Bandages Left - Paused
+				set %Paused 2
+				gosub checkboatmenu
+				}
+			Set %bpseachs %bpseachs + 1
+			Goto anatstart
+			} 
+		Set %bpseachs 0
+		set #lobjectid #findid
+		set #ltargetid %gh
+		set #ltargetkind 1
+		FindItem #ltargetid
+		event macro 17
+		target
+		event macro 22
+		Set #scnt2 0
+scananat:
+		if you_cannot_perform_beneficial in #sysmsg
+			{
+			msg stop$
+			set %waittime 20
+			gosub waitfor
+			msg Lower Anchor$
+			set %waittime 20
+			gosub waitfor
+			display ok No valid target, your dummy has timed out. Pausing.
+			set %Paused 2
+			gosub checkboatmenu
+			Return
+			}
+		if you_are_able in #sysmsg
+			{
+			set %succeeded 1
+			set %waittime 5
+			gosub waitfor
+			goto anatgain
+			}
+		If finish in #sysmsg
+			{
+			Set %succeeded 1
+			set %waittime 5
+			gosub waitfor
+			goto anatgain
+			}
+		If little in #sysmsg
+			{
+			Set %succeeded 1
+			set %waittime 5
+			gosub waitfor
+			goto anatgain
+			}
+		If barely in #sysmsg
+			{
+			goto anatgain
+			}
+		if unable in #sysmsg
+			{
+			goto anatgain
+			}
+		if fail in #sysmsg
+			{
+			goto anatgain
+			}
+		If being in #sysmsg
+			{
+			goto anatgain
+			}
+		If #scnt2 >= 220
+			{
+			goto anatgain
+			}
+		else 
+			{
+			gosub checkboatmenu
+			}
+		Goto Scananat
+anatgain:
+		set %waittime 30
+		gosub waitfor
+		chooseskill *10
+		if #skill = %prevskill
+			{
+			set %anatfail %anatfail + 1
+			}
+		if #skill > %prevskill
+			{
+			set %anatfail 0
+			chooseskill healing
+			set %waittime 5
+			gosub waitfor
+			if #skilllock = up
+				{
+				event skilllock healing locked
+				}
+			chooseskill *10
+			set %gainsthisline %gainsthisline + 1
+			set %currentskill #skill
+			set %runstatus 7
+			set %updateinfo 1
+			gosub checkboatmenu
+			goto anatstart
+			}
+		if %anatfail > %anattries
+			{
+			set %anatfail 0
+			chooseskill healing
+			if #skilllock = locked
+				{
+				event skilllock healing up
+				}
+			chooseskill *10
+			set %currentskill #skill
+			return
+			}
+		if %runstatus <> 7
+			{
+			return
+			}
+		gosub checkboatmenu
+		goto anatstart
+		return
+
+; ============================================================
+
+Sub Veterinary
+		set %vetsamecnt 0
+revet:
+		Set %bpseachs 0
+		If %pet = 1
+			{
+			Set %vet %petone
+			Set %pet 0
+			Goto VeterinaryB
+			}
+		If %pet = 0
+			{
+			Set %vet %pettwo
+			Set %pet 1
+			Goto VeterinaryB
+			}
+VeterinaryB:
+		Finditem ZLF
+		set %waittime 5
+		gosub waitfor
+		If #findkind = -1 
+			{
+			Event Macro 8 7
+			set %waittime 5
+			gosub waitfor
+			If %bpseachs >= 3
+				{
+				Msg Stop$
+				Msg All stop$
+				Msg Drop anchor$
+				display ok No Bandages Left - Paused
+				set %Paused 2
+				gosub checkboatmenu
+				}
+			Set %bpseachs %bpseachs + 1
+			Goto VeterinaryB
+			} 
+		Set %bpseachs 0
+		Set #lobjectid #findid
+		Set #ltargetid %vet
+		FindItem #ltargetid
+		If %guardme = 1
+			{
+			If #findrep = 1
+			Msg All guard me$
+			}
+		Event Macro 17
+		Target 
+		Event Macro 22
+		Set #scnt2 0
+ScanVet:
+		if that_is_too_far_away in #sysmsg
+			{
+			Set #ltargetid %petone
+			msg All guard me$
+			wait 10
+			msg All follow me$
+			wait 10
+			Msg All attack$
+			wait 10
+			Target
+			Event Macro 22
+			set %pet 1
+			goto revet
+			}
+		if you_cannot_perform_beneficial in #sysmsg
+			{
+			msg stop$
+			set %waittime 20
+			gosub waitfor
+			msg Lower Anchor$
+			set %waittime 20
+			gosub waitfor
+			display ok No valid target, probly one of your pets died. Pausing.
+			set %Paused 2
+			gosub checkboatmenu
+			Return
+			}
+		if owner in #sysmsg
+			{
+			Set %succeeded 1
+			set %waittime 5
+			gosub waitfor
+			Return
+			}
+		If finish in #sysmsg
+			{
+			Set %succeeded 1
+			set %waittime 5
+			gosub waitfor
+			Return
+			}
+		If barely in #sysmsg
+			{
+			Return
+			}
+		if unable in #sysmsg
+			{
+			Return
+			}
+		if fail in #sysmsg
+			{
+			Return
+			}
+		If little in #sysmsg
+			{
+			Set %succeeded 1
+			set %waittime 5
+			gosub waitfor
+			Return
+			}
+		If being in #sysmsg
+			{
+			set %vetsamecnt %vetsamecnt + 1
+			if %vetsamecnt <= 3
+				{
+				Goto revet
+				}
+			if %vetsamecnt > 3
+				{
+				Set #ltargetid %petone
+				msg All guard me$
+				wait 10
+				msg All follow me$
+				wait 10
+				Msg All attack$
+				wait 10
+				Target
+				Event Macro 22
+				set %pet 1
+				goto revet
+				}
+			}
+		If #scnt2 >= 150
+			{
+			Return
+			}
+		else 
+			{
+			gosub checkboatmenu
+			}
+		Goto ScanVet
+
+; ============================================================
+
+sub stlt
+		set %invisme %stealthinvisible
+		if %invisme = 2
+			{
+			if %runstatus < 3
+				{
+				set %invisme 0
+				}
+			}
+		set %justinvised 0
+hide:
+		If H NOTIN #Charstatus 
+			{ 
+			if %invisme = 0
+				{
+				if %moved = 0
+					{
+					set %waittime 100
+					gosub waitfor
+					}
+				EVENT macro 13 21 
+				set %waittime 10
+				gosub waitfor
+				set %moved 0
+				goto hide 
+				}
+			if %invisme <> 0
+				{
+				set %stsucc %succeeded
+				set %ra 2
+				set %target 2
+				set %reagents JUF_WZF
+				set %spell 43
+				set %manarequired 20
+				gosub magery
+				set %succeeded %stsucc 
+				set %justinvised 1
+				}
+			} 
+stealth: 
+		if %moved = 0
+			{
+			if %invisme = 0
+				{
+				set %waittime 100
+				}
+			if %invisme <> 0
+				{
+				set %waittime 50
+				if %justinvised = 0
+					{
+					set %waittime 100
+					}
+				if %runstatus > 2
+					{
+					set %waittime 5
+					}
+				}
+			gosub waitfor
+			}
+		If H NOTIN #Charstatus 
+			{ 
+			goto hide
+			}
+		EVENT macro 13 47 
+		wait 10 
+		If You_begin_to_move in #sysmsg
+			{
+			set %succeeded 1
+			}
+		set %moved 0
+		set %waittime 10
+		gosub waitfor
+		set %invisme 0
+		return
+
+; ============================================================
+
+Sub Musicianship
+		set %bps 0
+		M_Instrument:
+		Finditem PRF_LQF_MQF_QRF_OQF
+		set %waittime 5
+		gosub waitfor
+		If #findkind = -1 
+			{
+			Event Macro 8 7
+			set %waittime 5
+			gosub waitfor
+			If %bps >= 2
+				{
+				Msg Stop$
+				Msg Drop Anchor$
+				display ok No instrument!
+				set %Paused 2
+				gosub checkboatmenu
+				}
+			Set %bps %bps + 1
+			Goto M_Instrument
+			} 
+		Set %bps 0
+		Set #lobjectid #findid 
+		if %moved = 0
+			{
+			set %waittime 20
+			gosub waitfor
+			}
+		Event Macro 17 
+		set %succeeded 1
+		set %moved 0
+		set %waittime 10
+		gosub waitfor
+		Return
+
+; ============================================================
+
+Sub Peacemaking
+		set %bps 0
+		if %peacetried = 1
+			{
+			set %waittime 50
+			gosub waitfor
+			}
+		set %peacetried 0
+		Event Macro 13 9
+		set %waittime 5
+		gosub waitfor
+		If What_instrument_shall in #sysmsg
+			{
+			Set #targcurs 0
+			set %waittime 5
+			gosub waitfor
+P_Instrument:
+			Finditem PRF_LQF_MQF_QRF_OQF
+			set %waittime 5
+			gosub waitfor
+			If #findkind = -1 
+				{ 
+				Event Macro 8 7
+				set %waittime 5
+				gosub waitfor
+				If %bps >= 2
+					{
+					Msg Stop$
+					Msg Drop Anchor$
+					display ok No instrument!
+					set %Paused 2
+					gosub checkboatmenu
+					}
+				Set %bps %bps + 1
+				Goto P_Instrument
+				}
+			Set #lobjectid #findid
+			Event Macro 17
+			}
+		Set %bps 0
+		set %peacetried 1
+		Target
+		Event Macro 23
+		set %Waittime 40
+		gosub waitfor
+		If You_play in #sysmsg
+			{
+			set %succeeded 1
+			}
+		else
+			{
+			set %Waittime 15
+			gosub waitfor
+			}
+		Return
+
+; ============================================================
+
+Sub Chivalry
+chivloop:
+		gosub Statusbar
+		if #mana >= %manarequired 
+			{ 
+			set %oldmana #mana
+			Event Macro 15 %spell
+			If %target = 1
+				{
+				Target 6s
+				set #ltargetkind 1
+				Event Macro 23 0
+				}
+			Wait 10
+			If %target = 0
+				{
+				set %Waittime 50
+				gosub waitfor
+				}
+			if #mana < %oldmana
+				{
+				set %succeeded 1
+				}
+			Return
+			}
+		gosub checkboatmenu
+		if %spell <> 203
+			{
+			if %activemed = 1
+				{
+				event macro 13 46
+				set %waittime 60
+				gosub waitfor
+				}
+			}
+		goto chivloop
+
+; ============================================================
+
+Sub Spirit
+spiritloop:
+		gosub Statusbar
+		if #mana >= 11
+			{
+			Event Macro 13 32
+			set %waittime 30
+			gosub waitfor
+			If You_channel_your_own in #sysmsg
+				{
+				if %necrohealing = 0
+					{
+					set %succeeded 1
+					}
+				}
+			Return
+			}
+		if %activemed = 1
+			{
+			event macro 13 46
+			set %waittime 60
+			gosub waitfor
+			}
+		set %waittime 80
+		gosub waitfor
+		goto spiritloop
+
+; ============================================================
+
+Sub Necromancy
+		gosub Statusbar
+		set %healedonce 0
+		set %healat #MaxHits - 30
+ssHealThySelf:
+		if %spiritheal  = 1
+			{
+			if #Hits < %healat
+				{
+				if %healedonce = 1
+					{
+					set %waittime 30
+					gosub waitfor
+					}
+				set %necrohealing 1
+				Gosub Spirit
+				set %necrohealing 0
+				set %Waittime 50
+				gosub waitfor
+				set %healedonce 1
+				Goto ssHealThySelf
+				}
+			}
+		set %regcountfailed 0
+necroloop:
+		gosub Reagents
+		if %regcountfailed > 3
+			{
+			gosub outofregs
+			}
+		if %regcountfailed <> 0
+			{
+			set %waittime 10
+			gosub waitfor
+			goto necroloop
+			}
+		if #mana >= %manarequired 
+			{ 
+			set %oldmana #mana
+			Event Macro 15 %spell
+			If %target = 1
+				{
+				Target 6s
+				set #ltargetkind 1
+				Event Macro 23 0
+				}
+			set %Waittime 15
+			gosub waitfor
+			If %target = 0
+				{
+				set %Waittime 50
+				gosub waitfor
+				}
+			if #mana < %oldmana
+				{
+				set %succeeded 1
+				}
+			Return
+			}
+		gosub checkboatmenu
+		if %activemed = 1
+			{
+			event macro 13 46
+			set %waittime 60
+			gosub waitfor
+			}
+		goto necroloop
+
+; ============================================================
+
+Sub Bushido
+bushloop:
+;display ok ur here
+		gosub Statusbar
+		if #mana >= %manarequired 
+			{ 
+			set %oldmana #mana
+			;set #lspell %spell
+			;event macro 16
+			Event Macro 15 %spell
+			Wait 10
+			if YOU_PREPARE_TO_RESPOND in #sysmsg 
+				{
+				set %succeeded 1
+				}
+			If %target = 0
+				{
+				set %Waittime 10
+				gosub waitfor
+				}
+			if %spell = 150
+				{
+rehitgolem:
+				set #ltargetid %golemid
+				event macro 27
+				set %waittime 5
+				gosub waitfor
+				if YOU_TRANSFER_THE_MOMENTUM in #sysmsg
+					{
+					set %succeeded 1
+;display ok succ
+					if %uniheal = chiv
+						{
+						event macro 15 202
+						Set #ltargetid %uniid
+						Target 6s
+						Event Macro 22 0
+						return
+						}
+					if %uniheal = mage
+						{
+						event macro 15 28
+						Set #ltargetid %uniid
+						Target 6s
+						Event Macro 22 0
+						}
+					return
+					}
+				if THERE_ARE_NO_VALID_TARGETS in #sysmsg
+					{
+					display ok uni dead / out of range - macroer paused
+					set %Paused 2
+					gosub checkboatmenu
+					return
+					}
+				if #mana < %oldmana
+					{
+;display ok fail
+					goto bushloop
+					}
+				set %oldmana #mana
+				goto rehitgolem
+				}
+			if #mana < %oldmana
+				{
+				set %succeeded 1
+				}
+			set %waittime 40
+			gosub waitfor
+			Return
+			}
+		gosub checkboatmenu
+		if %spell = 146
+			{
+			if %activemed = 1
+				{
+				event macro 13 46
+				set %waittime 60
+				gosub waitfor
+				}
+			}
+		goto bushloop
+
+; ============================================================
+
+Sub Ninjitsu
+ninjloop:
+		gosub Statusbar
+		if #mana >= %manarequired 
+			{ 
+			set %oldmana #mana
+			;set #lspell %spell
+			;event macro 16
+			Event Macro 15 %spell
+			Wait 10
+			If %target = 0
+				{
+				set %Waittime 50
+				gosub waitfor
+				}
+			if %spell = 247
+				{
+				set %waittime 15
+				gosub waitfor
+				set %clx #contposx + 219
+				set %cly #contposy + 219
+				click %clx %cly
+				set %waittime 5
+				gosub waitfor
+				set %clx #contposx + 39
+				set %cly #contposy + 279
+				click %clx %cly
+				set %waittime 15
+				gosub waitfor
+				scanjournal 1
+				set %succeeded 1
+				if The_Spell_fizzles in #journal
+					{
+					set %succeeded 0
+					deletejournal
+					}
+				}
+			if #mana < %oldmana
+				{
+				set %succeeded 1
+				}
+			if %spell = 252
+				{
+				ignoreitem #charid
+				finditem IS_HS G_1 
+				if #findkind <> -1
+					{
+					set #ltargetid #findid
+					event macro 27
+					set %waittime 5
+					gosub waitfor
+					}
+				ignoreitem reset
+				}
+			if %spell = 245 || %spell = 246
+				{
+				set %ninjmana #mana
+				set %hitpetcnt 0
+rehitpet:
+				event macro 3 0 all kill
+				target 1s
+				event macro 23 0
+				wait 5
+				if %ninjmana < #mana
+					{
+					set %ninjmana #mana
+					}
+				if #mana < %ninjmana
+					{
+					if  YOU_FOCUS in #sysmsg
+						{
+						set %succeeded 1
+						}
+					if YOU_INFLICT in #sysmsg
+						{
+						set %succeeded 1
+						}
+					return
+					}
+				wait 5
+				set %hitpetcnt %hitpetcnt + 1
+				if %hitpetcnt > 100
+					{
+					gosub checkboatmenu
+					goto ninjloop
+					}
+				goto rehitpet
+				}
+			Return
+			}
+		gosub checkboatmenu
+		if %activemed = 1 && #skill < 750
+			{
+			event macro 13 46
+			set %waittime 60
+			gosub waitfor
+			}
+		goto ninjloop
+
+; ============================================================
+
+Sub Focus
+Sub Meditation
+		set %healedonce 0
+		set %healat #MaxHits - 30
+		set %castmana #maxmana 
+		set %castmana %castmana - %manarequired
+ssHealThySelf2:
+		if %spiritheal  = 1
+			{
+			if #Hits < %healat
+				{
+				if %healedonce = 1
+					{
+					set %waittime 30
+					gosub waitfor
+					}
+				set %necrohealing 1
+				Gosub Spirit
+				set %necrohealing 0
+				set %Waittime 50
+				gosub waitfor
+				set %healedonce 1
+				Goto ssHealThySelf2
+				}
+			}
+		set %regcountfailed 0
+medloop:
+		if %medskill <> Chivalry
+			{
+			gosub Reagents
+			if %regcountfailed > 3
+				{
+				gosub outofregs
+				}
+			if %regcountfailed <> 0
+				{
+				set %waittime 10
+				gosub waitfor
+				goto medloop
+				}
+			}
+		gosub Statusbar
+		if #mana >= %manarequired 
+			{ 
+			set %oldmana #mana
+			Event Macro 15 %spell
+			If %target = 1
+				{
+				Set #ltargetid %tm
+				Target 6s
+				Event Macro 22 0
+				}
+			If %target = 2
+				{
+				Target 6s
+				set #ltargetkind 1
+				Event Macro 23 0
+				}
+			set %Waittime 15
+			gosub waitfor
+			If %target = 0
+				{
+				set %Waittime 50
+				gosub waitfor
+				}
+			if #mana < %oldmana
+				{
+				set %succeeded 1
+				}
+			Return
+			}
+		if #mana < %castmana
+			{
+			set %succeeded 1
+			set %waittime 10
+			gosub waitfor
+			return
+			}
+		gosub checkboatmenu
+		goto medloop
+
+
+; ============================================================
+;	Chivalry Setup
+; ============================================================
+
+Sub ChivSetup
+		gosub Statusbar
+		Chooseskill Chivalry
+		If #skill >= 815
+			{
+			Set %target 0
+			Set %spell 208
+			Set %manarequired 20
+			Return
+			}
+		If #skill >= 680
+			{
+			Set %target 0
+			Set %spell 207
+			Set %manarequired 15
+			Return
+			}
+		If #skill >= 570
+			{
+			Set %target 0
+			Set %spell 206
+			Set %manarequired 20
+			Return
+			}
+		If #skill >= 450
+			{
+			Set %target 0
+			Set %spell 204
+			Set %manarequired 15
+			Return
+			}
+		if #skill >= 350
+			{
+			Set %target 0
+			set %spell 205
+			Set %manarequired 15
+			Return
+			}
+		If #skill >= 299
+			{
+			Set %target 0
+			Set %spell 203
+			Set %manarequired 10
+			Return
+			}
+		If #skill >= 50
+			{
+			Set %target 1
+			Set %spell 209
+			Set %manarequired 20
+			Return
+			}
+		display ok  Save you and me some time, go buy your skill up to 5 at least !
+		set *14 ON
+		menu hide
+		stop
+		Return
+
+; ============================================================
+;	Magery Setup
+; ============================================================
+
+Sub MagerySetup
+		gosub Statusbar
+		Chooseskill Magery
+		set %target 1
+		If #skill >= 920
+			{
+			Set %ra 4
+			Set %reagents JUF_JZF_MZF_SZF
+			Set %target 0
+			Set %spell 56
+			Set %manarequired 50
+			Return
+			}
+		If #skill >= 780
+			{
+			Set %ra 2
+			Set %reagents RZF_SZF
+			Set %spell 50
+			Set %manarequired 40
+			Return
+			}
+		If #skill >= 640
+			{
+			Set %ra 2
+			Set %reagents KUF_WZF
+			Set %spell 41
+			Set %manarequired 20
+			Return
+			}
+		If #skill >= 500
+			{
+			Set %ra 3
+			Set %reagents KZF_MZF_RZF
+			Set %spell 37
+			set %manarequired 15
+			Return
+			}
+		If #skill >= 360
+			{
+			Set %ra 2
+			Set %reagents MZF_SZF
+			Set %spell 29
+			set %manarequired 11
+			Return
+			}
+		If #skill >= 200
+			{
+			Set %ra 1
+			Set %reagents WZF
+			Set %spell 19
+			set %manarequired 9
+			Return
+			}
+		If #skill >= 0
+			{
+			Set %ra 1
+			Set %reagents SZF
+			Set %spell 4
+			set %manarequired 4
+			Return
+			}
+		display ok You are below 0 skill ! Unequip that mage weapon fewl !
+		set *14 ON
+		menu hide
+		stop
+		Return
+
+; ============================================================
+;	Necromancy Setup
+; ============================================================
+
+Sub NecroSetup
+		gosub Statusbar
+		Chooseskill Necromancy 
+		if #skill >= 1050
+			{
+			Set %ra 3 
+			Set %reagents UZF_IUF_YZF 
+			Set %target 0 
+			Set %spell 113 
+			Set %manarequired 23
+			Return 
+			}
+		If #skill >= 810 
+			{ 
+			Set %ra 3 
+			set %target 0
+			Set %reagents UZF_DUF_TZF
+			Set %spell 107 
+			Set %manarequired 23 
+			Return 
+			} 
+		if #skill >= 760
+			{
+			set %ra 3
+			set %target 1
+			set %reagents UZF_YZF_TZF
+			set %spell 115
+			set %manarequired 23
+			return
+			}
+		if #skill >= 700
+			{
+			if %reagentsuit = no
+				{
+				set %ra 1
+				set %target 1
+				set %reagents UZF
+				set %spell 110
+				set %manarequired 17
+				return
+				}
+			if %reagentsuit <> no
+				{
+				set %ra 3
+				set %target 1
+				set %reagents UZF_YZF_TZF
+				set %spell 115
+				set %manarequired 23
+				return
+				}
+			}
+		If #skill >= 540 
+			{ 
+			Set %ra 2 
+			set %target 0
+			Set %reagents IUF_DUF 
+			Set %spell 106 
+			Set %manarequired 11 
+			Return 
+			} 
+		If #skill >= 380 
+			{ 
+			Set %ra 3 
+			set %target 1
+			Set %reagents YZF_DUF_IUF
+			Set %spell 108 
+			Set %manarequired 17
+			Return 
+			} 
+		If #skill >= 280 
+			{ 
+			Set %ra 2 
+			set %target 1
+			Set %reagents IUF_TZF
+			Set %spell 103 
+			Set %manarequired 11
+			Return 
+			} 
+		If #skill >= 0 
+			{ 
+			Set %ra 2 
+			set %target 1
+			Set %reagents YZF
+			Set %spell 104
+			Set %manarequired 7
+			Return 
+			} 
+		display ok Get above 0 skill then try again.
+		set *14 ON
+		menu hide
+		stop
+		Return
+
+; ============================================================
+;	Bushido Setup
+; ============================================================
+
+Sub BushSetup
+		gosub Statusbar
+		If #skill >= 975
+			{
+			Set %target 1
+			Set %spell 150
+			;Momentum
+			Set %manarequired 10
+			Return
+			}
+		If #skill >= 749
+			{
+			Set %target 0
+			Set %spell 147
+			;Evasion
+			Set %manarequired 10
+			Return
+			}
+		if #skill >= 550
+			{
+			Set %target 0
+			set %spell 148
+			;Counter
+			Set %manarequired 5
+			Return
+			}
+		If #skill >= 250
+			{
+			Set %target 0
+			Set %spell 146
+			;confidence
+			Set %manarequired 10
+			Return
+			}
+		display ok  Save you and me some time, go buy your skill up to 25 at least !
+		set *14 ON
+		menu hide
+		stop
+		Return
+
+; ============================================================
+;	Ninjitsu Setup
+; ============================================================
+
+Sub NinjSetup
+		gosub Statusbar
+		If #skill >= 950
+			{
+			Set %target 1
+			Set %spell 246
+			;death
+			Set %manarequired 30
+			Return
+			}
+		If #skill >= 750
+			{
+			Set %target 1
+			Set %spell 245
+			;Focus
+			Set %manarequired 20
+			Return
+			}
+		if #skill >= 400
+			{
+			Set %target 0
+			set %spell 252
+			;Mirror
+			Set %manarequired 10
+			Return
+			}
+		If #skill >= 0
+			{
+			Set %target 1
+			Set %spell 247
+			;animal form
+			Set %manarequired 0
+			Return
+			}
+		display ok  Save you and me some time, go buy your skill up to 30 at least !
+		set *14 ON
+		menu hide
+		stop
+		Return
+
+; ============================================================
+;	Meditation Setup
+; ============================================================
+
+Sub MeditationSetup
+		set *11 0
+		gosub Statusbar
+		if %medskill = Magery
+			{
+			Chooseskill Magery
+			set %target 1
+
+			If #skill >= 1060
+				{
+				Set %ra 2
+				Set %reagents RZF_SZF
+				Set %spell 50
+				Set %manarequired 40
+				Return
+				}
+			If #skill >= 920
+				{
+				Set %ra 2
+				Set %reagents KUF_WZF
+				Set %spell 41
+				Set %manarequired 20
+				Return
+				}
+			If #skill >= 780
+				{
+				Set %ra 3
+				Set %reagents KZF_MZF_RZF
+				Set %spell 37
+				set %manarequired 15
+				Return
+				}
+			If #skill >= 630
+				{
+				Set %ra 2
+				Set %reagents MZF_SZF
+				Set %spell 29
+				set %manarequired 11
+				Return
+				}
+			If #skill >= 490
+				{
+				Set %ra 1
+				Set %reagents WZF
+				Set %spell 19
+				set %manarequired 9
+				Return
+				}
+			If #skill >= 350
+				{
+				Set %ra 1
+				Set %reagents WZF_RZF
+				Set %spell 11
+				set %manarequired 6
+				Return
+				}
+			If #skill >= 50
+				{
+				Set %ra 1
+				Set %reagents SZF
+				Set %spell 4
+				set %manarequired 4
+				Return
+				}
+			display ok You need atleast 5 skill !
+			set *14 ON
+			menu hide
+			stop
+			Return
+			}
+		if %medskill = Chivalry
+			{
+			Chooseskill Chivalry
+			If #skill >= 1160
+				{
+				Set %target 0
+				Set %spell 208
+				Set %manarequired 20
+				Return
+				}
+			If #skill >= 1020
+				{
+				Set %target 0
+				Set %spell 207
+				Set %manarequired 15
+				Return
+				}
+			If #skill >= 880
+				{
+				Set %target 0
+				Set %spell 206
+				Set %manarequired 20
+				Return
+				}
+			If #skill >= 750
+				{
+				Set %target 0
+				Set %spell 204
+				Set %manarequired 15
+				Return
+				}
+			if #skill >= 650
+				{
+				Set %target 0
+				set %spell 205
+				Set %manarequired 15
+				Return
+				}
+			If #skill >= 450
+				{
+				Set %target 0
+				Set %spell 203
+				Set %manarequired 10
+				Return
+				}
+			If #skill >= 50
+				{
+				Set %target 1
+				Set %spell 209
+				Set %manarequired 20
+				Return
+				}
+			display ok  Save you and me some time, go buy your skill up to 5 at least !
+			set *14 ON
+			menu hide
+			stop
+			Return
+			}
+		if %medskill = Necromancy
+			{
+			Chooseskill Necromancy 
+			If #skill >= 1160 
+				{ 
+				Set %ra 3 
+				set %target 0
+				Set %reagents UZF_DUF_TZF
+				Set %spell 107 
+				Set %manarequired 23 
+				Return 
+				} 
+			if #skill >= 1020
+				{
+				set %ra 3
+				set %target 1
+				set %reagents UZF_YZF_TZF
+				set %spell 115
+				set %manarequired 23
+				return
+				}
+			if #skill >= 880
+				{
+				if %reagentsuit = no
+					{
+					set %ra 1
+					set %target 1
+					set %reagents UZF
+					set %spell 110
+					set %manarequired 17
+					return
+					}
+				if %reagentsuit <> no
+					{
+					set %ra 3
+					set %target 1
+					set %reagents UZF_YZF_TZF
+					set %spell 115
+					set %manarequired 23
+					return
+					}
+				}
+			If #skill >= 730 
+				{ 
+				Set %ra 2 
+				set %target 0
+				Set %reagents IUF_DUF 
+				Set %spell 106 
+				Set %manarequired 11 
+				Return 
+				} 
+			If #skill >= 590 
+				{ 
+				Set %ra 3 
+				set %target 1
+				Set %reagents YZF_DUF_IUF
+				Set %spell 108 
+				Set %manarequired 17
+				Return 
+				} 
+			If #skill >= 450 
+				{ 
+				Set %ra 2 
+				set %target 1
+				Set %reagents IUF_TZF
+				Set %spell 103 
+				Set %manarequired 11
+				Return 
+				} 
+			If #skill >= 50 
+				{ 
+				Set %ra 2 
+				set %target 1
+				Set %reagents YZF
+				Set %spell 104
+				Set %manarequired 7
+				Return 
+				} 
+			display ok Get above 5 skill then try again.
+			set *14 ON
+			menu hide
+			stop
+			Return
+			}
+
+; ============================================================
+; ============================================================

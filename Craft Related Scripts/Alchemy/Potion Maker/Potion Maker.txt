@@ -1,0 +1,2397 @@
+goto Start
+;*************************************************
+;*  Potion Maker
+;*  Special Thanks To:  Kinslayer
+;*  Author:  Cael
+;*  Version:  2.3.7
+;*  Client Tested with: 4.0.4b
+;*  EUO version tested with: 1.42.0098
+;*  Shard OSI / FS: OSI
+;*  Revision Date: 10/02/04
+;*  Public Release: 10/02/04
+;*  Global Variables Used: 
+;*    *SecureContainer
+;*    *SecureRegContainer 
+;*    *SecureFullContainer 
+;*    *SecurePartialContainer 
+;*    *SecureEmptyContainer
+;*  Purpose: Create Potions & Fill Kegs including partiall full kegs.
+;+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=
+;*  Instructions:
+;*    1.  If you want to change any variables,
+;*        check sub SetVars, such as whether to hide, lag time, amount to move...
+;*    2.  Press Play.  If this is the first time
+;*        you have run the script, click each button
+;*        to set the IDs of the different bags.  
+;*        You only need to do this once.
+;*        Secure ID - container secured on house floor.
+;*        Bag ID - container for resources inside secure.
+;*        Full ID - container to store completed kegs.
+;*        Partial ID - container that has partially full kegs
+;*          that the script uses to complete orders.
+;*        Empty ID - container to store empty kegs.
+;*+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+;*+   3.  MOVE all bags to locations so that they are         +
+;*+       NOT stacked on top of each other.  If you do not do +
+;*+       this, script WILL FAIL.                             +
+;*+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+;*    4.  Click Ok.  Follow the Menus.
+;*    End of Instructions.
+;*  Notes:
+;*    You must have a minimum of 21 tinkering to even ATTEMPT
+;*      to craft your own mortars & pestels.
+;+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=
+;*  Things To Do:
+;*    1.  Turn this into COMPLETE Alchemy Solution.
+;*
+;*  Version History:
+;*  Version 0.1:  Initial Release
+;*  Version 1.0:  Public Release
+;*  Version 2.1:  Added Partial Keg Support
+;*  Version 2.2:  Added out of regs, move to 
+;*                next potion support
+;*  Version 2.3:  Added memory of Secure IDs
+;*************************************************
+
+Start:
+  initevents
+
+  set %StartTime #sCnt
+  gosub SetVars
+  gosub InitVars
+  gosub PotionsToMakeMenu
+  gosub GetPotionsToMake
+  gosub TypeEachPotion
+  gosub QuantityMenu
+  gosub CreateStatusMenu
+
+  Main:
+
+    gosub GetNextPotion
+    gosub InitCheck
+    gosub MakePotion
+
+  goto Main
+
+halt
+
+;*************************************************
+;*  sub SetVars
+;*  Purpose:   Sets Variables, make changes here.
+;*  Requires:  None
+;*  Returns:   Nothing
+;*************************************************
+sub SetVars
+
+  set %MinIngots 10
+  set %IngotsToMove 100
+  set %MinRegs 20
+  set %RegsToMove 100
+  set %MakeTime 2s
+  set %LagTime 20
+  set %HideDelay 13
+
+  set %TinkMortar 1 ;set to 0 if you do not want to tink your own mortars
+  set %Hide 0 ;set to menu if you want to change on fly - 0: Do NOT hide 1: Do hide
+  set %SecureID *SecureContainer 
+  set %SecureBagID *SecureRegContainer 
+  set %SecureFullID *SecureFullContainer 
+  set %SecurePartialID *SecurePartialContainer 
+  set %SecureEmptyID *SecureEmptyContainer
+
+return
+;*************************************************
+;*  end sub SetVars
+;*************************************************
+;*************************************************
+;*  sub InitVars
+;*  Purpose:   Initialize Variables
+;*  Requires:  None
+;*  Returns:   Nothing
+;*************************************************
+sub InitVars
+
+  set %lpsNormal 10
+  set %lpsFast 100
+  set #cliXRes 800
+  set #cliYRes 600
+  set %MaxWeight #maxWeight - 35
+  if %MaxWeight > 395
+    set %MaxWeight 395
+  set %MortarType RQF
+  set %ShadeType WZF
+  set %BloodMossType JUF
+  set %AshType SZF
+  set %GarlicType KZF
+  set %GinsengType JZF
+  set %SilkType RZF
+  set %BlackPearlType KUF
+  set %RootType MZF
+  set %BottleType WUF
+  set %AgilityBottleType YUF
+  set %CureBottleType NUF
+  set %ExplosionBottleType TUF
+  set %HealBottleType UUF
+  set %NightSightBottleType OUF
+  set %PoisonBottleType AVF
+  set %RefreshBottleType ZUF
+  set %StrengthBottleType XUF
+  set %AllBottleTypes YUF_NUF_TUF_UUF_OUF_AVF_ZUF_XUF
+  set %KegType QMJ
+  set %Empty The , #spc , Keg , #spc , is , #spc , Empty
+  set %TinkerType JTL
+  set %IronIngot ENK
+  set %MinMP 32
+  set %MinInt 35
+  if #Int < %MinInt
+  {
+    display Ok You are below the minimum Intelligence.  $
+      +Get more int, or change the variable MinInt.
+    halt
+  }
+
+  if %Hide = menu
+  {
+    display YesNo Do you wish to Hide?
+    if #dispRes = yes
+    {
+      set %Hide 1
+      gosub Hide
+    }
+    else
+      set %Hide 0
+  }
+
+  gosub GetSecureID
+
+  if %TinkMortar = menu
+  {
+    display YesNo Do you wish to Tink Mortars?
+    if #dispRes = yes
+      gosub TinkMortar
+    else
+      set %TinkMortar 0
+  }
+
+  event Macro 8 1
+  wait %LagTime
+  OpenBackPack:
+  set %BackPackTimeOut #sCnt + 4
+  event Macro 8 7
+  WaitForBackPack:
+  if #sCnt > %BackPackTimeOut
+    goto OpenBackPack
+  if #contName <> container_gump
+    goto WaitForBackPack
+  findItem #backPackID
+  if #findKind = -1
+    goto OpenBackPack
+
+  CheckForSupplies:
+  findItem %MortarType C_ , #backPackID
+  if #findKind = -1
+  {
+    display OK You have no more Mortars & Pestels, get more and press Play.
+    pause
+    goto CheckForSupplies
+  }
+
+  set %TotalMade 0
+  set %FoundMatch 0
+  set %EmptyID 0
+  set %Primed 0
+  set %OutOfRegs 0
+  set %NowMaking 0
+  set %MortarToUse 0
+  set %KegNowEmpty 0
+  set %FoundEmpty 0
+  set %Testing 0
+  set %Message 0
+  set %Make_AgilityCB 0
+  set %Make_GAgilityCB 0
+  set %Make_LCureCB 0
+  set %Make_CureCB 0
+  set %Make_GCureCB 0
+  set %Make_LExplosionCB 0
+  set %Make_ExplosionCB 0
+  set %Make_GExplosionCB 0
+  set %Make_LHealCB 0
+  set %Make_HealCB 0
+  set %Make_GHealCB 0
+  set %Make_NightSightCB 0
+  set %Make_LPoisonCB 0
+  set %Make_PoisonCB 0
+  set %Make_GPoisonCB 0
+  set %Make_DPoisonCB 0
+  set %Make_RefreshCB 0
+  set %Make_GRefreshCB 0
+  set %Make_StrengthCB 0
+  set %Make_GStrengthCB 0
+  set %Make_KeggerCB 0
+
+return
+;*************************************************
+;*  end sub InitVars
+;*************************************************
+;*************************************************
+;*  sub InitMenuItems
+;*  Purpose:   Initialize Potion Menu Items
+;*  Requires:  None
+;*  Returns:   Nothing
+;*************************************************
+sub InitMenuItems
+
+  set %Make_AgilityCB 0
+  set %Make_GAgilityCB 0
+  set %Make_LCureCB 0
+  set %Make_CureCB 0
+  set %Make_GCureCB 0
+  set %Make_LExplosionCB 0
+  set %Make_ExplosionCB 0
+  set %Make_GExplosionCB 0
+  set %Make_LHealCB 0
+  set %Make_HealCB 0
+  set %Make_GHealCB 0
+  set %Make_NightSightCB 0
+  set %Make_LPoisonCB 0
+  set %Make_PoisonCB 0
+  set %Make_GPoisonCB 0
+  set %Make_DPoisonCB 0
+  set %Make_RefreshCB 0
+  set %Make_GRefreshCB 0
+  set %Make_StrengthCB 0
+  set %Make_GStrengthCB 0
+  set %NumAgility 0
+  set %NumGAgility 0
+  set %NumLCure 0
+  set %NumCure 0
+  set %NumGCure 0
+  set %NumLExplosion 0
+  set %NumExplosion 0
+  set %NumGExplosion 0
+  set %NumLHeal 0
+  set %NumHeal 0
+  set %NumGHeal 0
+  set %NumNightSight 0
+  set %NumLPoison 0
+  set %NumPoison 0
+  set %NumGPoison 0
+  set %NumDPoison 0
+  set %NumRefresh 0
+  set %NumGRefresh 0
+  set %NumStrength 0
+  set %NumGStrength 0
+
+return
+;*************************************************
+;*  end sub InitMenuItems
+;*************************************************
+;*************************************************
+;*  sub PotionsToMakeMenu
+;*  Purpose:   Creates Menu that asks which Base
+;*             type of potions you want to make.
+;*  Requires:  None
+;*  Returns:   Nothing
+;*************************************************
+sub PotionsToMakeMenu
+
+  menu Clear
+  menu Window Title Cael's Potion Maker
+  menu Window Color BtnFace
+  menu Window Size 400 325
+  menu Font Transparent #true
+  menu Font Align Right
+  menu Font Name MS Sans Serif
+  menu Font Size 8
+  menu Font Style
+  menu Font Color WindowText
+  menu Font Transparent #false
+  menu Font Align Left
+  menu Text Potions       15 5 Which Potions Do You Want to Make?
+  menu Check AgilityCB    20 25  150 20 #false Agility
+  menu Check CureCB       20 50  150 20 #false Cure
+  menu Check ExplosionCB  20 75  150 20 #false Explosion
+  menu Check HealCB       20 100 150 20 #false Heal
+  menu Check NightSightCB 20 125 150 20 #false Night Sight
+  menu Check PoisonCB     20 150 150 20 #false Poison
+  menu Check RefreshCB    20 175 150 20 #false Refresh
+  menu Check StrengthCB   20 200 150 20 #false Strength
+  menu Text Kegged 15 225 Do you want to put poitions into Kegs?
+  menu Check YesCB        20 250 150 20 #true Yes
+  menu Button Ok          25 285 75 25 Ok
+  menu Button Cancel     125 285 75 25 Cancel
+
+  menu Show
+
+  set #menuButton N/A
+
+  PotionMake:
+  if N/A in #menuButton
+    goto PotionMake
+  if #menuButton = Cancel || #menuButton = Closed
+  {
+    menu Hide
+    halt
+  }
+  if #menuButton = Okay || #menuButton = OK
+  {
+    menu Hide
+    return
+  }
+
+  goto PotionMake
+
+return
+;*************************************************
+;*  end sub PotionsToMakeMenu
+;*************************************************
+;*************************************************
+;*  sub GetPotionsToMake
+;*  Purpose:   Assigns Base Types getting ready for
+;*             specific potion types
+;*  Requires:  
+;*  Returns:   Nothing
+;*************************************************
+sub GetPotionsToMake
+
+  menu Get AgilityCB
+  if #menuRes = -1
+    set %Make_AgilityCB 1
+  menu Get CureCB
+  if #menuRes = -1
+    set %Make_CureCB 1
+  menu Get ExplosionCB
+  if #menuRes = -1
+    set %Make_ExplosionCB 1
+  menu Get HealCB
+  if #menuRes = -1
+    set %Make_HealCB 1
+  menu Get NightSightCB
+  if #menuRes = -1
+    set %Make_NightSightCB 1
+  menu Get PoisonCB
+  if #menuRes = -1
+    set %Make_PoisonCB 1
+  menu Get RefreshCB
+  if #menuRes = -1
+    set %Make_RefreshCB 1
+  menu Get StrengthCB
+  if #menuRes = -1
+    set %Make_StrengthCB 1
+  menu Get YesCB
+  if #menuRes = -1
+    set %Make_KeggerCB 1
+
+return
+;*************************************************
+;*  end sub GetPotionsToMake
+;*************************************************
+;*************************************************
+;*  sub TypeEachPotion
+;*  Purpose:   Menu to Ask what type of each base
+;*             potion you want to make.
+;*  Requires:  None
+;*  Returns:   Nothing
+;*************************************************
+sub TypeEachPotion
+
+  menu Clear
+  menu Window Type
+  menu Window Color BtnFace
+  menu Window Size 400 50
+  menu Font Transparent #true
+  menu Font Align Right
+  menu Font Name MS Sans Serif
+  menu Font Size 8
+  menu Font Style
+  menu Font Color WindowText
+  menu Font Transparent #false
+  menu Font Align Left
+  menu Text QuantityLAB 16 8 What type of each Potion do you want to make?
+  menu Font BGColor Window
+
+  set %X_Start 40
+  set %Y_Start 30
+
+  if %Make_AgilityCB = 1
+  {
+    menu Text AgilityLAB %X_Start %Y_Start Agility:
+    set %Y_Start %Y_Start + 20
+    menu Check AgilityCB    %X_Start %Y_Start 150 20 #false Agility
+    set %X_Start %X_Start + 120
+    menu Check GAgilityCB   %X_Start %Y_Start 150 20 #false Greater Agility
+    set %Y_Start %Y_Start + 65
+    menu Window Size 400 %Y_Start
+    set %X_Start %X_Start - 120
+    set %Y_Start %Y_Start - 40
+  }
+  else
+  {
+    menu Check AgilityCB    500 500 150 20 #false Agility
+    menu Check GAgilityCB   500 500 150 20 #false Greater Agility
+  }
+  if %Make_CureCB = 1
+  {
+    menu Text CureLAB %X_Start %Y_Start Cure:
+    set %Y_Start %Y_Start + 20
+    menu Check LCureCB    %X_Start %Y_Start 150 20 #false Lesser Cure
+    set %X_Start %X_Start + 120
+    menu Check CureCB     %X_Start %Y_Start 150 20 #false Cure
+    set %X_Start %X_Start - 120
+    set %Y_Start %Y_Start + 20
+    menu Check GCureCB    %X_Start %Y_Start 150 20 #false Greater Cure
+    set %Y_Start %Y_Start + 65
+    menu Window Size 400 %Y_Start
+    set %Y_Start %Y_Start - 40
+  }
+  else
+  {
+    menu Check LCureCB    500 500 150 20 #false Lesser Cure
+    menu Check CureCB     500 500 150 20 #false Cure
+    menu Check GCureCB    500 500 150 20 #false Greater Cure
+  }
+  if %Make_ExplosionCB = 1
+  {
+    menu Text ExplosionLAB %X_Start %Y_Start Explosion:
+    set %Y_Start %Y_Start + 20
+    menu Check LExplosionCB %X_Start %Y_Start 150 20 #false Lesser Explosion
+    set %X_Start %X_Start + 120
+    menu Check ExplosionCB  %X_Start %Y_Start 150 20 #false Explosion
+    set %X_Start %X_Start - 120
+    set %Y_Start %Y_Start + 20
+    menu Check GExplosionCB %X_Start %Y_Start 150 20 #false Greater Explosion
+    set %Y_Start %Y_Start + 65
+    menu Window Size 400 %Y_Start
+    set %Y_Start %Y_Start - 40
+  }
+  else
+  {
+    menu Check LExplosionCB 500 500 150 20 #false Lesser Explosion
+    menu Check ExplosionCB  500 500 150 20 #false Explosion
+    menu Check GExplosionCB 500 500 150 20 #false Greater Explosion
+  }
+  if %Make_HealCB = 1
+  {
+    menu Text HealLAB %X_Start %Y_Start Heal:
+    set %Y_Start %Y_Start + 20
+    menu Check LHealCB      %X_Start %Y_Start 150 20 #false Lesser Heal
+    set %X_Start %X_Start + 120
+    menu Check HealCB       %X_Start %Y_Start 150 20 #false Heal
+    set %X_Start %X_Start - 120
+    set %Y_Start %Y_Start + 20
+    menu Check GHealCB      %X_Start %Y_Start 150 20 #false Greater Heal
+    set %Y_Start %Y_Start + 65
+    menu Window Size 400 %Y_Start
+    set %Y_Start %Y_Start - 40
+  }
+  else
+  {
+    menu Check LHealCB      500 500 150 20 #false Lesser Heal
+    menu Check HealCB       500 500 150 20 #false Heal
+    menu Check GHealCB      500 500 150 20 #false Greater Heal
+  }
+  if %Make_NightSightCB = 1
+  {
+    menu Text NightSightLAB %X_Start %Y_Start Night Sight:
+    set %Y_Start %Y_Start + 20
+    menu Check NightSightCB %X_Start %Y_Start 150 20 #false Night Sight
+    set %Y_Start %Y_Start + 65
+    menu Window Size 400 %Y_Start
+    set %Y_Start %Y_Start - 40
+  }
+  else
+  {
+    menu Check NightSightCB 500 500 150 20 #false Night Sight
+  }
+  if %Make_PoisonCB = 1
+  {
+    menu Text PoisonLAB %X_Start %Y_Start Poison:
+    set %Y_Start %Y_Start + 20
+    menu Check LPoisonCB    %X_Start %Y_Start 150 20 #false Lesser Poison
+    set %X_Start %X_Start + 120
+    menu Check PoisonCB     %X_Start %Y_Start 150 20 #false Poison
+    set %X_Start %X_Start - 120
+    set %Y_Start %Y_Start + 20
+    menu Check GPoisonCB    %X_Start %Y_Start 150 20 #false Greater Poison
+    set %X_Start %X_Start + 120
+    menu Check DPoisonCB    %X_Start %Y_Start 150 20 #false Deadly Poison
+    set %X_Start %X_Start - 120
+    set %Y_Start %Y_Start + 65
+    menu Window Size 400 %Y_Start
+    set %Y_Start %Y_Start - 40
+  }
+  else
+  {
+    menu Check LPoisonCB    500 500 150 20 #false Lesser Poison
+    menu Check PoisonCB     500 500 150 20 #false Poison
+    menu Check GPoisonCB    500 500 150 20 #false Greater Poison
+    menu Check DPoisonCB    500 500 150 20 #false Deadly Poison
+  }
+  if %Make_RefreshCB = 1
+  {
+    menu Text RefreshLAB %X_Start %Y_Start Refresh:
+    set %Y_Start %Y_Start + 20
+    menu Check RefreshCB    %X_Start %Y_Start 150 20 #false Refresh
+    set %X_Start %X_Start + 120
+    menu Check GRefreshCB   %X_Start %Y_Start 150 20 #false Total Refresh
+    set %Y_Start %Y_Start + 65
+    menu Window Size 400 %Y_Start
+    set %X_Start %X_Start - 120
+    set %Y_Start %Y_Start - 40
+  }
+  else
+  {
+    menu Check RefreshCB    500 500 150 20 #false Refresh
+    menu Check GRefreshCB   500 500 150 20 #false Total Refresh
+  }
+  if %Make_StrengthCB = 1
+  {
+    menu Text StrengthLAB %X_Start %Y_Start Strength:
+    set %Y_Start %Y_Start + 20
+    menu Check StrengthCB    %X_Start %Y_Start 150 20 #false Strength
+    set %X_Start %X_Start + 120
+    menu Check GStrengthCB   %X_Start %Y_Start 150 20 #false Greater Strength
+    set %Y_Start %Y_Start + 65
+    menu Window Size 400 %Y_Start
+    set %X_Start %X_Start - 120
+    set %Y_Start %Y_Start - 40
+  }
+  else
+  {
+    menu Check StrengthCB    500 500 150 20 #false Strength
+    menu Check GStrengthCB   500 500 150 20 #false Greater Strength
+  }
+  menu Button Ok 45 %Y_Start 75 25 Ok
+  menu Button Cancel 145 %Y_Start 75 25 Cancel
+
+  menu Show
+
+  set #menuButton N/A
+
+  WaitTypeToMake:
+  wait 1
+  if N/A in #menuButton
+    goto WaitTypeToMake
+  if #menuButton = Cancel || #menuButton = Closed
+  {
+    menu Hide
+    halt
+  }
+
+  gosub InitMenuItems
+  if #menuButton = Okay || #menuButton = OK
+  {
+    menu Hide
+    gosub GetAllPotionTypes
+    return
+  }
+
+return
+;*************************************************
+;*  end sub TypeEachPotion
+;*************************************************
+;*************************************************
+;*  sub QuantityMenu
+;*  Purpose:   Get number of kegs/potions you want
+;*             to make of each type, default is 5
+;*  Requires:  None
+;*  Returns:   Nothing
+;*************************************************
+sub QuantityMenu
+
+  menu Clear
+  menu Font Name MS Sans Serif
+  menu Font Size 8
+  menu Window Size 400 50
+  if %Make_KeggerCB = 1
+    menu Text QuantityLAB 16 8 How many KEGS of each Potion do you want to make?
+  else
+    menu Text QuantityLAB 16 8 How many BOTTLES of each Potion do you want to make?
+
+  menu Show
+
+  set %X_Start 40
+  set %Y_Start 32
+
+  if %Make_AgilityCB = 1
+  {
+    menu Text AgilityLAB %X_Start %Y_Start Agility:
+    set %X_Start %X_Start + 100
+    set %Y_Start %Y_Start - 4
+    menu Edit AgilityDAT %X_Start %Y_Start 30 5
+    set %X_Start %X_Start - 100
+    set %Y_Start %Y_Start + 69
+    menu Window Size 400 %Y_Start
+    set %Y_Start %Y_Start - 40
+  }
+  if %Make_GAgilityCB = 1
+  {
+    menu Text GAgilityLAB %X_Start %Y_Start Greater Agility:
+    set %X_Start %X_Start + 100
+    set %Y_Start %Y_Start - 4
+    menu Edit GAgilityDAT %X_Start %Y_Start 30 5
+    set %X_Start %X_Start - 100
+    set %Y_Start %Y_Start + 69
+    menu Window Size 400 %Y_Start
+    set %Y_Start %Y_Start - 40
+  }
+  if %Make_LCureCB = 1
+  {
+    menu Text LCureLAB %X_Start %Y_Start Lesser Cure:
+    set %X_Start %X_Start + 100
+    set %Y_Start %Y_Start - 4
+    menu Edit LCureDAT %X_Start %Y_Start 30 5
+    set %X_Start %X_Start - 100
+    set %Y_Start %Y_Start + 69
+    menu Window Size 400 %Y_Start
+    set %Y_Start %Y_Start - 40
+  }
+  if %Make_CureCB = 1
+  {
+    menu Text CureLAB %X_Start %Y_Start Cure:
+    set %X_Start %X_Start + 100
+    set %Y_Start %Y_Start - 4
+    menu Edit CureDAT %X_Start %Y_Start 30 5
+    set %X_Start %X_Start - 100
+    set %Y_Start %Y_Start + 69
+    menu Window Size 400 %Y_Start
+    set %Y_Start %Y_Start - 40
+  }
+  if %Make_GCureCB = 1
+  {
+    menu Text GCureLAB %X_Start %Y_Start Greater Cure:
+    set %X_Start %X_Start + 100
+    set %Y_Start %Y_Start - 4
+    menu Edit GCureDAT %X_Start %Y_Start 30 5
+    set %X_Start %X_Start - 100
+    set %Y_Start %Y_Start + 69
+    menu Window Size 400 %Y_Start
+    set %Y_Start %Y_Start - 40
+  }
+  if %Make_LExplosionCB = 1
+  {
+    menu Text LExplosionLAB %X_Start %Y_Start Lesser Explosion:
+    set %X_Start %X_Start + 100
+    set %Y_Start %Y_Start - 4
+    menu Edit LExplosionDAT %X_Start %Y_Start 30 5
+    set %X_Start %X_Start - 100
+    set %Y_Start %Y_Start + 69
+    menu Window Size 400 %Y_Start
+    set %Y_Start %Y_Start - 40
+  }
+  if %Make_ExplosionCB = 1
+  {
+    menu Text ExplosionLAB %X_Start %Y_Start Explosion:
+    set %X_Start %X_Start + 100
+    set %Y_Start %Y_Start - 4
+    menu Edit ExplosionDAT %X_Start %Y_Start 30 5
+    set %X_Start %X_Start - 100
+    set %Y_Start %Y_Start + 69
+    menu Window Size 400 %Y_Start
+    set %Y_Start %Y_Start - 40
+  }
+  if %Make_GExplosionCB = 1
+  {
+    menu Text GExplosionLAB %X_Start %Y_Start Greater Explosion:
+    set %X_Start %X_Start + 100
+    set %Y_Start %Y_Start - 4
+    menu Edit GExplosionDAT %X_Start %Y_Start 30 5
+    set %X_Start %X_Start - 100
+    set %Y_Start %Y_Start + 69
+    menu Window Size 400 %Y_Start
+    set %Y_Start %Y_Start - 40
+  }
+  if %Make_LHealCB = 1
+  {
+    menu Text LHealLAB %X_Start %Y_Start Lesser Heal:
+    set %X_Start %X_Start + 100
+    set %Y_Start %Y_Start - 4
+    menu Edit LHealDAT %X_Start %Y_Start 30 5
+    set %X_Start %X_Start - 100
+    set %Y_Start %Y_Start + 69
+    menu Window Size 400 %Y_Start
+    set %Y_Start %Y_Start - 40
+  }
+  if %Make_HealCB = 1
+  {
+    menu Text HealLAB %X_Start %Y_Start Heal:
+    set %X_Start %X_Start + 100
+    set %Y_Start %Y_Start - 4
+    menu Edit HealDAT %X_Start %Y_Start 30 5
+    set %X_Start %X_Start - 100
+    set %Y_Start %Y_Start + 69
+    menu Window Size 400 %Y_Start
+    set %Y_Start %Y_Start - 40
+  }
+  if %Make_GHealCB = 1
+  {
+    menu Text GHealLAB %X_Start %Y_Start Greater Heal:
+    set %X_Start %X_Start + 100
+    set %Y_Start %Y_Start - 4
+    menu Edit GHealDAT %X_Start %Y_Start 30 5
+    set %X_Start %X_Start - 100
+    set %Y_Start %Y_Start + 69
+    menu Window Size 400 %Y_Start
+    set %Y_Start %Y_Start - 40
+  }
+  if %Make_NightSightCB = 1
+  {
+    menu Text NightSightLAB %X_Start %Y_Start Night Sight:
+    set %X_Start %X_Start + 100
+    set %Y_Start %Y_Start - 4
+    menu Edit NightSightDAT %X_Start %Y_Start 30 5
+    set %X_Start %X_Start - 100
+    set %Y_Start %Y_Start + 69
+    menu Window Size 400 %Y_Start
+    set %Y_Start %Y_Start - 40
+  }
+  if %Make_LPoisonCB = 1
+  {
+    menu Text LPoisonLAB %X_Start %Y_Start Lesser Poison:
+    set %X_Start %X_Start + 100
+    set %Y_Start %Y_Start - 4
+    menu Edit LPoisonDAT %X_Start %Y_Start 30 5
+    set %X_Start %X_Start - 100
+    set %Y_Start %Y_Start + 69
+    menu Window Size 400 %Y_Start
+    set %Y_Start %Y_Start - 40
+  }
+  if %Make_PoisonCB = 1
+  {
+    menu Text PoisonLAB %X_Start %Y_Start Poison:
+    set %X_Start %X_Start + 100
+    set %Y_Start %Y_Start - 4
+    menu Edit PoisonDAT %X_Start %Y_Start 30 5
+    set %X_Start %X_Start - 100
+    set %Y_Start %Y_Start + 69
+    menu Window Size 400 %Y_Start
+    set %Y_Start %Y_Start - 40
+  }
+  if %Make_GPoisonCB = 1
+  {
+    menu Text GPoisonLAB %X_Start %Y_Start Greater Poison:
+    set %X_Start %X_Start + 100
+    set %Y_Start %Y_Start - 4
+    menu Edit GPoisonDAT %X_Start %Y_Start 30 5
+    set %X_Start %X_Start - 100
+    set %Y_Start %Y_Start + 69
+    menu Window Size 400 %Y_Start
+    set %Y_Start %Y_Start - 40
+  }
+  if %Make_DPoisonCB = 1
+  {
+    menu Text DPoisonLAB %X_Start %Y_Start Deadly Poison:
+    set %X_Start %X_Start + 100
+    set %Y_Start %Y_Start - 4
+    menu Edit DPoisonDAT %X_Start %Y_Start 30 5
+    set %X_Start %X_Start - 100
+    set %Y_Start %Y_Start + 69
+    menu Window Size 400 %Y_Start
+    set %Y_Start %Y_Start - 40
+  }
+  if %Make_RefreshCB = 1
+  {
+    menu Text RefreshLAB %X_Start %Y_Start Refresh:
+    set %X_Start %X_Start + 100
+    set %Y_Start %Y_Start - 4
+    menu Edit RefreshDAT %X_Start %Y_Start 30 5
+    set %X_Start %X_Start - 100
+    set %Y_Start %Y_Start + 69
+    menu Window Size 400 %Y_Start
+    set %Y_Start %Y_Start - 40
+  }
+  if %Make_GRefreshCB = 1
+  {
+    menu Text GRefreshLAB %X_Start %Y_Start Greater Refresh:
+    set %X_Start %X_Start + 100
+    set %Y_Start %Y_Start - 4
+    menu Edit GRefreshDAT %X_Start %Y_Start 30 5
+    set %X_Start %X_Start - 100
+    set %Y_Start %Y_Start + 69
+    menu Window Size 400 %Y_Start
+    set %Y_Start %Y_Start - 40
+  }
+  if %Make_StrengthCB = 1
+  {
+    menu Text StrengthLAB %X_Start %Y_Start Strength:
+    set %X_Start %X_Start + 100
+    set %Y_Start %Y_Start - 4
+    menu Edit StrengthDAT %X_Start %Y_Start 30 5
+    set %X_Start %X_Start - 100
+    set %Y_Start %Y_Start + 69
+    menu Window Size 400 %Y_Start
+    set %Y_Start %Y_Start - 40
+  }
+  if %Make_GStrengthCB = 1
+  {
+    menu Text GStrengthLAB %X_Start %Y_Start Greater Strength:
+    set %X_Start %X_Start + 100
+    set %Y_Start %Y_Start - 4
+    menu Edit GStrengthDAT %X_Start %Y_Start 30 5
+    set %X_Start %X_Start - 100
+    set %Y_Start %Y_Start + 69
+    menu Window Size 400 %Y_Start
+    set %Y_Start %Y_Start - 40
+  }
+
+  menu Button Ok 45 %Y_Start 75 25 Ok
+  menu Button Cancel 145 %Y_Start 75 25 Cancel
+
+  menu Show
+
+  set #menuButton N/A
+
+  WaitNumToMake:
+  wait 1
+  if N/A in #menuButton
+    goto WaitNumToMake
+  if #menuButton = Cancel || #menuButton = Closed
+  {
+    menu Hide
+    halt
+  }
+  if #menuButton = Okay || #menuButton = OK
+  {
+    menu Hide
+    gosub GetQuantity
+    return
+  }
+
+
+return
+;*************************************************
+;*  end sub QuantityMenu
+;*************************************************
+;*************************************************
+;*  sub GetAllPotionTypes
+;*  Purpose:   Get Potions to make.
+;*  Requires:  None
+;*  Returns:   Nothing
+;*************************************************
+sub GetAllPotionTypes
+
+  menu Get AgilityCB 0
+  if #menuRes = -1
+    set %Make_AgilityCB 1
+  menu Get GAgilityCB
+  if #menuRes = -1
+    set %Make_GAgilityCB 1
+  menu Get LCureCB
+  if #menuRes = -1
+    set %Make_LCureCB 1
+  menu Get CureCB
+  if #menuRes = -1
+    set %Make_CureCB 1
+  menu Get GCureCB
+  if #menuRes = -1
+    set %Make_GCureCB 1
+  menu Get LExplosionCB
+  if #menuRes = -1
+    set %Make_LExplosionCB 1
+  menu Get ExplosionCB
+  if #menuRes = -1
+    set %Make_ExplosionCB 1
+  menu Get GExplosionCB
+  if #menuRes = -1
+    set %Make_GExplosionCB 1
+  menu Get LHealCB
+  if #menuRes = -1
+    set %Make_LHealCB 1
+  menu Get HealCB
+  if #menuRes = -1
+    set %Make_HealCB 1
+  menu Get GHealCB
+  if #menuRes = -1
+    set %Make_GHealCB 1
+  menu Get NightSightCB
+  if #menuRes = -1
+    set %Make_NightSightCB 1
+  menu Get LPoisonCB
+  if #menuRes = -1
+    set %Make_LPoisonCB 1
+  menu Get PoisonCB
+  if #menuRes = -1
+    set %Make_PoisonCB 1
+  menu Get GPoisonCB
+  if #menuRes = -1
+    set %Make_GPoisonCB 1
+  menu Get DPoisonCB
+  if #menuRes = -1
+    set %Make_DPoisonCB 1
+  menu Get RefreshCB
+  if #menuRes = -1
+    set %Make_RefreshCB 1
+  menu Get GRefreshCB
+  if #menuRes = -1
+    set %Make_GRefreshCB 1
+  menu Get StrengthCB
+  if #menuRes = -1
+    set %Make_StrengthCB 1
+  menu Get GStrengthCB
+  if #menuRes = -1
+    set %Make_GStrengthCB 1
+
+return
+;*************************************************
+;*  end sub GetAllPotionTypes
+;*************************************************
+;*************************************************
+;*  sub GetQuantity
+;*  Purpose:   Get Number of Potions to Make.
+;*  Requires:  None
+;*  Returns:   Nothing
+;*************************************************
+sub GetQuantity
+
+  if %Make_AgilityCB = 1
+  {
+    menu GetNum AgilityDAT
+    set %NumAgility #menuRes
+  }
+  if %Make_GAgilityCB = 1
+  {
+    menu GetNum GAgilityDAT
+    set %NumGAgility #menuRes
+  }
+  if %Make_LCureCB = 1
+  {
+    menu GetNum LCureDAT
+    set %NumLCure #menuRes
+  }
+  if %Make_CureCB = 1
+  {
+    menu GetNum CureDAT
+    set %NumCure #menuRes
+  }
+  if %Make_GCureCB = 1
+  {
+    menu GetNum GCureDAT
+    set %NumGCure #menuRes
+  }
+  if %Make_LExplosionCB = 1
+  {
+    menu GetNum LExplosionDAT
+    set %NumLExplosion #menuRes
+  }
+  if %Make_ExplosionCB = 1
+  {
+    menu GetNum ExplosionDAT
+    set %NumExplosion #menuRes
+  }
+  if %Make_GExplosionCB = 1
+  {
+    menu GetNum GExplosionDAT
+    set %NumGExplosion #menuRes
+  }
+  if %Make_LHealCB = 1
+  {
+    menu GetNum LHealDAT
+    set %NumLHeal #menuRes
+  }
+  if %Make_HealCB = 1
+  {
+    menu GetNum HealDAT
+    set %NumHeal #menuRes
+  }
+  if %Make_GHealCB = 1
+  {
+    menu GetNum GHealDAT
+    set %NumGHeal #menuRes
+  }
+  if %Make_NightSightCB = 1
+  {
+    menu GetNum NightSightDAT
+    set %NumNightSight #menuRes
+  }
+  if %Make_LPoisonCB = 1
+  {
+    menu GetNum LPoisonDAT
+    set %NumLPoison #menuRes
+  }
+  if %Make_PoisonCB = 1
+  {
+    menu GetNum PoisonDAT
+    set %NumPoison #menuRes
+  }
+  if %Make_GPoisonCB = 1
+  {
+    menu GetNum GPoisonDAT
+    set %NumGPoison #menuRes
+  }
+  if %Make_DPoisonCB = 1
+  {
+    menu GetNum DPoisonDAT
+    set %NumDPoison #menuRes
+  }
+  if %Make_RefreshCB = 1
+  {
+    menu GetNum RefreshDAT
+    set %NumRefresh #menuRes
+  }
+  if %Make_GRefreshCB = 1
+  {
+    menu GetNum GRefreshDAT
+    set %NumGRefresh #menuRes
+  }
+  if %Make_StrengthCB = 1
+  {
+    menu GetNum StrengthDAT
+    set %NumStrength #menuRes
+  }
+  if %Make_GStrengthCB = 1
+  {
+    menu GetNum GStrengthDAT
+    set %NumGStrength #menuRes
+  }
+
+return
+;*************************************************
+;*  end sub GetQuantity
+;*************************************************
+;*************************************************
+;*  sub GetSecureID
+;*  Purpose:   Gets ID of Secure you want to use,
+;*             asks if you have bag inside secure,
+;*             if so, gets that ID as well
+;*  Requires:  None
+;*  Returns:   Nothing
+;*************************************************
+sub GetSecureID
+
+  menu Clear
+  menu Window Title Cael's Potion Maker
+  menu Window Color BtnFace
+  menu Window Size 400 225
+  menu Font Transparent #true
+  menu Font Align Right
+  menu Font Name MS Sans Serif
+  menu Font Size 8
+  menu Font Style
+  menu Font Color WindowText
+  menu Font Transparent #false
+  menu Font Align Left
+  menu Text Potions         15   5 Either Click a button or enter fields manually.$Press Ok when you satisfied with these values and Container Locations.
+  menu Button SecureBUT     20  45 75 24 Secure ID
+  menu Button BagBUT        20  75 75 24 Bag ID
+  menu Button FullBUT       20 105 75 24 Full ID
+  menu Button PartialBUT    20 135 75 24 Partial ID
+  menu Button EmptyBUT      20 165 75 24 Empty ID
+  menu Button Ok            75 195 75 24 Ok
+  menu Button Cancel       175 195 75 24 Cancel
+  
+  menu Edit SecureDAT      100  45 75 *SecureContainer
+  menu Edit BagDAT         100  75 75 *SecureRegContainer
+  menu Edit FullDAT        100 105 75 *SecureFullContainer
+  menu Edit PartialDAT     100 135 75 *SecurePartialContainer
+  menu Edit EmptyDAT       100 165 75 *SecureEmptyContainer
+
+  menu Show
+
+  set #menuButton N/A
+
+  SecureMenu:
+  if N/A in #menuButton
+    goto SecureMenu
+  if #menuButton = Cancel || #menuButton = Closed
+  {
+    menu Hide
+    halt
+  }
+  if #menuButton = Okay || #menuButton = OK
+  {
+    menu Hide
+    set %SecureID *SecureContainer 
+    set %SecureBagID *SecureRegContainer 
+    set %SecureFullID *SecureFullContainer 
+    set %SecurePartialID *SecurePartialContainer 
+    set %SecureEmptyID *SecureEmptyContainer    
+    return
+  }
+  if #menuButton = SecureBUT
+  {
+    display OK Double-Click Secure.
+    set #lObjectID None
+
+    WaitForSelection01:
+    if #lObjectID = None
+      goto WaitForSelection01
+
+    set *SecureContainer #lObjectID
+    menu Set SecureDAT *SecureContainer
+    set #menuButton N/A
+  }
+  if #menuButton = BagBUT
+  {
+    display OK Double-Click Reg Bag.
+    set #lObjectID None
+
+    WaitForSelection02:
+    if #lObjectID = None
+      goto WaitForSelection02
+
+    set *SecureRegContainer #lObjectID
+    menu Set BagDAT *SecureRegContainer
+    set #menuButton N/A
+  }
+  if #menuButton = FullBUT
+  {
+    display OK Double-Click Full Keg Bag.
+    set #lObjectID None
+
+    WaitForSelection03:
+    if #lObjectID = None
+      goto WaitForSelection03
+
+    set *SecureFullContainer #lObjectID
+    menu Set FullDAT *SecureFullContainer
+    set #menuButton N/A
+  }
+  if #menuButton = PartialBUT
+  {
+    display OK Double-Click Partially Full Keg Bag.
+    set #lObjectID None
+
+    WaitForSelection04:
+    if #lObjectID = None
+      goto WaitForSelection04
+
+    set *SecurePartialContainer #lObjectID
+    menu Set PartialDAT *SecurePartialContainer
+    set #menuButton N/A
+  }
+  if #menuButton = EmptyBUT
+  {
+    display OK Double-Click Empty Keg Bag.
+    set #lObjectID None
+
+    WaitForSelection05:
+    if #lObjectID = None
+      goto WaitForSelection05
+
+    set *SecureEmptyContainer #lObjectID
+    menu Set EmptyDAT *SecureEmptyContainer
+    set #menuButton N/A
+  }
+  
+  goto SecureMenu
+
+return
+;*************************************************
+;*  end sub GetSecureID
+;*************************************************
+;*************************************************
+;*  sub UpdateStatus
+;*  Purpose:   Updates Status Window.
+;*  Requires:  None
+;*  Returns:   Nothing
+;*************************************************
+sub UpdateStatus
+
+  chooseSkill alch
+  set %Message %1
+  set %Time #sCnt - %StartTime
+  set %Hours %Time / 3600
+  set %Min ( %Time - %Hours * 3600 ) / 60
+  set %Sec ( %Time - ( %Hours * 3600 + %Min * 60 ) )
+  menu Set TimeDAT %Hours , : , %Min , #dot , %Sec
+
+  menu Set NumDAT %TotalMade
+
+  set %C_Skill #skill
+  set %C_Skill1s %C_Skill / 10
+  set %C_Skill10ths %C_Skill % 10
+  menu Set C_SkillDAT %C_Skill1s , #dot , %C_Skill10ths
+;  set %Gains10ths ( #skill - %StartSkill ) % 10
+;  set %Gains1s ( #skill - %StartSkill ) / 10
+;  menu Set GainsDAT %Gains1s , #dot , %Gains10ths 
+
+  if %LastStatus <> %Message
+  {
+    if %Message = Potion
+    {
+      menu Set StatusDAT Making %NowMaking
+      set %LastStatus %Message
+      menu Show
+      return
+    }
+    if %Message = Bottle
+    {
+      menu Set StatusDAT Getting Empty Bottle
+      set %LastStatus %Message
+      menu Show
+      return
+    }
+    if %Message = DropBottle
+    {
+      menu Set StatusDAT Dropping Bottle on Keg
+      set %LastStatus %Message
+      menu Show
+      return
+    }
+    if %Message = Next
+    {
+      menu Set StatusDAT Getting Next Potion Type
+      set %LastStatus %Message
+      menu Show
+      return
+    }
+    if %Message = Select
+    {
+      menu Set StatusDAT Selecting Potion To Make
+      set %LastStatus %Message
+      menu Show
+      return
+    }
+    if %Message = Wait
+    {
+      menu Set StatusDAT Waiting
+      set %LastStatus %Message
+      menu Show
+      return
+    }
+    if %Message = Hide
+    {
+      menu Set StatusDAT Hiding
+      set %LastStatus %Message
+      menu Show
+      return
+    }
+    if %Message = MoveKeg
+    {
+      menu Set StatusDAT Moving/Getting Kegs
+      set %LastStatus %Message
+      menu Show
+      return
+    }
+    if %Message = Regs
+    {
+      menu Set StatusDAT Checking Regs for %NowMaking
+      set %LastStatus %Message
+      menu Show
+      return
+    }
+    if %Message = Secure
+    {
+      menu Set StatusDAT Getting Secure ID
+      set %LastStatus %Message
+      menu Show
+      return
+    }
+    if %Message = Tink
+    {
+      menu Set StatusDAT Tinking Kits or Mortars
+      set %LastStatus %Message
+      menu Show
+      return
+    }
+    if %Message = ContKind
+    {
+      menu Set StatusDAT Getting ContKind Info
+      set %LastStatus %Message
+      menu Show
+      return
+    }
+    if %Message = Moving
+    {
+      menu Set StatusDAT Moving Items
+      set %LastStatus %Message
+      menu Show
+      return
+    }
+  }
+
+  menu Show
+
+return
+;*************************************************
+;*  end sub UpdateStatus
+;*************************************************
+;*************************************************
+;*  sub CreateStatusMenu
+;*  Purpose:   Creates Status Window.
+;*  Requires:  None
+;*  Returns:   Nothing
+;*************************************************
+sub CreateStatusMenu
+
+  menu Clear
+  menu Font Name MS Sans Serif
+  menu Font Size 8
+  menu Window Title Cael's Potion Maker
+  chooseSkill alch
+  set %C_Skill #skill
+  set %C_Skill1s %C_Skill / 10
+  set %C_Skill10ths %C_Skill % 10
+;  set %D_Skill1s %DesiredSkill / 10
+;  set %D_Skill10ths %DesiredSkill % 10
+
+  menu Window Size 400 100
+  menu Text C_SkillLAB 10 10 Alchemy Skill:
+  menu Text StatusLAB  135 10 Making/Status:
+  menu Text NumLAB     10 30 Num Made:
+  menu Text TimeLAB    135 30 Time:
+  menu Text ExceptLAB  10 50 Exceptions:
+
+  menu Text C_SkillDAT 95 10 %C_Skill1s , #dot , %C_Skill10ths
+  menu Text StatusDAT  225 10 Starting
+  menu Text NumDAT     95 30 0
+  menu Text TimeDAT    225 30 0
+
+;  menu Text D_SkillLAB 10 32 Desired Skill:
+;  menu Text GainsLAB 130 12 Gains:
+;  menu Text StatusLAB 130 32 Status:
+
+;  menu Text D_SkillDAT 90 32 %D_Skill1s , #dot , %D_Skill10ths
+;  menu Text GainsDAT 180 12 0 , #dot , 0
+  menu Show
+
+  set %X_Start 15
+  set %Y_Start 80
+  
+return
+
+;*************************************************
+;*  end sub CreateStatusMenu
+;*************************************************
+;*************************************************
+;*  sub ExceptionMenu
+;*  Purpose:   Obvious
+;*  Requires:  None
+;*  Returns:   Nothing
+;*************************************************
+sub ExceptionMenu
+
+  set %MenuY %Y_Start + 20
+  menu Window Size 400 %MenuY
+  menu Text PotionTypeDAT %X_Start %Y_Start %NowMaking
+  set %X_Start %X_Start + 120
+  menu Text NumTypeDAT %X_Start %Y_Start %Num . %NowMaking
+  set %X_Start %X_Start - 120
+  set %Y_Start %Y_Start + 20
+
+return
+;*************************************************
+;*  end sub ExceptionMenu
+;*************************************************
+;*************************************************
+;*  sub CheckResources
+;*  Purpose:   Checks Regs for Type of Potion you
+;*             are going to make.
+;*  Requires:  None
+;*  Returns:   Nothing
+;*************************************************
+sub CheckResources
+
+  gosub UpdateStatus Regs
+  findItem %SecureBagID
+  if #findKind = -1
+    gosub OpenContainer %SecureBagID
+
+  findItem %RegNeeded C_ , #backPackID
+  if #findStack < %MinRegs || #findKind = -1
+  {
+    findItem %RegNeeded C_ , %SecureBagID
+    if #findKind = -1
+    {
+      gosub ExceptionMenu
+      set %OutOfRegs 1
+      return
+    }
+    gosub MoveItemToContainer #findID #backPackID %RegsToMove
+  }
+
+return
+;*************************************************
+;*  end sub CheckResources
+;*************************************************
+;*************************************************
+;*  sub OpenContainer
+;*  Purpose:   Opens a container.
+;*  Requires:  None
+;*  Returns:   Nothing
+;*************************************************
+sub OpenContainer
+
+  set %ContToOpen %1
+  ReOpen:
+  set #lObjectID %ContToOpen
+  if #lObjectID <> %ContToOpen
+    goto ReOpen
+
+  event Macro 17
+  wait 10
+
+  if #contID <> %ContToOpen
+    goto ReOpen
+
+return
+;*************************************************
+;*  end sub OpenContainer
+;*************************************************
+;*************************************************
+;*  sub TinkMortar
+;*  Purpose:   Makes Tinker Kits and Mortars.
+;*  Requires:  None
+;*  Returns:   Nothing
+;*************************************************
+sub TinkMortar
+
+  gosub UpdateStatus Tink
+  chooseSkill tink
+  if #skill < 200 
+  {
+    display OK You do not have enough Tinkering Skill
+      +to Tink Mortars.  Buy at least 20 skill.
+    halt
+  }
+  CheckForIngots:
+  set %TimeToMake #sCnt + 5
+  findItem %IronIngot C_ , #backPackID
+  if #findStack < %MinIngots
+  {
+    findItem %IronIngot C_ , %SecureBagID
+    if #findStack < %MinIngots
+    {
+      display You do not enough ingots.  Get some and Press
+        +Play.
+      pause
+      goto CheckForIngots
+    }
+    else
+      gosub MoveItemToContainer #findID #backPackID %IngotsToMove
+  }
+  if #findBagID <> #backPackID
+    gosub MoveItemToContainer #findID #backPackID %IngotsToMove
+  findItem %TinkerType C_ , #backPackID
+  if #findKind = -1
+  {
+    display OK You need at least one Tinker Kit to begin.
+      +Get one and Press Play!
+    pause
+    goto CheckForIngots
+  }
+  set %TinkerKitToUse #findID
+  if #findCnt = 1
+  {
+    set #lObjectID %TinkerKitToUse
+    event Macro 17 0
+    WaitTink01:
+    if #sCnt > %TimeToMake
+      goto CheckForIngots
+    if #contName <> generic_gump
+      goto WaitTink01
+    click 80 160
+    WaitTink02:
+    if #sCnt > %TimeToMake
+      goto CheckForIngots
+    if #contName <> generic_gump
+      goto WaitTink02
+    click 280 180
+    WaitTink03:
+    if #sCnt > %TimeToMake
+      goto CheckForIngots
+    if #contName <> generic_gump
+      goto WaitTink03
+    goto CheckForIngots
+  }
+  findItem %MortarType C_ , #backPackID
+  if #findKind = -1
+  {
+    set #lObjectID %TinkerKitToUse
+    event Macro 17 0
+    WaitTink11:
+    if #sCnt > %TimeToMake
+      goto CheckForIngots
+    if #contName <> generic_gump
+      goto WaitTink11
+    click 80 160
+    WaitTink12:
+    if #sCnt > %TimeToMake
+      goto CheckForIngots
+    if #contName <> generic_gump
+      goto WaitTink12
+    click 280 140
+    WaitTink13:
+    if #sCnt > %TimeToMake
+      goto CheckForIngots
+    if #contName <> generic_gump
+      goto WaitTink13
+    goto CheckForIngots
+  }
+  else
+    set %MortarToUse #findID
+
+return
+;*************************************************
+;*  end sub TinkMortar
+;*************************************************
+;*************************************************
+;*  sub MoveItemToContainer
+;*  Purpose:   Move Items.
+;*  Requires:  
+;*    1 - ID of Item to Move
+;*    2 - ID of Container to Move Items to
+;*    3 - Amount of Items to Move
+;*  Returns:   Nothing
+;*************************************************
+sub MoveItemToContainer
+
+  set %ItemToMove %1
+  set %MoveToContainer %2
+  set %AmountToMove %3
+  gosub UpdateStatus Moving
+
+  if %AmountToMove = 0
+    deleteVar AmountToMove
+
+  findItem %MoveToContainer
+  if %MoveToContainer = %KegToFill
+    set #findMod 10_15
+  else
+    set #findMod 23_10
+  if %MoveToContainer = #backPackID
+    set #findMod 139_217
+
+  set %DropX #findX
+  set %DropY #findY
+
+  findItem %ItemToMove
+  if #findStack <= 1
+  {
+    event Drag %ItemToMove
+    wait %LagTime
+    goto DropIt
+  }
+  if #findStack < %AmountToMove
+    set %AmountToMove #findStack
+
+  Drag:
+  set %DragTimeout #scnt + 30
+  event Drag %ItemToMove
+  wait %LagTime
+  msg %AmountToMove $
+
+  WaitForDrag:
+  if #contName = drag_gump
+    goto DropIt
+  if #sCnt > %DragTimeout && #contName <> drag_gump
+    goto Drag
+  if #contName <> stack_gump
+    goto WaitForDrag
+
+  DropIt:
+  click %DropX %DropY p
+  wait %LagTime
+
+  if #contName = drag_gump
+    goto DropIt
+
+return
+;*************************************************
+;*  end sub MoveItemToContainer
+;*************************************************
+;*************************************************
+;*  sub InitCheck
+;*  Purpose:   Check things out.
+;*  Requires:  None
+;*  Returns:   Nothing
+;*************************************************
+sub InitCheck
+
+  if #charGhost = YES
+  {
+    display Ok You are DEAD!!!  $
+      +Get rezed and press play.
+    pause
+  }
+
+  findItem %BottleType C_ , #backPackID
+  if #findKind <> 0 
+    gosub GetBottle
+  CheckBottleAgain:
+  findItem %AllBottleTypes C_ , #backPackID
+  if #findKind <> -1
+  {
+    gosub MoveItemToContainer #findID %SecureBagID 3
+    goto CheckBottleAgain
+  }
+  findItem %KegType C_ , #backPackID
+  if #findCnt <> 0 || #findKind = -1
+    gosub GetKeg
+
+
+return
+;*************************************************
+;*  end sub InitCheck
+;*************************************************
+;*************************************************
+;*  sub GetKeg
+;*  Purpose:   Move all kegs out of backpack, and
+;*             moves 1 empty into backpack.
+;*             Ver 2 - Checks partial full kegs and
+;*             fills those if possible.
+;*  Requires:  None
+;*  Returns:   Nothing
+;*************************************************
+sub GetKeg
+
+  gosub UpdateStatus MoveKeg
+
+  FindKegInPack:
+  findItem %KegType C_ , #backPackID
+  if #findkind = 0
+  {
+    event Property #findID
+    if %Empty in #property
+    {
+      gosub MoveItemToContainer #findID %SecureEmptyID 1
+      goto FindKegInPack
+    }
+    if Completely in #property
+    {
+      gosub MoveItemToContainer #findID %SecureFullID 1
+      goto FindKegInPack
+    }
+    gosub MoveItemToContainer #findID %SecurePartialID 1
+    goto FindKegInPack
+  }
+  FindKegInSecure:
+  findItem %KegType C_ , %SecurePartialID
+  set %KegToFill #findID
+  if #findKind = -1
+  {
+    findItem %KegType C_ , %SecureEmptyID
+    set %KegToFill #findID
+    if #findKind = -1
+    {
+      display OK You do not have any kegs, get some and press Play.
+      pause
+      goto FindKegInPack
+    }
+  }
+  event Property %KegToFill
+  if Completely in #property
+  {
+    ignoreItem %KegToFill 3
+    goto FindKegInSecure
+  }
+  gosub CheckKegType
+  
+  ignoreItem reset 1
+  set %FoundMatch 0
+  
+  gosub MoveItemToContainer %KegToFill #backPackID 1
+
+return
+;*************************************************
+;*  end sub GetKeg
+;*************************************************
+;*************************************************
+;*  sub CheckKegType
+;*  Purpose:   
+;*  Requires:  None
+;*  Returns:   Nothing
+;*************************************************
+sub CheckKegType
+
+  set %ContToCheck %SecurePartialID
+  set %CheckEmpty 0
+  set %FirstRun 1
+  CheckTypeAgain:
+  findItem %KegType C_ , %ContToCheck
+  set %KegToFill #findID
+  event Property %KegToFill
+  if %Empty in #property
+  {
+    set %KegNowEmpty 0
+    set %EmptyID %KegToFill
+    set %FoundEmpty 1
+    ignoreItem %EmptyID 1
+    goto CheckTypeAgain
+  }
+  if Completely in #property
+  {
+    ignoreItem %KegToFill 3
+    goto CheckTypeAgain
+  }
+    
+  if #findKind = -1 && %CheckEmpty = 0
+  {
+    set %ContToCheck %SecureEmptyID
+    ignoreItem reset 1
+    set %CheckEmpty 1
+    goto CheckTypeAgain
+  }
+  if #findKind = -1 && %CheckEmpty = 1
+  {
+    if %FoundEmpty = 0
+    {
+      ignoreItem reset 1
+      display OK You do not have any matching or empty kegs, get some and press Play.
+      pause
+      goto CheckTypeAgain
+    }
+    set %KegToFill %EmptyID
+    set %FoundEmpty 0
+    ignoreItem reset 1
+    return
+  }
+  if Agility in #property || Blue in #property
+  {
+    set %KegPotionType Agility
+    if Greater in #property
+      set %KegPotionType GAgility
+    if Blue in #property
+      gosub CheckKegColor
+  }
+  if Cure in #property || Orange in #property
+  {
+    set %KegPotionType Cure
+    if Lesser in #property
+      set %KegPotionType LCure
+    if Greater in #property
+      set %KegPotionType GCure
+    if Orange in #property
+      gosub CheckKegColor
+  }
+  if Explosion in #property || Purple in #property
+  {
+    set %KegPotionType Explosion
+    if Lesser in #property
+      set %KegPotionType LExplosion
+    if Greater in #property
+      set %KegPotionType GExplosion
+    if Purple in #property
+      gosub CheckKegColor
+  }
+  if Heal in #property || Yellow in #property
+  {
+    set %KegPotionType Heal
+    if Lesser in #property
+      set %KegPotionType LHeal
+    if Greater in #property
+      set %KegPotionType GHeal
+    if Yellow in #property
+      gosub CheckKegColor
+  }
+  if Night_Sight in #property || Gray in #property
+  {
+    set %KegPotionType NightSight
+    if Gray in #property
+      gosub CheckKegColor
+  }
+  if Poison in #property || Green in #property
+  {
+    set %KegPotionType Poison
+    if Lesser in #property
+      set %KegPotionType LPoison
+    if Greater in #property
+      set %KegPotionType GPoison
+    if Deadly in #property
+      set %KegPotionType DPoison
+    if Green in #property
+      gosub CheckKegColor
+  }
+  if Refresh in #property || Red in #property
+  {
+    set %KegPotionType Refresh
+    if Total in #property
+      set %KegPotionType GRefresh
+    if Red in #property
+      gosub CheckKegColor
+  }
+  if Strength in #property || White in #property
+  {
+    set %KegPotionType Strength
+    if Greater in #property
+      set %KegPotionType GStrength
+    if White in #property
+      gosub CheckKegColor
+  }
+  
+  if %KegPotionType = %NowMaking
+    set %FoundMatch 1
+  else
+  {
+    ignoreItem %KegToFill 1
+    goto CheckTypeAgain
+  }
+  
+  if %KegNowEmpty = 1
+  {
+    set %KegNowEmpty 0
+    set %KegToFill %EmptyID
+    return
+  }
+  if %FoundMatch = 0
+    ignoreItem %KegToFill 1
+
+return
+;*************************************************
+;*  end sub CheckKegType
+;*************************************************
+;*************************************************
+;*  sub CheckKegColor
+;*  Purpose:   
+;*  Requires:  None
+;*  Returns:   Nothing
+;*************************************************
+sub CheckKegColor
+
+  set #lObjectID %KegToFill
+  event Macro 17 0
+  event Property %KegToFill
+  findItem %AllBottleTypes C_ , #backPackID
+  if %Empty in #property
+    set %KegNowEmpty 1
+    
+  event Property #findID
+  gosub CheckPotionType
+
+  gosub DropBottleOnKeg
+  event Property %KegToFill
+
+return
+;*************************************************
+;*  end sub CheckKegColor
+;*************************************************
+;*************************************************
+;*  sub CheckPotionType
+;*  Purpose:   
+;*  Requires:  None
+;*  Returns:   Nothing
+;*************************************************
+sub CheckPotionType
+
+  if Agility in #property
+  {
+    set %KegPotionType Agility
+    if Greater in #property
+      set %KegPotionType GAgility
+  }
+  if Cure in #property
+  {
+    set %KegPotionType Cure
+    if Lesser in #property
+      set %KegPotionType LCure
+    if Greater in #property
+      set %KegPotionType GCure
+  }
+  if Explosion in #property
+  {
+    set %KegPotionType Explosion
+    if Lesser in #property
+      set %KegPotionType LExplosion
+    if Greater in #property
+      set %KegPotionType GExplosion
+  }
+  if Heal in #property
+  {
+    set %KegPotionType Heal
+    if Lesser in #property
+      set %KegPotionType LHeal
+    if Greater in #property
+      set %KegPotionType GHeal
+  }
+  if Night_Sight in #property
+  {
+    set %KegPotionType NightSight
+    if Gray in #property
+  }
+  if Poison in #property
+  {
+    set %KegPotionType Poison
+    if Lesser in #property
+      set %KegPotionType LPoison
+    if Greater in #property
+      set %KegPotionType GPoison
+    if Deadly in #property
+      set %KegPotionType DPoison
+  }
+  if Refresh in #property
+  {
+    set %KegPotionType Refresh
+    if Total in #property
+      set %KegPotionType GRefresh
+  }
+  if Strength in #property
+  {
+    set %KegPotionType Strength
+    if Greater in #property
+      set %KegPotionType GStrength
+  }
+  
+
+return
+;*************************************************
+;*  end sub CheckPotionType
+;*************************************************
+;*************************************************
+;*  sub GetBottle
+;*  Purpose:   Moves all bottles out of backpack, 
+;*             Gets one empty bottle and moves it
+;*             to backpack.
+;*  Requires:  None
+;*  Returns:   Nothing
+;*************************************************
+sub GetBottle
+
+  gosub UpdateStatus Bottle
+  FindBottleSecure:
+  findItem %AllBottleTypes C_ , #backPackID
+  if #findKind = 0
+  {
+    gosub MoveItemToContainer #findID %SecureBagID 1
+    goto FindBottleSecure
+    return
+  }
+  findItem %BottleType C
+  if #findKind = -1
+  {
+    display OK You do not have any bottles, get some and press Play.
+    pause
+    goto FindBottleSecure
+  }
+  if #findBagID <> #backPackID
+    gosub MoveItemToContainer #findID #backPackID 1
+
+return
+;*************************************************
+;*  end sub GetBottle
+;*************************************************
+;*************************************************
+;*  sub CheckPotionBottles
+;*  Purpose:   
+;*  Requires:  None
+;*  Returns:   Nothing
+;*************************************************
+sub CheckPotionBottles
+
+  CheckNextBottle:
+  findItem %KegType C_ , #backPackID
+  event Property #findID
+  if Completely in #property
+    return
+  findItem %AllBottleTypes C_ , %SecureBagID
+  if #findKind = -1
+  {
+    ignoreItem reset 2
+    return
+  }
+  event Property #findID
+
+  if Agility in #property && Agility in %NowMaking
+  {
+    if Greater in #property && GAgility in %NowMaking
+      gosub MoveItemToContainer #findID %KegToFill  1
+    if %NowMaking = Agility
+      gosub MoveItemToContainer #findID %KegToFill 1
+    ignoreItem #findID 2
+    goto CheckNextBottle
+  }
+  if Cure in #property && Cure in %NowMaking
+  {
+    if Greater in #property && GCure in %NowMaking
+      gosub MoveItemToContainer #findID %KegToFill 1
+    if Lesser in #property && LCure in %NowMaking
+      gosub MoveItemToContainer #findID %KegToFill 1
+    if %NowMaking = Cure
+      gosub MoveItemToContainer #findID %KegToFill 1
+    ignoreItem #findID 2
+    goto CheckNextBottle
+  }
+  if Explosion in #property && Explosion in %NowMaking
+  {
+    if Greater in #property && GExplosion in %NowMaking
+      gosub MoveItemToContainer #findID %KegToFill 1
+    if Lesser in #property && LExplosion in %NowMaking
+      gosub MoveItemToContainer #findID %KegToFill 1
+    if %NowMaking = Explosion
+      gosub MoveItemToContainer #findID %KegToFill 1
+    ignoreItem #findID 2
+    goto CheckNextBottle
+  }
+  if Heal in #property && Heal in %NowMaking
+  {
+    if Greater in #property && GHeal in %NowMaking
+      gosub MoveItemToContainer #findID %KegToFill 1
+    if Lesser in #property && LHeal in %NowMaking
+      gosub MoveItemToContainer #findID %KegToFill 1
+    if %NowMaking = Heal
+      gosub MoveItemToContainer #findID %KegToFill 1
+    ignoreItem #findID 2
+    goto CheckNextBottle
+  }
+  if Night_Sight in #property && Night_Sight in %NowMaking
+  {
+    gosub MoveItemToContainer #findID %KegToFill 1
+    ignoreItem #findID 2
+    goto CheckNextBottle
+  }
+  if Poison in #property && Poison in %NowMaking
+  {
+    if Greater in #property && GPoison in %NowMaking
+      gosub MoveItemToContainer #findID %KegToFill 1
+    if Lesser in #property && LPoison in %NowMaking
+      gosub MoveItemToContainer #findID %KegToFill 1
+    if Deadly in #property && DPoison in %NowMaking
+      gosub MoveItemToContainer #findID %KegToFill 1
+    if %NowMaking = Poison
+      gosub MoveItemToContainer #findID %KegToFill 1
+    ignoreItem #findID 2
+    goto CheckNextBottle
+  }
+  if Refresh in #property && Refresh in %NowMaking
+  {
+    if Total in #property && GRefresh in %NowMaking
+      gosub MoveItemToContainer #findID %KegToFill 1
+    if %NowMaking = Refresh
+      gosub MoveItemToContainer #findID %KegToFill 1
+    ignoreItem #findID 2
+    goto CheckNextBottle
+  }
+  if Strength in #property && Strength in %NowMaking
+  {
+    if Greater in #property && GStrength in %NowMaking
+      gosub MoveItemToContainer #findID %KegToFill 1
+    if %NowMaking = Strength
+      gosub MoveItemToContainer #findID %KegToFill 1
+    ignoreItem #findID 2
+    goto CheckNextBottle
+  }
+  
+  ignoreItem #findID 2
+  goto CheckNextBottle
+
+return
+;*************************************************
+;*  end sub CheckPotionBottles
+;*************************************************
+;*************************************************
+;*  sub MakePotion
+;*  Purpose:   Add Check for #Bottles/Kegs based on Menu Input
+;*  Requires:  None
+;*  Returns:   Nothing
+;*************************************************
+sub MakePotion
+
+  set %QuantityToMake %Num . %NowMaking
+  gosub UpdateStatus Potion
+  gosub SelectPotionXY
+  
+  gosub CheckPotionBottles
+  FindMortar:
+  set %TimeToMake #sCnt + 5
+  gosub CheckResources
+  gosub UpdateStatus Potion
+  if %OutOfRegs = 1
+  {
+    gosub MoveItemToContainer %KegToFill %SecurePartialID 1
+    set %Num . %NowMaking 0
+    set %Primed 0
+    set %OutOfRegs 0
+    return
+  }
+  if #weight > %MaxWeight
+  {
+    display OK You are overweight, correct and press Play.
+    pause
+    goto FindMortar
+  }
+
+  if H notin #charStatus && %Hide = 1
+    gosub Hide
+
+  findItem %MortarToUse
+  if #findKind = -1
+  {
+    findItem %MortarType C
+    set %MortarToUse #findID
+    if #findKind = -1
+    {
+      if %TinkMortar = 1
+      {
+        gosub TinkMortar
+        gosub UpdateStatus Potion
+        goto FindMortar
+      }
+      display Ok You do not have anymore Mortars, 
+        +get more and press Play.
+      pause
+      goto FindMortar
+    }
+    if #findBagID <> #backpackID
+      gosub MoveItemToContainer %MortarToUse #backpackID 1
+    if #lObjectID <> %MortarToUse
+    {
+      set #lObjectID %MortarToUse
+      event Macro 17 0
+    }
+    goto FindMortar
+  }
+  if %Primed = 1
+  {
+    if #contName <> generic_gump
+    {
+      set #lObjectID %MortarToUse
+      event Macro 17 0
+      WaitMakePotion01:
+      if #sCnt > %TimeToMake
+        goto FindMortar
+      if #contName <> generic_gump
+        goto WaitMakePotion01
+    }
+    click 330 460
+    WaitMakePotion02:
+    if #contName <> generic_gump
+      goto WaitToMakePotion02
+    goto CheckNumPotion
+  }
+
+  set #lObjectID %MortarToUse
+  event Macro 17 0
+  WaitPotion01:
+  if #sCnt > %TimeToMake
+    goto FindMortar
+  if #contName <> generic_gump
+    goto WaitPotion01
+  click %CatX %CatY
+  WaitPotion02:
+  if #sCnt > %TimeToMake
+    goto FindMortar
+  if #contName <> generic_gump
+    goto WaitPotion02
+  click %ObjX %ObjY
+  WaitPotion03:
+  if #sCnt > %TimeToMake
+    goto FindMortar
+  if #contName <> generic_gump
+    goto WaitPotion03
+
+  CheckNumPotion:
+  if %Make_KeggerCB = 1
+  {
+    gosub DropBottleOnKeg
+    event Property %KegToFill
+  }
+  if Completely in #property && %Make_KeggerCB = 1
+  {
+    set %TotalMade %TotalMade + 1
+    gosub CheckKegColor
+    gosub MoveItemToContainer %KegToFill %SecureFullID 1
+    set %Num . %NowMaking %Num . %NowMaking - 1
+    set %Primed 0
+    return
+  }
+  if %Make_KeggerCB = 0
+  {
+    set %TotalMade %TotalMade + 1
+    findItem %AllBottleTypes C_ , #backpackID
+    gosub MoveItemToContainer #findID %SecureBagID 1
+    set %Num . %NowMaking %Num . %NowMaking - 1
+    set %Primed 0
+    return
+  }
+  set %Primed 1
+  
+  goto FindMortar
+
+return
+;*************************************************
+;*  end sub MakePotion
+;*************************************************
+;*************************************************
+;*  sub Hide
+;*  Purpose:   Hides.
+;*  Requires:  None
+;*  Returns:   Nothing
+;*************************************************
+sub Hide
+
+  gosub UpdateStatus Hide
+  if #charGhost = YES
+  {
+    display Ok You are DEAD!!!  $
+      +Get rezed and press play.
+    pause
+  }
+  if H notin #charStatus && #sCnt > %TryHideAgain
+  {
+    event Macro 13 21
+    set %TryHideAgain #sCnt + %HideDelay
+  }
+
+return
+;*************************************************
+;*  end sub Hide
+;*************************************************
+;*************************************************
+;*  sub SelectPotionXY
+;*  Purpose:   Sets the X-Y components in the make
+;*             gump.
+;*  Requires:  None
+;*  Returns:   Nothing
+;*************************************************
+sub SelectPotionXY
+
+  gosub UpdateStatus Select
+
+  set %CatX 80
+  set %ObjX 280
+  if Agility in %NowMaking
+  {
+    set %CatY 160
+    set %ObjY 120
+    set %RegNeeded %BloodMossType
+    if GAgility in %NowMaking
+      set %ObjY 140
+  }
+  if Cure in %NowMaking
+  {
+    set %CatY 260
+    set %ObjY 140
+    set %RegNeeded %GarlicType
+    if LCure in %NowMaking
+      set %ObjY 120
+    if GCure in %NowMaking
+      set %ObjY 160
+  }
+  if Explosion in %NowMaking
+  {
+    set %CatY 280
+    set %ObjY 140
+    set %RegNeeded  %AshType
+    if GExplosion in %NowMaking
+      set %ObjY 160
+    if LExplosion in %NowMaking
+      set %ObjY 120
+  }
+  if Heal in %NowMaking
+  {
+    set %CatY 200
+    set %ObjY 140
+    set %RegNeeded %GinsengType
+    if GHeal in %NowMaking
+      set %ObjY 160
+    if LHeal in %NowMaking
+      set %ObjY 120
+  }
+  if Night in %NowMaking
+  {
+    set %CatY 180
+    set %ObjY 120
+    set %RegNeeded %Silktype
+  }
+  if Poison in %NowMaking
+  {
+    set %CatY 240
+    set %ObjY 140
+    set %RegNeeded %ShadeType
+    if LPoison in %NowMaking
+      set %ObjY 120
+    if GPoison in %NowMaking
+      set %ObjY 160
+    if DPoison in %NowMaking
+      set %ObjY 180
+  }
+  if Refresh in %NowMaking
+  {
+    set %CatY 140
+    set %ObjY 120
+    set %RegNeeded %BlackPearlType
+    if GRefresh in %NowMaking
+      set %ObjY 140
+  }
+  if Strength in %NowMaking
+  {
+    set %CatY 220
+    set %ObjY 120
+    set %RegNeeded %RootType
+    if GStrength in %NowMaking
+      set %ObjY 140
+  }
+
+return
+;*************************************************
+;*  end sub SelectPotionXY
+;*************************************************
+;*************************************************
+;*  sub DropBottleOnKeg
+;*  Purpose:   Drops recently made bottle on keg.
+;*  Requires:  None
+;*  Returns:   Nothing
+;*************************************************
+sub DropBottleOnKeg
+
+  findItem %AllBottleTypes C_ , #backPackID
+  if #findKind <> -1
+    gosub MoveItemToContainer #findID %KegToFill 1
+
+return
+;*************************************************
+;*  end sub DropBottleOnKeg
+;*************************************************
+;*************************************************
+;*  sub GetNextPotion
+;*  Purpose:   Once completed making set of kegs/bottles
+;*             finds next one to make.
+;*  Requires:  None
+;*  Returns:   Nothing
+;*************************************************
+sub GetNextPotion
+
+  gosub UpdateStatus Next
+  set %NowMaking Void
+  if %NumAgility <> 0
+    set %NowMaking Agility
+  if %NumGAgility <> 0
+    set %NowMaking GAgility
+  if %NumLCure <> 0
+    set %NowMaking LCure
+  if %NumCure <> 0
+    set %NowMaking Cure
+  if %NumGCure <> 0
+    set %NowMaking GCure
+  if %NumLExplosion <> 0
+    set %NowMaking LExplosion
+  if %NumExplosion <> 0
+    set %NowMaking Explosion
+  if %NumGExplosion <> 0
+    set %NowMaking GExplosion
+  if %NumLHeal <> 0
+    set %NowMaking LHeal
+  if %NumHeal <> 0
+    set %NowMaking Heal
+  if %NumGHeal <> 0
+    set %NowMaking GHeal
+  if %NumNightSight <> 0
+    set %NowMaking NightSight
+  if %NumLPoison <> 0
+    set %NowMaking LPoison
+  if %NumPoison <> 0
+    set %NowMaking Poison
+  if %NumGPoison <> 0
+    set %NowMaking GPoison
+  if %NumDPoison <> 0
+    set %NowMaking DPoison
+  if %NumRefresh <> 0
+    set %NowMaking Refresh
+  if %NumGRefresh <> 0
+    set %NowMaking GRefresh
+  if %NumStrength <> 0
+    set %NowMaking Strength
+  if %NumGStrength <> 0
+    set %NowMaking GStrength
+  if %NowMaking = Void
+  {
+    findItem %KegType C_ , #backPackID
+    gosub MoveItemToContainer #findID %SecureFullID 1
+    click 333 463 r
+    display OK Done.
+    halt
+  }
+
+return
+;*************************************************
+;*  end sub GetNextPotion
+;*************************************************

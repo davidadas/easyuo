@@ -1,0 +1,793 @@
+;========================================
+; Script Name: Ending's LumberHacker
+; Author: ending
+; Version: 5.2.1
+; Client Tested with: 5.0.1c
+; EUO version tested with: 1.5 TV 62
+; Shard OSI / FS: OSI
+; Revision Date: 26Oct05
+; Public Release: 28Oct04
+; Purpose: Free hand lumberjacking with beetle support
+;========== UPDATES =======================
+;v5.2.1 - Fixed dismount sub, fixed scan sub, corrected the status
+;       display when the packy is full.
+;v5.2 - Allows support for packies.
+;v5.1.2 - Fixed typos...thanks regs2.
+;v5.1.1 - Fixed a typo, line 1 (gosub init) was commented out by
+;       accident. This was the problem with it not recognizing axes.
+;v5.1 - Fixed another Jscanning issue. Added in skill checking.
+;v5.0 - Rewrite, again. Fixed journal scanning issues.
+;v4.1 - Updated Object type IDs. Equips axe from backpack when needed.
+;v4.0 - Reconstruction of script; rewritten for ML and EUO 1.5.
+;v3.13 - No backpack positioning required.
+;v3.12b - Updated wait times due to OSI's lag with SE and changed
+;       full beetle resume from EUO to menu
+;v3.12 - Fixed gump issues. Added pause/resume function and
+;      changed the menu up a bit.
+;v3.11 - Added in a Status section in the menu.
+;v3.10 - Whole new menu added, big thanks to Tecmo for his
+;      support and to Akilae for his testing and great
+;      suggestions.
+;v2.11 - Fixed loading beetle.
+;v2.1 - Beetle support fixed, thanks Roadkill!
+;v2.0 - Took subs out mostly so it wont dig down too far.
+;v1.2b - Customized a few things, not really and large scale
+;      changes.
+;v1.2 - Added in tinkering of carpentry tools, supports wood tools
+;     and ingot tools.
+;v1.1b - Fixed the whole method of logs to boards, more efficient
+;      and no one can steal the logs on the ground. Also
+;      fixed lots of other misc. things.
+;v1.1 - Added in chopping up the logs to boards.
+;v1.0 - Up and running :)
+;===========================================
+;========== DON'T EDIT BELOW HERE ===========
+gosub init
+gosub showMenu
+gosub setup
+main:
+     gosub settree
+     gosub choptree
+     goto main
+
+
+sub setup
+     set %status Checking , #spc , for , #spc , elf
+     gosub changestatus
+     event macro 8 2
+     wait 20
+     if #conttype = XU || #conttype = AV
+        set %elf #true
+     gosub updateTime
+     gosub dismount new
+     set %status Setting , #spc , up , #spc , bug , #spc , IDs
+     gosub changestatus
+     finditem ZGB G_3
+     if #findkind = -1
+     {
+        display ok Can't find beetle/packy. Target it please.
+        set #targcurs 1
+        gosub usertargwait
+        set %bugid #ltargetid
+     }
+     else
+        set %bugid #findid
+     set %bugtype #findtype
+     set %bugbag %bugid
+     wait 20
+     gosub mount
+return
+
+sub usertargwait
+     _usertargwait:
+     gosub updateTime
+     if #targcurs = 1
+        goto _usertargwait
+return
+
+sub targwait
+     set %curscnt #scnt
+     _targwait:
+     if #targcurs <> 1
+     {
+        if ( %curscnt + 5 ) < #scnt
+           return timeout
+        goto _targwait
+     }
+return
+
+sub contwait
+    set %curCont #contid
+    _contchange:
+    {
+        if ( %curscnt + 5 ) < #scnt
+           return timeout
+        if %curCont = #contid
+           goto _contchange
+    }
+return
+
+sub gumpwait
+    set %curscnt #scnt
+    _gumpWait:
+    if worn in #journal || worn in #sysmsg
+       return
+    if #CONTSIZE <> 530_437
+       goto _gumpWait
+    wait 5
+return
+
+sub statuscheck
+    if #charname = n/a
+    {
+       event macro 8 2
+       wait 20
+    }
+return
+
+sub mount
+    if %bugtype <> ZGB
+       return
+    _findmount:
+    finditem %bugid G_16
+    if #findkind = -1
+    {
+       display ok Cannot find mount, halting.
+       halt
+    }
+    _mounttry:
+    set #lobjectid %bugid
+    event macro 17 0
+    wait 10
+    finditem %bugid G_3
+    if #findkind <> -1
+       goto _mounttry
+    wait 10
+return
+
+sub dismount
+    if %bugtype <> ZGB && %1 <> new
+       return
+    _dismount:
+    set #lobjectid #charid
+    event macro 17 0
+    wait 20
+    if %1 <> new
+    {
+       finditem %bugid G_3
+       if #findkind = -1
+          goto _dismount
+    }
+return
+
+sub choptree
+     gosub equipaxe
+     set #lobjectid %axeid
+     set #ltargetid %curTree
+     while new notin #result
+     {
+          gosub updateTime
+
+          _chop:
+          set %status Chopping , #spc , tree
+          gosub changestatus
+          gosub checkButton
+          gosub statuscheck
+          gosub skillCheck
+          if #weight >= #maxweight
+             gosub logs2boards
+          set #lobjectid %axeid
+          event macro 17 0
+          gosub targwait
+          event macro 22 0
+          gosub journalscan
+          if cut in #result
+             gosub logs2boards
+     }
+return
+
+sub settree
+     gosub checkButton
+     gosub statuscheck
+     if #weight >= #maxweight
+        gosub logs2boards
+     gosub updateTime
+     gosub equipaxe
+     set %status Setting , #spc , tree
+     gosub changestatus
+     set #lobjectid %axeid
+     _retryselect:
+     gosub checkButton
+     event macro 17 0
+     gosub usertargwait
+     set %curTree #lobjectid
+     gosub journalscan
+     if cut in #result
+     {
+        gosub logs2boards
+        goto _retryselect
+     }
+     if chop in #result
+        return
+     if new in #result || mustwait in #result
+        goto _retryselect
+return
+
+sub equipaxe
+     set %status Checking , #spc , for , #spc , axe
+     gosub changestatus
+     finditem %axes C_ , #charid
+     if #findkind = -1
+     {
+        finditem %axes C_ , #backpackid
+        if #findkind = -1
+        {
+           display ok Error: Cannot find axe. Halting.
+           halt
+        }
+        set %axeid #findid
+        set #lhandid #findid
+        event macro 24 1
+        wait 20
+     }
+     set %axeid #findid
+return
+
+sub journalscan
+    set %status Scanning , #spc , journal...
+    gosub changestatus
+    set %newscanloop #true
+    scanwait:
+    if You_found_a_bark_fragment in #sysmsg
+    {
+       if %newscanloop = #true
+       {
+   	      set %bark %bark + 1
+          gosub updatemenu bark
+          set %newscanloop #false
+       }
+       else
+           return
+    }
+    if You_found_a_parasitic_plant in #sysmsg
+    {
+       if %newscanloop = #true
+       {
+   	      set %plant %plant + 1
+          gosub updatemenu plant
+          set %newscanloop #false
+       }
+       else
+           return
+    }
+    if You_found_a_luminescent_fungi in #sysmsg
+    {
+       if %newscanloop = #true
+       {
+       	   set %fungi %fungi + 1
+       	   gosub updatemenu fungi
+       	   set %newscanloop #false
+       }
+       else
+           return
+    }
+    if You_found_a_switch in #sysmsg
+    {
+       if %newscanloop = #true
+       {
+       	   set %switch %switch + 1
+       	   gosub updatemenu switch
+       	   set %newscanloop #false
+       }
+       else
+           return
+    }
+    if You_found_a_brilliant_amber in #sysmsg
+    {
+       if %newscanloop = #true
+       {
+       	   set %amber %amber + 1
+       	   gosub updatemenu amber
+       	   set %newscanloop #false
+       }
+       else
+           return
+    }
+    if You_chop_some_ordinary_logs in #sysmsg
+    {
+       gosub checkLands
+   	   set %normal %normal + %addamt
+   	   gosub updatemenu ordinary
+       return chop
+    }
+    if You_chop_some_oak_logs in #sysmsg
+    {
+   	   gosub checkLands
+   	   set %oak %oak + %addamt
+   	   gosub updatemenu oak
+       return chop
+    }
+    if You_chop_some_ash_logs in #sysmsg
+    {
+   	   gosub checkLands
+   	   set %ash %ash + %addamt
+   	   gosub updatemenu ash
+       return chop
+    }
+    if You_chop_some_yew_logs in #sysmsg
+    {
+   	   gosub checkLands
+   	   set %yew %yew + %addamt
+   	   gosub updatemenu yew
+       return chop
+    }
+    if You_chop_some_heartwood_logs in #sysmsg
+    {
+   	   gosub checkLands
+       set %heartwood %heartwood + %addamt
+       gosub updatemenu heartwood
+       return chop
+    }
+    if You_chop_some_bloodwood_logs in #sysmsg
+    {
+        gosub checkLands
+        set %bloodwood %bloodwood + %addamt
+        gosub updatemenu bloodwood
+        return chop
+    }
+    if You_chop_some_frostwood_logs in #sysmsg
+    {
+        gosub checkLands
+        set %frostwood %frostwood + %addamt
+        gosub updatemenu frostwood
+        return chop
+    }
+    if you_hack in #sysmsg
+       return chop
+    if You_must_wait in #sysmsg
+       return mustwait
+    if you_can't_place in #sysmsg
+       return cut
+    if that_is_too_far in #sysmsg || you_cannot_see in #sysmsg || You_can't_use_an_axe_on_that in #sysmsg || That_is_not_accessible in #sysmsg || not_enough_wood_here in #sysmsg
+       return new
+    goto scanwait
+return
+
+sub checkLands
+    set %addamt 11
+    if %elf = #true
+       set %addamt 10
+    if #curskind = 0
+       set %addamt %addamt * 2
+return
+
+sub skillCheck
+    if %currentSkill < #skill
+    {
+        set %currentSkill #skill
+    		set %Gains %Gains + 1
+    		set %skillGain %currentSkill - %startingskill
+    		menu Font Name Arial
+    		menu Font Style
+    		menu Font Size 8
+    		menu Font Color Lime
+    		menu Font Transparent #true
+    		menu Font BGColor Black
+    		menu delete currentSkill
+    		menu delete skillGain
+    		menu delete gains
+    		menu Text currentSkill 314 176 %currentSkill
+    		menu Text skillGain 314 191 %skillGain
+    		menu Text gains 314 206 %gains
+    		menu Delete status
+    		menu Font Color Red
+    		menu Text status 91 87 Skill gain!
+    		wait 10
+    }
+return
+
+sub logs2boards
+    set %status Cutting , #spc , logs , #spc ,  to , #spc , boards
+    menu Get cutLogs
+    if #menuRes = #false
+    {
+       gosub unloadtobug
+       return
+    }
+    wait 30
+    _logs2boards:
+    finditem ZLK C_ , #backpackid
+    if #findkind = -1
+    {
+       ignoreitem reset 1
+       gosub unloadtobug
+       return
+    }
+    set %curWood #findcol
+    set %curlogs #findid
+    findItem KGG_EGG_AGG_IGG_BIG_ZHG_WFG_YFG_XFG C_ , #backpackid
+    if #findkind = -1
+    {
+       display ok No carp tools, pausing.
+       gosub pauseScript
+       goto _logs2boards
+    }
+    set #lobjectid #findid
+    _carpretry:
+    gosub checkButton
+    event macro 17 0
+    gosub gumpwait
+    if timeout in #result
+       goto _carpretry
+    gosub calcClicks
+    click %woodtypex %woodtypey
+    wait 5
+    if %curWood = %normalCol
+       click %woodx %woody
+    if %curWood = %oakCol
+       click %woodx %oaky
+    if %curWood = %ashCol
+       click %woodx %ashy
+    if %curWood = %yewCol
+       click %woodx %yewy
+    if %curWood = %heartCol
+       click %woodx %hearty
+    if %curWood = %bloodCol
+       click %woodx %bloody
+    if %curWood = %frostCol
+       click %woodx %frosty
+    gosub gumpWait
+    if timeout in #result
+       goto _carpretry
+    click %othermenux %othermenuy
+    gosub gumpWait
+    if timeout in #result
+       goto _carpretry
+    click %boardmenux %boardmenuy
+    gosub gumpwait
+    click %exitx %exity
+    ignoreitem %curlogs 1
+    goto _logs2boards
+return
+
+sub unloadtobug
+    gosub dismount
+    _loadbeetle:
+    wait 30
+    finditem TLK_ZLK_NWS_YWS_XWS_BWR_FXS C_ , #backpackid
+    if #findkind = -1
+    {
+       gosub mount
+       wait 2s
+       return
+    }
+    exevent drag #findid #findstack
+    exevent dropc %bugbag
+    wait 5
+    if That_container_cannot_hold_more_weight. in #sysmsg
+    {
+       gosub mount
+       set %status Paused , #spc , - , #spc , Beetle , #spc , full.
+       gosub changestatus
+       gosub pauseScript
+    }
+    goto _loadbeetle
+return
+
+sub calcClicks
+    set %woodtypex #contposx + 30
+    set %woodtypey #contposy + 375
+    set %woodx #contposx + 235
+    set %woody #contposy + 70
+    set %oaky #contposy + 90
+    set %ashy #contposy + 110
+    set %yewy #contposy + 130
+    set %hearty #contposy + 150
+    set %bloody #contposy + 170
+    set %frosty #contposy + 190
+    set %othermenux #contposx + 28
+    set %othermenuy #contposy + 90
+    set %boardmenux #contposx + 233
+    set %boardmenuy #contposy + 70
+    set %exitx #contposx + 30
+    set %exity #contposy + 413
+return
+
+sub checkButton
+    if #menubutton = pause
+    {
+       set %status Paused by user.
+       gosub changestatus
+       gosub pauseScript
+    }
+return
+
+sub pauseScript
+    menu Delete pause
+    menu Font Name MS Sans Serif
+    menu Font Size 8
+    menu Font Color WindowText
+    menu Font BGColor BtnFace
+    menu Button resume 36 122 49 21 Resume
+    set #menubutton n/a
+    _pause:
+    if #menubutton  = resume
+    {
+       menu Font Name Arial
+       menu Font Style
+       menu Font Size 8
+       menu Font Color Lime
+       menu Font Transparent #true
+       menu Delete status
+       menu Text status 91 87 Resuming...
+       menu Delete resume
+       menu Font Name MS Sans Serif
+       menu Font Size 8
+       menu Font Color WindowText
+       menu Font BGColor BtnFace
+       menu Button pause 36 122 49 21 Pause
+       set #menubutton n/a
+       return
+    }
+    wait 2 ;takes a load off the cpu
+    gosub updateTime
+    goto _pause
+return
+
+sub init
+    set %version 5.2.1
+   	set #menubutton n/a
+    set %axes LSF_BSF_NFS_ZRF_RMH_LPH_UOH_FSF_OFR
+    set %carpTools KGG_EGG_AGG_IGG_BIG_ZHG_WFG
+    set %tinkerTools GTL_KTL_JTL
+    chooseSkill carp
+    set %carpSkill #skill
+    chooseSkill lumb
+    set %startingSkill #skill
+    set %currentSkill #skill
+    set %starttime #scnt
+    set %normal 0
+    set %oak 0
+    set %ash 0
+    set %yew 0
+    set %heartwood 0
+    set %bloodwood 0
+    set %frostwood 0
+    set %total 0
+    set %bph 0
+    set %skillGain 0
+    set %gains 0
+    set %bark 0
+    set %amber 0
+    set %switch 0
+    set %plant 0
+    set %fungi 0
+    set #lobjectid
+    set #ltargetid
+    set #findid
+    set %normalCol 0
+    set %oakCol 2010
+    set %ashCol 1191
+    set %yewCol 1192
+    set %heartCol 1193
+    set %bloodCol 1194
+    set %frostCol 1151
+return
+
+sub updateTime
+	set %time #scnt - %starttime
+	set %seconds %time % 60
+	set %minutes ( %time / 60 ) % 60
+	set %hours %time / 3600
+	
+	if %seconds < 10
+		 set %timeresult : , 0 , %seconds
+	else
+		set %timeresult : , %seconds
+	if %minutes < 10
+		set %timeresult : , 0 , %minutes , %timeresult
+	else
+		set %timeresult : , %minutes , %timeresult
+	if %hours < 10
+		set %timeresult 0 , %hours , %timeresult
+	else
+		set %timeresult %hours , %timeresult
+		
+	menu Font Transparent #true
+	menu Font Name Arial
+	menu Font Align Left
+	menu Font BGColor None
+	menu Font Color Lime
+	menu Font Size 8
+	menu Delete time
+	menu Text time 155 125 %timeresult
+return
+
+sub updatemenu
+    menu Font Name Arial
+    menu Font Style
+    menu Font Color Lime
+    menu Font Size 8
+    menu Font Transparent #true
+    menu Font BGColor Black
+    if %1 = bark
+    {
+       menu Delete bark
+       menu Text bark 340 251 %bark
+    }
+    if %1 = plant
+    {
+       menu Delete plant
+       menu Text plant 340 281 %plant
+    }
+    if %1 = fungi
+    {
+       menu Delete fungi
+       menu Text fungi 340 266 %fungi
+    }
+    if %1 = switch
+    {
+       menu Delete switch
+       menu Text switch 340 296 %switch
+    }
+    if %1 = amber
+    {
+       menu Delete amber
+       menu Text amber 340 311 %amber
+    }
+    if %1 = ordinary
+    {
+       menu Delete normal
+       menu Text normal 142 164 %normal
+    }
+    if %1 = oak
+    {
+       menu Delete oak
+       menu Text oak 142 179 %oak
+    }
+    if %1 = ash
+    {
+       menu Delete ash
+       menu Text ash 142 194 %ash
+    }
+    if %1 = yew
+    {
+       menu Delete yew
+       menu Text yew 142 209 %yew
+    }
+    if %1 = heartwood
+    {
+       menu Delete heartwood
+       menu Text heartwood 142 224 %heartwood
+    }
+    if %1 = bloodwood
+    {
+       menu Delete bloodwood
+       menu Text bloodwood 142 239 %bloodwood
+    }
+    if %1 = frostwood
+    {
+       menu Delete frostwood
+       menu Text frostwood 142 254 %frostwood
+    }
+    gosub updatetime
+    set %total %normal + %oak + %ash + %yew + %heartwood + %bloodwood + %frostwood
+    set %bph %total * 3600 / %time
+    menu Delete total
+    menu Text total 142 277 %total
+    menu Delete bph
+    menu Text bph 142 301 %bph
+return
+
+sub changestatus
+    menu Font Name Arial
+    menu Font Style
+    menu Font Color Lime
+    menu Font Size 8
+    menu Font Transparent #true
+    menu Font BGColor Black
+    menu Delete status
+    menu Text status 91 87 %status
+return
+
+sub showMenu
+    menu Clear
+    menu Window Title Ending's LumberHacker
+    menu Window Color Black
+    menu Window Size 409 335
+    menu Font Transparent #true
+    menu Font Align Right
+    menu Shape EUOShape1 -128 -4 485 85 3 1 1 Black 7 3DDkShadow
+    menu Shape EUOShape2 322 16 69 65 2 1 1 Black 7 3DDkShadow
+    menu Shape EUOShape3 250 -28 141 81 3 1 1 Black 7 3DDkShadow
+    menu Shape EUOShape4 45 109 493 300 3 1 1 Black 7 3DDkShadow
+    menu Shape EUOShape5 13 109 69 65 2 1 1 Black 7 3DDkShadow
+    menu Shape EUOShape6 13 137 141 300 3 1 1 Black 7 3DDkShadow
+    menu Shape EUOShape7 294 14 45 45 1 1 1 Black 7 White
+    menu Shape EUOShape8 302 22 29 29 1 1 1 Black 7 3DDkShadow
+    menu Shape EUOShape9 315 26 33 8 3 1 1 Black 7 White
+    menu Shape EUOShape10 35 153 169 177 4 7 1 Black 7 3DDkShadow
+    menu Shape EUOShape11 217 150 178 81 4 7 1 Black 7 3DDkShadow
+    menu Shape EUOShape14 217 241 178 89 4 7 1 Black 7 3DDkShadow
+    menu Font Name Arial
+    menu Font Size 14
+    menu Font Style b
+    menu Font Color Lime
+    menu Font Align Left
+    menu Font BGColor Black
+    menu Text EUOLabel1 42 28 LumberHacker
+    menu Font Size 8
+    menu Text EUOLabel2 140 48 v
+    menu Text EUOLabel3 148 48 %version
+    menu Font Color Silver
+    menu Text EUOLabel4 32 16 Operation:
+    menu Text EUOLabel6 242 22 By:
+    menu Font Size 14
+    menu Font Color Fuchsia
+    menu Text EUOLabel5 242 28 ending
+    menu Font Name MS Sans Serif
+    menu Font Size 8
+    menu Font Color WindowText
+    menu Font Transparent #false
+    menu Font BGColor 3DDkShadow
+    menu Text EUOLabel35 238 235 Additional Resources
+    menu Text EUOLabel23 55 147 Wood Information
+    menu Text EUOLabel24 238 144 Skill Information
+    menu Font Name Arial
+    menu Font Style
+    menu Font Color Fuchsia
+    menu Font Transparent #true
+    menu Font BGColor Black
+    menu Text EUOLabel48 46 87 Status:
+    menu Text EUOLabel7 48 164 Ordinary Wood:
+    menu Text EUOLabel8 48 179 Oak:
+    menu Text EUOLabel9 48 194 Ash:
+    menu Text EUOLabel10 48 209 Yew:
+    menu Text EUOLabel11 48 254 Frostwood:
+    menu Text EUOLabel12 48 239 Bloodwood:
+    menu Text EUOLabel13 48 224 Heartwood:
+    menu Text EUOLabel21 48 277 Total:
+    menu Text EUOLabel25 48 301 BPH:
+    menu Text EUOLabel27 233 161 Starting Skill:
+    menu Text EUOLabel30 233 176 Current Skill:
+    menu Text EUOLabel31 233 191 Skill Gain:
+    menu Text EUOLabel34 233 206 Gains:
+    menu Text EUOLabel37 234 251 Bark Fragments:
+    menu Text EUOLabel38 234 266 Luminescent Fungi:
+    menu Text EUOLabel39 234 281 Parasitic Plant:
+    menu Text EUOLabel40 234 296 Switch:
+    menu Text EUOLabel41 234 311 Brillant Amber:
+    menu Text EUOLabel46 97 125 Run Time:
+    menu Font Color Lime
+    menu Text status 91 87 Initializing...
+    menu Text normal 142 164 %normal
+    menu Text oak 142 179 %oak
+    menu Text ash 142 194 %ash
+    menu Text yew 142 209 %yew
+    menu Text heartwood 142 224 %heartwood
+    menu Text bloodwood 142 239 %bloodwood
+    menu Text frostwood 142 254 %frostwood
+    menu Text total 142 277 %total
+    menu Text bph 142 301 %bph
+    menu Text startingSkill 314 161 %startingSkill
+    menu Text currentSkill 314 176 %currentSkill
+    menu Text skillGain 314 191 %skillGain
+    menu Text gains 314 206 %gains
+    menu Text bark 340 251 %bark
+    menu Text amber 340 311 %amber
+    menu Text switch 340 296 %switch
+    menu Text plant 340 281 %plant
+    menu Text fungi 340 266 %fungi
+    menu Text time 148 125 %time
+    menu Shape EUOShape13 48 294 144 5 3 1 1 Black 7 Gray
+    menu Shape EUOShape12 48 272 144 5 3 1 1 Black 7 Gray
+    menu Font Color Fuchsia
+    menu Text EUOLabel16 262 124 Cut Logs If Possible
+    menu Font Name MS Sans Serif
+    menu Font Color WindowText
+    menu Font BGColor BtnFace
+    menu Button pause 41 122 49 21 Pause
+    menu Font BGColor Black
+    menu Check cutLogs 244 124 13 13 #true CutLogs
+    menu Show 421 270
+return

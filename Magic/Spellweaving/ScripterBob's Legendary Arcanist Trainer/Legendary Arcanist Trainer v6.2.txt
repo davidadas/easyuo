@@ -1,0 +1,379 @@
+;==================================
+; Script Name: ScripterBob's Legendary Arcanist Trainer
+; Author: ScripterBob
+; Version: 6.2
+; Client Tested with: 5.0.1j
+; EUO version tested with: 1.5.69
+; Shard OSI / FS:  OSI
+; Revision Date: 9/7/06
+; Public Release: 3/20/06
+; Global Variables Used:
+; Purpose: Train spellweaving from 0-120 without moving.
+;==================================
+;Update 5.01: Fixed spamming issues with releasing the pixies
+;       Thanks to Hosebomber
+;Update 5.02: Fixed issue with horse falling out of guard mode
+;Update 6.0 : Cleaned up the menu, with some suggestions from Hosebomber
+;Update 6.01: Fixed typo in meditation sub
+;Update 6.02: As requested, Added calculation for FCR to speed up script
+;       if equipped
+;Update 6.2 : Added abitity to use non-horse pets
+;==================================
+
+initevents
+
+event macro 8 1
+  wait 5
+  contpos 650 0
+  wait 5
+event macro 8 2
+  wait 5
+  contpos 650 500
+  wait 5
+event macro 8 7
+  wait 5
+  contpos 615 330
+  wait 5
+
+chooseskill spel
+set %startingskill #skill
+set %currentskill #skill
+set %horsecheck 0
+set %pet 0
+
+display yesno This script is designed to use a horse.  Would you like to use a different type of pet?
+if #dispres = yes
+{
+ display ok Please target your pet now!
+ set #targcurs 1
+ while #targcurs = 1
+ {
+  wait 1
+ }
+ wait 5
+ set %pet #ltargetid
+}
+
+gosub showmenu
+gosub checkfacet
+gosub findhorse
+
+loop:
+gosub choosespell
+gosub cast
+goto loop:
+
+sub choosespell
+if %currentskill = #skillcap
+{
+  Display ok You have reached your skill cap.
+  halt
+}
+if %currentskill >= 920 && %currentskill < 1200
+{
+  set %spell 614
+  set %mana 50
+  set %delay 35
+  menu set currentspell Word_of_Death
+}
+if %currentskill >= 830 && %currentskill < 920
+{
+  set %spell 610
+  set %mana 50
+  set %delay 35
+  menu set currentspell Wildfire
+}
+if %currentskill >= 650 && %currentskill < 830
+{
+  set %spell 611
+  set %mana 40
+  set %delay 35
+  menu set currentspell Essence_of_Wind
+}
+if %currentskill >= 380 && %currentskill < 650
+{
+  set %spell 607
+  set %mana 10
+  set %delay 30
+  gosub releasefey
+  menu set currentspell Summon_Fey
+}
+if %currentskill >= 320 && %currentskill < 380
+{
+  set %spell 609
+  set %mana 34
+  set %delay 30
+  menu set currentspell Reaper_Form
+}
+if %currentskill >= 200 && %currentskill < 320
+{
+  set %spell 605
+  set %mana 32
+  set %delay 30
+  menu set currentspell Thunderstorm
+}
+if %currentskill < 200
+{
+  set %spell 601
+  set %mana 24
+  set %delay 30
+  menu set currentspell Arcane_Circle
+}
+if %spell = 610 && %horsecheck < 1
+{
+  gosub findhorse
+  set %horsecheck 1
+}
+if %spell = 614 && %horsecheck < 2
+{
+  gosub findhorse
+  set %horsecheck 2
+}
+return
+
+
+
+;=======================================================
+;Thanks to Hosebomber for directing me to his sub for releasing
+;the pixies.
+;=======================================================
+sub releasefey
+release_loop:
+finditem WH G_5
+if #findkind = -1
+return
+wait 5
+gosub property #findid name summoned
+msg %return release$
+wait 25
+goto release_loop
+;=======================================================
+
+
+
+sub cast
+gosub checkmana
+gosub checkfcr
+set %delay %delay - %fcr
+event macro 15 %spell
+target 4s
+event macro 22 0
+wait 5
+gosub checkskill
+wait %delay
+return
+
+
+
+sub checkfcr
+set %fcr 0
+set %ring 0
+set %brac 0
+finditem UJG C_ , #charid
+if #findkind <> -1
+{
+  gosub property #findid number recovery
+  set %ring %number1 * 5
+  set %fcr %ring
+}
+finditem IJG C_ , #charid
+if #findkind <> -1
+{
+  gosub property #findid number recovery
+  set %brac %number1 * 5
+  set %fcr %fcr + %brac
+}
+return
+
+
+
+sub checkskill
+chooseskill spel
+if #skill > %currentskill
+{
+  set %currentskill #skill
+  str len %currentskill
+  str ins %currentskill #dot #strRes
+  menu set currentskill #strRes
+
+  set %totalgains %currentskill - %startingskill
+  str len %totalgains
+  str ins %totalgains #dot #strRes
+  menu set totalgains #strRes
+}
+return
+
+
+
+sub checkmana
+check:
+if #mana > %mana
+  return
+event macro 13 46
+set %med #scnt
+wait 10
+scanjournal 1
+if meditative in #journal
+  goto meditate
+retrywait:
+if #scnt < %med + 11
+{
+  wait 1
+  goto retrywait
+}
+goto check
+meditate:
+if #mana < #maxmana
+{
+  wait 1
+  goto meditate
+}
+return
+
+
+
+sub findhorse
+finditem OF_SF_MG_SG_YJ G_5
+set %horse #findid
+if #findid = x && %pet = 0
+{
+  display yesno You will need a horse to train past 83.0$
+         + Do you wish to continue?
+  if #dispres = no
+  {
+    halt
+  }
+}
+if %pet <> 0
+{
+ set %horse %pet
+}
+set #ltargetid %horse
+set #ltargetkind 1
+event macro 3 0 All Guard Me
+wait 10
+event macro 3 0 All Follow Me
+wait 10
+event macro 3 0 All Guard Me
+wait 10
+return
+
+
+
+sub checkfacet
+if #curskind = 0
+{
+display ok This script is not designed to use on this facet
+halt
+}
+
+find_char_rep:
+finditem #charid
+if #findrep = 2
+{
+display yesno You will not be able to train past 92.0 while guilded$
+              + Casting WoD while guilded will instakill your horse$
+              + Do you wish to resign from your guild at this time?
+    if #dispres = yes 3
+       event macro 3 0 I resign from my guild.
+       wait 40
+       goto find_char_rep
+    if #dispres = no
+       {
+       display ok Restart script to change your mind!
+       }
+}
+return
+
+
+
+sub showmenu
+menu clear
+menu window title ScripterBob's Legendary Arcanist Trainer
+menu window size 250 90
+menu window color black
+menu font name arial
+menu font bgcolor black
+menu font size 8
+menu font color white
+menu text spell_label 10 20 Spell:
+menu text gain_label 10 40 Total gains:
+menu text skill_label 10 60 Current skill:
+menu delete currentspell
+menu text currentspell 50 20 Choosing Spell
+  set %totalgains %currentskill - %startingskill
+  str len %totalgains
+  str ins %totalgains #dot #strRes
+menu delete totalgains
+menu text totalgains 70 40 #strRes
+  str len %currentskill
+  str ins %currentskill #dot #strRes
+menu delete currentskill
+menu text currentskill 70 60 #strRes
+menu show
+return
+
+
+
+;===================================================
+; Script Name: Everything property sub
+; Author:  nilmer
+; Version: 2.2
+; Client Tested with:
+; EUO version tested with:
+; Shard OSI / FS: OSI
+; Revision Date:
+; Public Release:
+; Purpose: finds a name, number, percentage, or word in a objects
+; description using event property. Special thanks to CEO and Cheffe
+; For help and inspiration.
+;===================================================
+; commandline: gosub property [#objectid] [name/yesno/number] ["word"]
+sub property
+event property %1
+if %2 = name 9
+set %return #property
+str pos %return #spc
+if #strres = 1 2
+str del #property 1 1
+set %return #strres
+str pos %return #spc
+str del %return #strres 900
+set %return #strres
+return
+if %2 = yesno 5
+if %3 in #property
+set %return yes
+else
+set %return no
+return
+str pos #property %3
+str del #property 1 #strres
+set %return #strres
+str pos %return $
+if #strres > 1
+str del %return #strres 900
+set %return #strres
+str len %return
+set %strlen #strres
+set %number1 1
+str del %number1 1 1
+set %number1 #strres
+set %number2 1
+str del %number2 1 1
+set %number2 #strres
+set %numb 1
+for %i 1 %strlen
+{
+   str mid %return %i 1
+if ! ( #strres < 1 || #strres > 0 ) 3
+if %number1 > 0 2
+set %numb 2
+goto skip
+if ( #strres < 1 || #strres > 0 )
+set %number . %numb %number . %numb , #strres
+skip:
+}
+return
+;========================================================
+

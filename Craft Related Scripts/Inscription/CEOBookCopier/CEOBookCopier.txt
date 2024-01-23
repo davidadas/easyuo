@@ -1,0 +1,116 @@
+;==================================
+; Script Name: CEOBookCopier
+; Author: CEO
+; Version: 1.2
+; Client Tested with: 4.0.1a
+; EUO version tested with: 1.4 (005C)
+; Shard OSI / FS:
+; Revision Date: 11-30-03
+; Public Release:11-30-03
+; Purpose:  High-speed book copier. Assists in copying lots of books for advertising purposes.
+;                         IE, auctions, guild events, weddings, etc.
+;
+initevents
+set %version 1.2
+set %booktypes AZF_XYF
+set %copycount 0
+gosub initmenu
+gosub GetMasterBook
+gosub CopyBooks
+menu delete status
+menu font color lime
+menu text status 50 10 Copy complete (no more books).
+halt
+ 
+sub GetMasterBook
+menu delete status
+menu font color yellow
+event macro 13 3
+wait 10
+looptgt:
+menu delete status
+wait 5
+menu text status 50 10 Target your Master book NOW.
+wait 5
+if #targcurs = 1
+     goto looptgt
+set %masterbook #ltargetid
+finditem %masterbook
+if #findtype notin %booktypes
+{
+        menu delete status
+        menu font color red
+        menu text status 50 10 Unknown book type, try again.
+        wait 2s
+        event macro 13 3
+        wait 10
+        menu font color yellow
+        goto looptgt
+}
+ignoreitem %masterbook
+menu delete status
+return
+ 
+sub CopyBooks
+copybooks1:
+finditem %booktypes
+if #findkind <> -1
+{
+tryagain:
+        menu delete status
+        menu font color yellow
+        menu text status 50 10 Inscription
+        wait 10
+        Event Macro 13 23
+        wait 5
+        target 4s
+        set #ltargetid %masterbook
+        set #ltargetidkind 1
+        menu delete status
+        menu text status 50 10 Targeting Master
+        Event Macro 22 0
+        wait 5
+        set #lobjectid #findid
+        menu delete status
+        menu text status 50 10 Opening Blank
+        event macro 17 0
+        wait 10
+        contpos 0 0
+        set #ltargetid #findid
+        set #ltargetkind 1
+        menu delete status
+        menu text status 50 10 Targeting Blank
+        Event Macro 22 0
+        wait 5
+        if YOU_FAIL in #sysmsg
+                goto tryagain
+        ignoreitem #findid
+        click 245 100 r
+        menu delete status
+        menu text status 50 10 Closing Blank
+        set %copycount %copycount + 1
+        menu font color lime
+        menu delete cc
+        menu text cc 90 35 %copycount
+        goto copybooks1
+}
+return
+ 
+sub initmenu
+set *510 InitMenu
+menu clear
+menu window size 290 65
+menu window title CEOBookCopier %version
+menu window color black
+menu font color white
+menu font bgcolor black
+menu font size 9
+menu font style n
+menu text st 5 10 Status:
+menu text ms 5 35 Books Copied:
+menu font color lime
+menu text cc 90 35 %copycount
+menu show  5 5
+menu hideeuo
+menu show 5 5
+return

@@ -1,0 +1,797 @@
+;==================================
+; Script Name: Peragrins Recall Lumberjacker
+; Author: Peragrin
+; Version: 1.6
+; Client Tested with: 5.0.0b
+; EUO version tested with: 1.5 tv 57
+; Shard OSI / FS: OSI & Freeshard (tested on Alexandria)
+; Revision Date: 14/09/05
+; Public Release: 11/11/04
+; Purpose: recalls to trees and chops them for logs
+;============================================
+if #euover <> 1_50_00
+{
+display OK This version of Recall Lumberjacker requires EasyUO version 1.5 test vesion 57 or better.
+halt
+}
+tile init
+set %axe LSF_BSF_NSF_ZRF_RMH_LPH_UOH_FSF
+set %threats QE_BE_GD_TD_SE_SD_JGB_IS_HS_JD_WG_XC_QD_XF_VE
+set %starting_time #time
+set %start #scnt
+set %hiding_timer #scnt
+
+gosub setup
+gosub setup_runebooks
+gosub setup_opperation
+MAIN_LOOP:
+gosub stats
+gosub to_tree
+gosub find_tree
+if %overweight = YES
+{
+goto to_house
+}
+goto main_loop
+TO_HOUSE:
+gosub to_house
+gosub drop_off
+
+goto main_loop
+
+halt
+;=============================================================================
+sub heal
+
+HEAL:
+if #hits > #maxhits - 10 || H in #charstatus
+{
+return
+}
+REGEN_MANA:
+if C in #charstatus
+{
+event macro 15 10
+target 5s
+event macro 23 0
+wait 10
+goto heal
+}
+if #mana < 11
+goto regen_mana
+event macro 15 28
+target 5s
+event macro 23 0
+wait 10
+goto heal
+
+return
+;=============================================================================
+sub find_threat
+
+FIND_THREAT:
+finditem %threats
+if #findkind = 1
+{
+if #findtype = HS || #findtype = IS
+{
+if #findrep <> 5 || #findrep <> 6
+{
+ignoreitem #findid non_hostile
+goto find_threat
+}
+set %threat FOUND
+return
+}
+
+if #enemyid <> N/A
+{
+finditem #enemyid G
+if #findkind = 1
+{
+set %threat FOUND
+return
+}
+}
+set %threat NOT_FOUND
+
+return
+;=============================================================================
+sub setup_opperation
+
+; DEFAULT VALUES
+set %method_of_travel RECALL
+set %use_invis NO
+set %use_hiding NO
+
+display YESNO Do you wish to use sacred journaey rather than recalling?
+if #dispres = YES
+{
+set %method_of_travel SACRED
+}
+
+display YESNO Do you wish to go invisible if a threat is detected?
+if #dispres = YES
+{
+set %use_invis YES
+goto setup_of_opperation_complete
+}
+
+display YESNO Do you wish to hide if a threat is detected?
+if #dispres = YES
+{
+set %use_hiding YES
+}
+
+SETUP_OF_OPPERATION_COMPLETE:
+gosub setup_secure
+
+return
+;=============================================================================
+sub hide
+
+HIDE:
+if H in #charstatus || %use_hiding = NO
+{
+return
+}
+if #scnt > %hiding_timer
+{
+event macro 13 21
+set %hiding_timer #scnt + 11
+}
+
+return
+;=============================================================================
+sub invis
+
+if %use_invis = NO
+{
+gosub hide
+return
+}
+if #mana < 20
+{
+return
+}
+gosub find_threat
+if %threat = NOT_FOUND
+{
+return
+}
+CAST_INVIS:
+if H notin #charstatus
+{
+set %jindex #jindex
+event macro 15 43
+CASTING_INVIS:
+if #targcurs <> 1
+{
+for %line %jindex #jindex
+{
+scanjournal %line
+if ALREADY IN #journal || FIZZLES in #journal || RECOVERED in #journal || YOU_MUST_WAIT in #journal
+{
+wait 1s
+goto cast_invis
+}
+}
+goto casting_invis
+}
+event macro 23 0
+wait 10
+goto cast_invis
+}
+
+return
+;=============================================================================
+sub time
+
+set %d1 %1 / 1 % 10
+set %d2 %1 / 10 % 10
+set %d3 %1 / 100 % 10
+set %d4 %1 / 1000 % 10
+set %d5 %1 / 10000 % 10
+set %d6 %1 / 100000 % 10
+set %time %d6 , %d5 , : , %d4 , %d3 , : , %d2 , %d1
+
+return
+;=============================================================================
+sub stats
+
+finditem ZLK C_ , %packid
+if #findkind <> -1
+{
+set %logs_in_pack #findstack
+}
+if #findkind = -1
+{
+set %logs_in_pack 0
+}
+set %hours 0
+set %mins 0
+set %secs #scnt - %start
+GET_MINS:
+if %secs > 59
+{
+set %mins %mins + 1
+set %secs %secs - 60
+goto get_mins
+}
+GET_HOURS:
+if %mins > 59
+{
+set %hours %hours + 1
+set %mins %mins - 60
+goto get_hours
+}
+set %logs_to_count %total_logs + %logs_in_pack
+set %mins %mins + ( 60 * %hours )
+set %logs_per_min %logs_to_count / %mins
+set %logs_per_hour %logs_per_min * 60
+
+gosub time %starting_time
+
+chooseskill lumb
+menu clear
+menu Window Title Stats
+menu Window Color BtnFace
+menu Window Size 220 125
+menu Font Transparent #true
+menu Font Align Right
+menu Font Name MS Sans Serif
+menu Font Size 8
+menu Font Style
+menu Font Color WindowText
+menu Font Transparent #false
+menu Font Align Left
+menu Text total 10 10 Total logs: %total_logs
+menu Text pack 110 10 Logs in pack: %logs_in_pack
+menu Text chops 10 30 Chops: %chops
+menu Text recalls 110 30 Recalls: %recalls
+menu Text book 10 50 Book/Rune: %book , / , %rune
+menu Text skill 110 50 Lumberjacking: #skill
+menu Text started 10 70 Started at: %time
+menu Text running 10 90 Running for %hours Hours and %mins Minutes
+menu Text logs_per_hour 10 110 Logs/Hr: %logs_per_hour
+menu show 590 440
+
+return
+;=============================================================================
+sub check_weight
+
+if #weight > #maxweight - 20
+set %overweight YES
+if #weight > 400
+set %overweight YES
+
+return
+;=============================================================================
+sub drop_off
+_DROP_OFF:
+finditem %logs C_ , %packid
+if #findkind <> -1
+{
+set %total_logs %total_logs + %logs_in_pack
+exevent drag #findid #findstack
+exevent dropc %secure
+wait 1s
+goto _drop_off
+}
+set %overweight NO
+return
+;=============================================================================
+sub find_tree
+
+set %tree_found NO
+
+set %x #charposx - 1
+set %y #charposy - 1
+
+set %x_limit #charposx + 1
+set %y_limit #charposy + 1
+
+SCAN_LOOP:
+
+tile cnt %x %y
+for %tilekind 1 #tilecnt
+{
+tile get %x %y %tilekind
+if TREE in #tilename
+{
+set %tree_found YES
+set %treex %x
+set %treey %y
+set %treetile #tiletype
+gosub chop_tree
+return
+}
+}
+set %x %x + 1
+
+if %x > %x_limit
+{
+set %y %y + 1
+set %x #charposx - 1
+}
+if %y > %y_limit
+{
+set %y #charposy - 1
+return
+}
+goto scan_loop
+
+return
+;=============================================================================
+sub chop_tree
+
+CHOP_AGAIN:
+gosub invis
+gosub heal
+gosub equip_axe
+gosub check_weight
+if %overweight = YES
+return
+wait 1s
+event macro 17 0
+target
+event macro 22 0
+set %error #scnt + 5
+
+WAIT_FOR_MESSAGE:
+
+gosub invis
+
+if LOGS in #sysmsg
+{
+gosub stats
+set %chops %chops + 1
+goto chop_again
+}
+if HACK in #sysmsg
+{
+set %chops %chops + 1
+goto chop_again
+}
+if LUMBER in #sysmsg
+{
+set %chops %chops + 1
+goto chop_again
+}
+if YOU_MUST_WAIT in #sysmsg
+{
+wait 15
+goto chop_again
+}
+if CAN'T in #sysmsg
+{
+event sysmessage Not working
+set %rune %rune + 1
+if %rune > 16
+{
+set %rune 1
+set %book %book + 1
+if %book > %number_of_tree_runebooks
+{
+set %book 1
+}
+}
+return
+}
+if HARVEST in #sysmsg
+{
+set %rune %rune + 1
+set %recalls %recalls + 1
+if %rune > 16
+{
+set %rune 1
+set %book %book + 1
+if %book > %number_of_tree_runebooks
+{
+set %book 1
+}
+}
+wait 1s
+return
+}
+if #scnt > %error
+{
+set %rune %rune + 1
+if %rune > 16
+{
+set %rune 1
+set %book %book + 1
+if %book > %number_of_tree_runebooks
+{
+set %book 1
+}
+}
+return
+}
+goto wait_for_message
+
+return
+;=============================================================================
+sub to_tree
+
+gosub use_runebook %tree_runebook . %book %method_of_travel %rune
+set %rune %3
+
+return
+;=============================================================================
+sub use_runebook
+
+;%1 - Runebook ID
+;%2 - Method used on book - Use runebook charge / Recall / Sacred Journey or Gate
+;%3 - Index number of rune to use
+
+;Useage - gosub use_runebook RUNEBOOKID METHOD RUNE#
+
+;-------------------------------------- ERROR CHECKS -------------------------------------------
+
+if %3 < 1 || %3 > 16
+{
+display OK Rune number outwith perameters.
+halt
+}
+finditem %1
+if #findkind = -1
+{
+display OK Specified Runebook not found, Check that the container is open.
+halt
+}
+set #lobjectid #findid
+set %methods RECALL_CHARGES_SACRED_JOURNEY_GATE_TRAVEL
+if %2 NOTIN %methods
+{
+display OK Method to travel not set correctly, please refer to documentation in the subroutine header.
+halt
+}
+set %charposx #charposx ; next 3 lines set current postion to check to see if you have recalled
+set %charposy #charposy
+set %charposz #charposz
+;------------------------------------------------------------------------------------------
+OPEN_RUNEBOOK:
+if #charposx <> %charposx || #charposy <> %charposy
+{
+return
+}
+set %error #scnt + 3
+event macro 17 0
+wait 5
+OPENING_RUNEBOOK:
+if #contsize <> 452_236
+{
+if #scnt > %error
+{
+goto open_runebook
+}
+goto opening_runebook
+}
+set %test_X 137 + #contposx ;X co-ord of pixel to colour check for page turns
+set %test_Y 31 + #contposy ;Y co-ord for above
+
+;------------------------------------------ SET CO-ORDS OF TAB FOR PAGE TO TURN TO --------------------------
+set %index_tab %3 * 10 / 2 ;Rune # * 2 / 3 gives the runebook page index tab
+str len %index_tab
+if #strres = 1
+{
+set %index_tab 1
+goto index_tab_set
+}
+str right %index_tab 1
+if #strres = 5
+{
+set %index_tab %index_tab / 10
+set %index_tab %index_tab + 1
+goto index_tab_set
+}
+if #strres = 0
+{
+set %index_tab %index_tab / 10
+goto index_tab_set
+}
+display OK Error proccessing Index tab, please check passed rune number.
+INDEX_TAB_SET:
+set %index_tab_offset 35 ;Pixels between page index tabs on the runebook GUMP
+set %index_tab_X %index_tab * %index_tab_offset ; Number of TAB offsets
+set %index_tab_offset 105 ;Pixels between GUMP edge and the first TAB
+set %index_tab_X %index_tab_X + %index_tab_offset ; Number of TAB offsets + distance from edge of GUMP
+if %index_tab > 4
+{
+set %index_tab_X %index_tab_X + 28 ;set for gap between page 1 and 2
+}
+set %index_tab_X %index_tab_X + #contposx ;Distance from edge of screen
+
+set %index_tab_Y 196 ;Y co-ord from TOP of GUMP
+set %index_tab_Y %index_tab_Y + #contposy ; Y co-ord from TOP of screen
+;----------------------------------- TURN TO PAGE -----------------------------------------------------------
+if CHARGE NOTIN %2
+{
+click %index_tab_X %index_tab_Y f
+wait 10
+set %page 1
+;------------------------SET IF THE JEWEL TO CLICK IS ON THE LEFT OR RIGHT PAGE --------
+set %jewel_offset_X 140 ; X CO-ORD OF JEWEL ON LEFT PAGE
+if %3 = 2 || %3 = 4 || %3 = 6 || %3 = 8 || %3 = 10 || %3 = 12 || %3 = 14 || %3 = 16
+{
+set %page 2
+set %jewel_offset_X 300 ; X CO-ORD OF JEWEL ON RIGHT PAGE
+}
+set %jewel_X %jewel_offset_X + #contposx
+}
+
+;-------------------------------------------------- SACRED JOURNEY ------------------------------------------
+if SACRED IN %2
+set %jewel_offset_Y 181
+;---------------------------------------------- GATE TRAVEL -----------------------------
+if GATE IN %2
+set %jewel_offset_Y 161
+;--------------------------------------------- RECALL --------------------------------------
+if RECALL IN %2
+set %jewel_offset_Y 141
+
+set %jewel_Y %jewel_offset_Y + #contposy ; Y CO-ORD OF JEWEL DEPENDING ON METHOD CHOSEN
+;----------------------------------------- RUNEBOOK CHARGES --------------------------------------
+if CHARGE IN %2
+{
+set %page 1
+set %jewel_offset_X 134
+set %jewel_offset_Y %jewel_offset_Y * %3
+if %3 > 8
+{
+set %page 2
+set %jewel_offset_X 294
+set %jewel_number %3 - 8
+set %jewel_offset_Y %jewel_offset_Y * %jewel_number
+}
+set %jewel_X %jewel_offset_X + #contposx
+set %jewel_offset_Y 15
+set %jewel_Y 55 + #contposy
+set %jewel_Y %jewel_Y + %jewel_offset_Y
+}
+
+click %jewel_X %jewel_Y f ; THIS CLICK ACTIVATES THE RUNE
+set %jindex #jindex
+set %error #scnt + 10
+RECALLING:
+if GATE IN %2
+{
+finditem OTF G_1
+if #findkind <> -1
+{
+return
+}
+}
+if #scnt > %error
+{
+goto open_runebook
+}
+for %line %jindex #jindex
+{
+scanjournal %line
+if FIZZLES IN #journal
+{
+goto open_runebook
+}
+if INSUFFICIENT IN #journal
+{
+goto open_runebook
+}
+if REAGENTS IN #journal
+{
+display ok Not enough reagents to travel, an LRC suit is required for this script to work properly.
+halt
+}
+if TITHING IN #journal
+{
+display OK You have run out of tithing points, you'd better get some more.
+halt
+}
+if BLOCKING IN #journal
+{
+set %3 %3 + 1
+if %3 > 16
+{
+set %3 1
+set %book %book + 1
+if %book > %number_of_tree_runebooks
+{
+set %book 1
+}
+set %1 %tree_runebook . %book
+}
+goto open_runebook
+}
+}
+if #charposx = %charposx && #charposy = %charposy
+{
+goto recalling
+}
+
+return
+;=============================================================================
+sub to_house
+
+gosub use_runebook %HOUSE_RUNEBOOK_ID %method_of_travel 1
+
+_pathfind:
+event pathfind %start_x %start_y %start_z
+wait 2s
+if #charposx <> %start_x
+goto _pathfind
+if #charposy <> %start_y
+goto _pathfind
+if #charposz <> %start_z
+goto _pathfind
+
+return
+;=============================================================================
+sub equip_axe
+
+finditem %axe C_ , %paperdoll
+if ! #findkind
+{
+AXE_EQUIPED:
+set %axe #findid
+set #ltargettile #tiletype
+set #ltargetkind 3
+set #ltargetx %x
+set #ltargety %y
+set #ltargetz #tilez
+set #lobjectid %axe
+return
+}
+finditem %axe C_ , %packid
+if #findkind = -1
+{
+display OK No axe found
+halt
+}
+set #lhandid #findid
+event macro 24 1
+goto axe_equiped
+
+return
+;================================================================================
+sub setup_secure
+
+event sysmessage Now click on the secure container
+wait 5
+set #targcurs 1
+SET_SECURE:
+if CLICK notin #sysmsg
+{
+event sysmessage Now click on the secure container
+wait 5
+}
+if #targcurs = 1
+goto set_secure
+set %secure #ltargetid
+set %securex #cursorx
+set %securey #cursory
+
+return
+;================================================================================
+sub setup_runebooks
+
+find_house_runebook:
+finditem ZBN C_ , %packid
+wait 1
+if #findkind = -1
+{
+event sysmessage auto find runebook failed, set runebook names as indicated in the Docs and restart.
+halt
+}
+event property #findid
+wait 1
+if HOUSE notin #property
+{
+if HOME notin #property
+{
+ignoreitem #findid house_runebooks
+goto find_house_runebook
+}
+}
+set %house_runebook_id #findid
+ignoreitem reset house_runebooks
+
+set %number_of_tree_runebooks 0
+find_tree_runebook:
+finditem ZBN C_ , %packid
+if #findkind = -1
+{
+if %number_of_tree_runebooks = 0
+{
+display OK Tree runebook not found, make sure that the book has the word 'TREE' in the title.
+halt
+}
+ignoreitem reset tree_runebooks
+return
+}
+event property #findid
+if TREE notin #property
+{
+ignoreitem #findid tree_runebooks
+goto find_tree_runebook
+}
+set %number_of_tree_runebooks %number_of_tree_runebooks + 1
+set %tree_runebook , %number_of_tree_runebooks #findid
+ignoreitem #findid tree_runebooks
+goto find_tree_runebook
+
+return
+;================================================================================
+sub setup
+
+set #lpc 100
+set %total_logs 0
+set %logs_in_pack 0
+set %logs ZLK_BWR_NWS_XWS_YWS_FXS
+set %chops 0
+set %recalls 0
+set %menu_set NO
+set %start_x #charposx
+set %start_y #charposy
+set %start_z #charposz
+
+set %book 1
+set %rune 1
+
+set %page1_x 140
+set %page2_x 299
+set %page_y 145
+
+set %rune_y 197
+set %rune1_2_x 138
+set %rune3_4_x 174
+set %rune5_6_x 210
+set %rune7_8_x 245
+set %rune9_10_x 312
+set %rune11_12_x 344
+set %rune13_14_x 380
+set %rune15_16_x 416
+
+set %runebooksize 452_236
+set %runebookkind KJCB
+set %runebook_test_colour_x 134
+set %runebook_test_colour_y 31
+set %runebook_test_colour 1052787
+
+event macro 31 0 ; CLOSES ALL GUMPS
+
+event macro 8 1
+wait_for_paperdoll_to_open:
+if #contname <> paperdoll_gump
+{
+goto wait_for_paperdoll_to_open
+}
+contpos 643 -193
+set %packx 781
+set %packy 30
+set %paperdoll #contid
+set %paperdollx 750
+set %paperdolly 64
+wait 15
+
+event macro 8 2
+wait_for_status_to_open
+if #contname <> status_gump
+{
+goto wait_for_status_to_open
+}
+contpos -24 493
+wait 15
+
+event macro 8 7
+wait_for_pack_to_open:
+if #contid <> #backpackid
+{
+goto wait_for_pack_to_open
+}
+set %packid #contid
+contpos 612 118
+wait 15
+
+return
+;==========================================================================

@@ -1,0 +1,1275 @@
+;======================================================
+; Script Name: Hosebomber's Spellweaving Trainer
+; Author: Hosebomber
+; Version: 1.3
+; Client Tested with: 5.0.1d
+; EUO version tested with: 1.5 (test ver 64)
+; Shard OSI / FS: OSI
+; Revision Date: 11-10-05
+; Public Release: 11-10-05
+; Global Variables Used: N/A
+; Purpose: Train the Spellweaving skill using the 8x8 method
+;          from 0 - 120 (skillcap)
+; Props to nilmer - used his "Everything property sub"
+; ======================================================
+; -------------------------Version History--------------
+; ======================================================
+; Version 1.0
+;			What it does:
+;				1. Trains Spellweaving using the approprate spell
+;						for your skill level.
+;				2. Auto sets user screen. (opens paperdoll, status bar, & backpack)
+;				3. Auto insures boat key if not already insured.
+;				4. Auto refreshes boat.
+;				5. Auto checks facet.
+;				6. Auto calculates LMC, LRC, and checks durability of armor.
+;				7. Auto adjust spell casting max level if you have eaten a 
+;						powerscroll.
+;				8. Auto halts script if you lose the ability to heal yourself.
+;				9. Auto halts script if you reach your skill cap.
+;			 10. Uses the most effective means to gain skill.
+;			 11. Auto unblocks the boat if you run into other boats.
+; Version 1.1
+;     Added Talisman to list of armor (for lmc check)
+;     Added Menu display.
+;     Added Fix for unblock during gain run.
+; Version 1.2
+;			Fixed a typo with the spelling of ginseng.
+;			Attempted fix at sticking in unguilding loop.
+; Version 1.21
+;			Fixed the typo in heal timer.
+;			Fixed the bandaid timer for times between *.1 and *.4 
+;			(caused to never heal with aids)
+; Version: 1.3
+;			Fixed the typo in %horse_types.
+;			Fixed issue with not being able to cast on horse.
+;			Fixed issue with getting stuck in boat key insure loop.
+;				This may have been something with them allowing to rename keys again.
+; ======================================================
+; ---------------------------Directions-----------------
+; ======================================================
+; Place yourself on a boat that is placed in the ocean, in a spot
+;		that you can sail around the world without hitting land.
+; Press Play.
+; Answer any questions the script may ask you.
+; You must have the spells Nature's Fury, Reaper Form, Summon Fey, 
+;		  Essence of Wind, Wild Fire, and Word of Death
+; ======================================================
+; ----------------- User Defined Variables -------------
+; ======================================================
+; Do you wish to use active meditation? (requires 60.0 Meditation skill)
+;    set this to #false if you do not wish to activly meditate.
+set %med #true
+;=======================================================
+;============= DO NO EDIT BELOW THIS LINE ==============
+;=======================================================
+gosub Get_PaperDoll_Placement
+gosub Set_variables
+gosub Set_skill_mod
+chooseskill spell real
+  set %start_skill #skill
+  set %current_skill #skill
+if #skill = #skillcap
+ {
+  display What are you playing with my emotions?$
+          +Your already at your skillcap.$
+          +Stop wasting my time playin silly games!$
+          +Go WoD someone you GIMP.$
+  Halt
+  }
+gosub SpellweavingMenu
+gosub Facet_check
+gosub Set_user_armor
+gosub Check_lmc
+gosub Set_heal_method
+gosub Check_boat_key
+gosub Refresh_and_move_boat
+
+
+Main_Loop:
+  gosub Pause_button
+	gosub Unblock
+	gosub set_spell
+	gosub required_mana
+	gosub cast
+	gosub heal
+	wait 5
+goto Main_Loop
+;===================================================
+sub heal
+check_health:
+wait 10
+if #hits = #maxhits
+	return
+if #hits < #maxhits
+	{
+	menu set update_status Healing....
+	if %spirit
+		{
+			event macro 13 32
+			wait %heal_delay
+			wait 10
+			goto check_health
+		}
+	if %chiv
+		{
+			if ! %100LRC
+			gosub check_tithe
+			event macro 15 202
+			target %heal_delay , s
+			event macro 23
+			wait 10
+			goto check_health
+		}
+	if %mage
+		{
+			if ! %100LRC
+			gosub check_regs
+			event macro 15 28
+			target %heal_delay , s
+			event macro 23
+			wait 10
+			goto check_health		
+		}
+	if %heal
+		{
+			gosub check_aids
+			set #lobjectid %aids
+			event macro 17
+			target 2s
+			event macro 23
+			wait %heal_delay
+			wait 10
+			goto check_health
+		}
+	}
+goto check_health
+;===================================================
+sub Unblock
+if %on_gain
+	return
+if %oldposy = #charposy
+	{
+    menu set update_status Unblocking boat....
+		event macro 3 0 back
+		wait 4s
+		event macro 3 0 left
+		wait 5s
+		event macro 3 0 forward
+		wait 6s
+		event macro 3 0 right
+		wait 5s
+		event macro 3 0 slow forward
+	}
+set %oldposy #charposy
+return
+;===================================================
+sub Set_heal_method
+menu set update_status Selecting heal method....
+chooseskill spir
+if #skill > 600
+	set %spirit #true
+chooseskill chiv
+if #skill > 600
+	{
+		set %chiv #true
+		gosub check_lrc
+		if ! %100LRC
+			gosub check_tithe
+	}
+chooseskill mage
+if #skill > 600
+	{
+		set %mage #true
+		gosub check_lrc
+		if ! %100LRC
+			gosub check_regs
+	}
+chooseskill heal
+if #skill > 600 2
+	set %heal #true
+	gosub check_aids
+if %heal = #true && %chiv = #true
+	{
+		display yesno You have Healing and Chivalry on this char.$
+									+Which would you like to use?$
+									+Click YES for Healing NO for Chivalry.
+		if #dispres = yes 2
+    	set %heal #true
+    	set %chiv #false
+    if #dispres = no 2
+    	set %heal #false
+    	set %chiv #true
+   }
+if %heal = #true && %mage = #true
+	{
+		display yesno You have Healing and Magery on this char.$
+									+Which would you like to use?$
+									+Click YES for Healing NO for Magery.
+		if #dispres = yes 2
+    	set %heal #true
+    	set %mage #false
+    if #dispres = no 2
+    	set %heal #false
+    	set %mage #true
+   }
+if %mage = #true && %chiv = #true
+	{
+		display yesno You have Magery and Chivalry on this char.$
+									+Which would you like to use?$
+									+Click YES for Magery NO for Chivalry.
+		if #dispres = yes 2
+    	set %mage #true
+    	set %chiv #false
+    if #dispres = no 2
+    	set %mage #false
+    	set %chiv #true
+   }
+if %heal = #true && %spirit = #true
+	{
+		display yesno You have Healing and Spirit Speak on this char.$
+									+Which would you like to use?$
+									+Click YES for Healing NO for Spirit Speak.
+		if #dispres = yes 2
+    	set %heal #true
+    	set %spirit #false
+    if #dispres = no 2
+    	set %heal #false
+    	set %spirit #true
+   }
+if %mage = #true && %spirit = #true
+	{
+		display yesno You have Magery and Spirit Speak on this char.$
+									+Which would you like to use?$
+									+Click YES for Magery NO for Spirit Speak.
+		if #dispres = yes 2
+    	set %mage #true
+    	set %spirit #false
+    if #dispres = no 2
+    	set %mage #false
+    	set %spirit #true
+   }
+if %spirit = #true && %chiv = #true
+	{
+		display yesno You have Spirit Speak and Chivalry on this char.$
+									+Which would you like to use?$
+									+Click YES for Spirit Speak NO for Chivalry.
+		if #dispres = yes 2
+    	set %mage #true
+    	set %chiv #false
+    if #dispres = no 2
+    	set %mage #false
+    	set %chiv #true
+   }
+if %spirit 2
+set %heal_method Spirit , #spc , Speak
+set %heal_delay 4
+if %chiv 2
+set %heal_method Chivalry
+set %heal_delay 3
+if %mage 2
+set %heal_method Magery
+set %heal_delay 4
+if %heal
+	{
+    set %heal_method Healing
+		set %temp ( 11 - ( #dex / 20 ) )
+		set %heal_delay %temp + 1
+	}
+if ( %chiv = #true || %mage = #true ) && %100lrc = #true
+  {
+ 	   menu Font Size 8
+	   menu Font Style b
+	   menu Font Color Silver
+	   menu Text lrc 160 40 User LRC:
+	   menu Text user_lrc 225 40 %user_lrc %
+  }
+chooseskill medi real
+if %med
+{
+ if #skill > 600
+   set %active_med #true
+ else
+   set %active_med #false
+}
+return
+;===================================================
+sub cast
+menu set update_status Casting %casting , #dot , ...
+NF_wait:
+if %spell = 606 && #followers = 5 2
+wait 5
+goto NF_wait
+finditem #charid
+if %spell = 607 && %char_type <> #findtype
+  gosub get_outta_form
+set %precast_mana #mana
+event macro 15 %spell
+if %spell = 614 || %spell = 610 || %spell = 606
+{
+if %spell = 610 || %spell = 606
+   {
+     set #ltargetkind 1
+     target %cast_delay , s
+     event macro 23
+     wait 5
+   }
+if %spell = 614 && %use_horse = #true
+   {
+		 set #ltargetid %user_horse
+		 target %cast_delay , s
+		 set #ltargetkind 1
+	   event macro 22
+	   wait 5
+   }
+if %spell = 614 && %fel = #true
+   {
+     set #ltargetkind 1
+     target %cast_delay , s
+     event macro 23
+     wait 5
+   }
+}
+else
+	wait %cast_delay , s
+set %cast_y #charposy
+gosub check_for_gain
+if %spell = 614 && %use_horse = #true
+	{
+		event macro 3 0 All Stop
+		wait 5
+		event macro 6 0
+		wait 5
+		event macro 3 0 All Stop
+		wait 5
+		event macro 6 0
+		wait 5
+		event macro 3 0 All guard me
+		wait 10
+		event macro 3 0 All Follow Me
+	}
+gosub check_mana_drop
+if %spell = 607
+		gosub release_pixie		
+return
+;===================================================
+sub check_mana_drop
+if #mana < %precast_mana
+	{
+		set %cycles %cycles + 1
+		set %cast #true
+		if %cast = #true && %on_gain = #true && %gain = #false
+		set %retry_cast %retry_cast + 1
+	if %retry_cast >= %maxtries && %spell <> 606
+		{
+			set %on_gain #false
+			event macro 3 0 Slow Forward
+			set %gains_this_line 0
+			menu set line_gaines %gains_this_line
+			set %retry_cast 0
+		}
+	if %retry_cast >= %maxtriesNF && %spell = 606
+		{
+			set %on_gain #false
+			event macro 3 0 Slow Forward
+			set %gains_this_line 0
+			menu set line_gaines %gains_this_line
+			set %retry_cast 0
+		}
+	}
+if #mana >= %precast_mana
+	set %cast #false
+if %cycles > 10 && %spell = 614
+	gosub check_durability
+	set %cycles 0		
+return
+;===================================================
+sub required_mana
+set %required_mana ( %mana_needed - ( %mana_needed * %user_lmc / 100 ) )
+waiting_for_mana:
+if #mana >= %required_mana
+return
+if #mana < %required_mana && %active_med = #true && %med_timer < #scnt
+	{
+    menu set update_status Meditating....
+		med:
+		event macro 13 46
+		set %med_timer #scnt + 12
+	}
+if #mana < %required_mana
+wait 2
+menu set update_status Waiting on Mana....
+goto waiting_for_mana
+;===================================================
+sub check_for_gain
+chooseskill spell real
+if #skill = #skillcap
+	{
+		event macro 3 0 Stop
+		set %current_skill #skill
+		menu set current %current_skill
+		wait 10
+		display You have reached your skill cap.$
+						+Now would be a great time to go$
+						+rate this script wouldn't it?
+						menu hide
+						halt
+	}
+if #skill > %current_skill
+{
+  if ! %on_gain
+		{
+		event macro 3 0 Stop
+		menu set update_status Found gain line.
+		set %current_skill #skill
+		menu set current %current_skill
+    set %gain #true
+		set %on_gain #true
+		set %gains_this_line 1
+		if %best_line = 0
+		set %best_line 1
+		set %total_lines %total_lines + 1
+		menu set line_gaines %gains_this_line
+		menu set total_lines %total_lines
+		wait 10
+		gosub forward_eight
+		set %retry_cast 0
+		}
+	else
+		{
+      set %current_skill #skill
+      menu set current %current_skill
+		  set %on_gain #true
+			set %current_skill #skill
+			set %gains_this_line %gains_this_line + 1
+			if %best_line < %gains_this_line
+			set %best_line %gains_this_line
+			menu set line_gaines %gains_this_line
+			wait 10
+			gosub forward_eight
+			set %retry_cast 0
+		}
+}
+menu set best_line %best_line
+if #skill = %current_skill
+set %gain #false
+return			  
+;===================================================
+sub forward_eight
+menu set update_status Moving forward eight tiles....
+set %move_here %cast_y %direction 8
+if %move_here < 14 && %facing = North
+	{
+		set %move_here 4084
+		for %i 1 8
+			{
+				event macro 3 0 forward one
+				wait 15
+			}
+	}
+if %move_here > 4083 && %facing = South
+	{
+		set %move_here 12
+		for %i 1 8
+			{
+				event macro 3 0 forward one
+				wait 15
+			}
+	}
+move_again:
+if #charposy = %move_here 2
+  set %failed_to_move 0
+	return
+if %facing = North
+	{
+		if #charposy > %move_here 2
+			event macro 3 0 forward one
+			wait 15
+		if #charposy < %move_here 2
+			event macro 3 0 back one
+			wait 15
+	}
+if %facing = South
+	{
+		if #charposy < %move_here 2
+			event macro 3 0 forward one
+			wait 15
+		if #charposy > %move_here 2
+			event macro 3 0 back one
+			wait 15
+	}
+if %wanna_move = #charposy
+set %failed_to_move %failed_to_move + 1
+if %failed_to_move >= 5
+	{
+		set %on_gain #false
+		menu set update_status Failed to make it to next resource square.
+		gosub Unblock
+		set %failed_to_move 0
+		return
+	}
+set %wanna_move #charposy
+goto move_again
+;===================================================
+sub release_pixie
+release_loop:
+finditem WH G_5
+if #findkind = -1
+return
+menu set update_status Releasing Pixie....
+wait 5
+gosub property #findid name summoned
+msg %return release$
+wait 25
+goto release_loop
+;===================================================
+sub set_spell
+chooseskill spell real
+if #skill < 1200 4
+  set %spell 614
+  set %cast_delay 5
+  set %mana_needed 50
+  set %casting Word , #spc , of , #spc , Death
+if #skill < ( 920 + %skill_mod ) 4
+  set %spell 610
+  set %cast_delay 4
+  set %mana_needed 50
+  set %casting Wild , #spc , Fire
+if #skill < ( 700 + %skill_mod ) 4
+  set %spell 611
+  set %cast_delay 3
+  set %mana_needed 40
+  set %casting Essence , #spc , of , #spc , Wind
+if #skill < ( 650 + %skill_mod ) 4
+  set %spell 607
+  set %cast_delay 2
+  set %mana_needed 10
+  set %casting Summon , #spc , Fey
+if #skill < ( 400 + %skill_mod ) 4
+  set %spell 609
+  set %cast_delay 3
+  set %mana_needed 34
+  set %casting Reaper , #spc , Form
+if #skill < ( 280 + %skill_mod ) 4
+  set %spell 606
+  set %cast_delay 3
+  set %mana_needed 24
+  set %casting Nature's , #spc , Fury
+return
+;===================================================
+sub check_tithe
+if #tp < 25
+gosub low_resource_display Tithing , #spc , points
+return
+;===================================================
+sub check_aids
+finditem %bandaids C_ , #backpackid
+if #findkind = -1
+	gosub low_resource_display Bandaids , #spc , in , #spc , your , #spc , backpack
+else	
+	set %aids #findid
+return
+;===================================================
+sub check_regs
+finditem %garlic C_ , #backpackid
+if #findkind = -1	
+	gosub low_resource_display Garlic , #spc , in , #spc , your , #spc , backpack
+finditem %root C_ , #backpackid
+if #findkind = -1
+	gosub low_resource_display Mandrake , #spc , Root , #spc , in , #spc , your , #spc , backpack
+finditem %ginseng C_ , #backpackid
+if #findkind = -1
+	gosub low_resource_display Ginseng , #spc , in , #spc , your , #spc , backpack
+finditem %silk C_ , #backpackid
+if #findkind = -1
+	gosub low_resource_display Spiders , #spc , Silk , #spc , in , #spc , your , #spc , backpack
+return
+;===================================================
+sub low_resource_display
+display yesno You are out of %1 , #dot , $
+							+Do you wish to continue?
+	if #dispres = yes
+		return
+  if #dispres = no 3
+    	event macro 3 0 Stop
+			menu hide
+    	halt
+;===================================================
+sub Set_skill_mod
+chooseskill spell
+set %start_skill #skill
+set %current_skill #skill
+set %skill_cap #skillcap
+if #skillcap = 1200
+	set %skill_mod 20
+if #skillcap = 1150
+	set %skill_mod 15
+if #skillcap = 1100
+	set %skill_mod 10
+if #skillcap = 1050
+	set %skill_mod 5
+return
+;===================================================
+sub Set_user_armor
+menu set update_status Defining user armor....
+finditem %ring_types C_ , #charid
+if #findkind = -1
+set %ring #false
+else
+{
+set %ring #true
+set %ringid #findid
+}
+finditem %braclet_types C_ , #charid
+if #findkind = -1
+set %braclet #false
+else
+{
+set %braclet #true
+set %bracletid #findid
+}
+finditem %talisman_types C_ , #charid
+if #findkind = -1
+set %talisman #false
+else
+{
+set %talisman #true
+set %talismanid #findid
+}
+finditem %hat_types C_ , #charid
+if #findkind = -1
+set %hat #false
+else
+{
+set %hat #true
+set %hatid #findid
+}
+finditem %gorget_types C_ , #charid
+if #findkind = -1
+set %gorget #false
+else
+{
+set %gorget #true
+set %gorgetid #findid
+}
+finditem %gloves_types C_ , #charid
+if #findkind = -1
+set %gloves #false
+else
+{
+set %gloves #true
+set %glovesid #findid
+}
+finditem %sleeves_types C_ , #charid
+if #findkind = -1
+set %sleeves #false
+else
+{
+set %sleeves #true
+set %sleevesid #findid
+}
+finditem %tunic_types C_ , #charid
+if #findkind = -1
+set %tunic #false
+else
+{
+set %tunic #true
+set %tunicid #findid
+}
+finditem %leggings_types C_ , #charid
+if #findkind = -1
+set %leggings #false
+else
+{
+set %leggings #true
+set %leggingsid #findid
+}
+finditem %spellbook_types C_ , #charid
+if #findkind = -1
+set %spellbook #false
+else
+{
+set %spellbook #true
+set %spellbookid #findid
+}
+return
+;===================================================
+sub Check_lmc
+menu set update_status Calculating Armor statistics for LMC....
+if %ring
+	gosub property %ringid yesno %lmc
+if %return = yes
+	{
+		gosub property %ringid number %lmc
+		set %mod_amount %mod_amount + %number1
+	}
+if %braclet
+	gosub property %bracletid yesno %lmc
+if %return = yes
+	{
+	gosub property %bracletid number %lmc
+	set %mod_amount %mod_amount + %number1
+	}
+if %talisman
+	gosub property %talismanid yesno %lmc
+if %return = yes
+	{
+	gosub property %talismanid number %lmc
+	set %mod_amount %mod_amount + %number1
+	}
+if %hat
+	gosub property %hatid yesno %lmc
+if %return = yes
+	{
+		gosub property %hatid number %lmc
+		set %mod_amount %mod_amount + %number1
+	}
+if %gorget
+	gosub property %gorgetid yesno %lmc
+if %return = yes
+	{
+		gosub property %gorgetid number %lmc
+		set %mod_amount %mod_amount + %number1
+	}
+if %gloves
+	gosub property %glovesid yesno %lmc
+if %return = yes
+	{
+		gosub property %glovesid number %lmc
+		set %mod_amount %mod_amount + %number1
+	}
+if %sleeves
+	gosub property %sleevesid yesno %lmc
+if %return = yes
+	{
+		gosub property %sleevesid number %lmc
+		set %mod_amount %mod_amount + %number1
+	}
+if %tunic
+	gosub property %tunicid yesno %lmc
+if %return = yes
+	{
+		gosub property %tunicid number %lmc
+		set %mod_amount %mod_amount + %number1
+	}
+if %leggings
+	gosub property %leggingsid yesno %lmc
+if %return = yes
+	{
+		gosub property %leggingsid number %lmc
+		set %mod_amount %mod_amount + %number1
+	}
+if %spellbook
+	gosub property %spellbookid yesno %lmc
+if %return = yes
+	{
+		gosub property %spellbookid number %lmc
+		set %mod_amount %mod_amount + %number1
+	}
+if %mod_amount > 40 2
+  set %true_lmc %mod_amount
+	set %user_lmc 40
+else
+ {
+	set %user_lmc %mod_amount
+  set %true_lmc %mod_amount
+ }
+menu set user_lmc %true_lmc %
+set %mod_amount 0
+return
+;===================================================
+sub check_lrc
+menu set update_status Calculating Armor statistics for LRC....
+if %ring
+	gosub property %ringid yesno %lrc
+if %return = yes
+	{
+		gosub property %ringid number %lrc
+		set %mod_amount %mod_amount + %number1
+	}
+if %braclet
+	gosub property %bracletid yesno %lrc
+if %return = yes
+	{
+		gosub property %bracletid number %lrc
+		set %mod_amount %mod_amount + %number1
+	}
+if %hat
+	gosub property %hatid yesno %lrc
+if %return = yes
+	{
+		gosub property %hatid number %lrc
+		set %mod_amount %mod_amount + %number1
+	}
+if %gorget
+	gosub property %gorgetid yesno %lrc
+if %return = yes
+	{
+		gosub property %gorgetid number %lrc
+		set %mod_amount %mod_amount + %number1
+	}
+if %gloves
+	gosub property %glovesid yesno %lrc
+if %return = yes
+	{
+		gosub property %glovesid number %lrc
+		set %mod_amount %mod_amount + %number1
+	}
+if %sleeves
+	gosub property %sleevesid yesno %lrc
+if %return = yes
+	{
+		gosub property %sleevesid number %lrc
+		set %mod_amount %mod_amount + %number1
+	}
+if %tunic
+	gosub property %tunicid yesno %lrc
+if %return = yes
+	{
+		gosub property %tunicid number %lrc
+		set %mod_amount %mod_amount + %number1
+	}
+if %leggings
+	gosub property %leggingsid yesno %lrc
+if %return = yes
+	{
+		gosub property %leggingsid number %lrc
+		set %mod_amount %mod_amount + %number1
+	}
+if %spellbook
+	gosub property %spellbookid yesno %lrc
+if %return = yes
+	{
+		gosub property %spellbookid number %lrc
+		set %mod_amount %mod_amount + %number1
+	}
+set %user_lrc %mod_amount
+if %user_lrc >= 100
+	set %100LRC #true
+if %user_lrc < 100
+	{
+		display yesno You are only %user_lrc percent LRC.$
+              +Do you still want to continue?
+              if #dispres = yes
+                 return
+              if #dispres = no 2
+              menu hide
+              Halt
+	}
+set %mod_amount 0
+return
+;===================================================
+sub check_durability
+menu set update_status Checking Armor Durability....
+if %hat
+   {
+     gosub property %hatid number durability
+     if %number1 = 0
+     gosub break_display
+   }
+if %gorget
+   {
+    gosub property %gorgetid yesno durability
+    if %return = yes
+       {
+        gosub property %gorgetid number durability
+        if %number1 = 0
+        gosub break_display
+       }
+   }
+if %gloves
+   {
+    gosub property %glovesid number durability
+    if %number1 = 0
+    gosub break_display
+   }
+if %sleeves
+   {
+    gosub property %sleevesid number durability
+    if %number1 = 0
+    gosub break_display
+   }
+if %tunic
+   {
+    gosub property %tunicid number durability
+    if %number1 = 0
+    gosub break_display
+   }
+if %leggings
+   {
+    gosub property %leggingsid number durability
+    if %number1 = 0
+    gosub break_display
+   }
+return
+;===================================================
+sub break_display
+display Your shits about to break.$
+        +Go fix it and restart the script.$
+        +Script Halting.
+Halt
+;===================================================
+sub Check_boat_key
+finditem %shipkey_types C_ , #backpackid
+if #findkind = -1
+   {
+   display There is no Ship Key in your backpack.$
+           +Please put your boat key in you main pack and restart.$
+           +Script Halting.
+   menu hide
+   halt
+   }
+check_insure:
+menu set update_status Insuring User boat key....
+finditem %shipkey_types C_ , #backpackid
+if #findkind = -1
+{
+ignoreitem reset
+return
+}
+set %your_boat_key #findid
+event property #findid
+if key in #property && insured in #property
+   {
+   ignoreitem #findid
+   goto check_insure
+   wait 5
+   }
+else
+   {
+   exevent popup #charid
+   wait 10
+   if #contsize = 234_168
+   	set %insurey 75
+   if #contsize = 234_150
+   	set %insurey 60
+   set %clickx #contposx + %insurex
+   set %clicky #contposy + %insurey
+   click %clickx %clicky
+   wait 5
+   set #ltargetid %your_boat_key
+   event macro 22
+   wait 10
+   key esc
+   wait 5
+   goto check_insure
+   }
+;===================================================
+sub Refresh_and_move_boat
+menu set update_status Refreshing boat and getting directional heading....
+finditem %plankNS_types G_8
+set #lobjectID #findid
+event macro 17 0
+wait 15
+raise_anchor:
+set %charposy #charposy
+event macro 3 0 raise anchor
+wait 10
+event macro 3 0 forward one
+wait 20
+event macro 3 0 slow forward
+if #charposy = %charposy
+goto raise_anchor
+if #charposy > %charposy 2
+set %direction +
+set %facing South
+if #charposy < %charposy 2
+set %direction -
+set %facing North
+return
+;===================================================
+sub Facet_check
+menu set update_status Checking user reputation and facet....
+if #curskind <> 0
+   {
+   set %use_horse #true
+   finditem %horse_types G_5
+   if #findkind = -1
+      {
+      display yesno You will need a tame horse to train past the skill of 92.$
+              +Do you wish to train to that level before stopping?$
+              +Click Yes to continue No to stop the script.$
+      if #dispres = yes
+       goto find_char_rep
+      if #dispres = no 2
+      menu hide
+      Halt
+      }
+   else
+   	{
+   		event macro 3 0 All guard me
+   		wait 10
+   		event macro 3 0 All follow me
+   		wait 10
+   		event macro 3 0 All guard me
+   		wait 10
+      set %user_horse #findid
+    }
+   }
+find_char_rep:
+finditem #charid
+if #findrep = 2
+{
+display yesno This script will be move effective for you$
+              +if you train unguilded.$
+              +Would you like to resign from your guild NOW?
+    if #dispres = yes 3
+       event macro 3 0 I resign from my guild.
+       wait 40
+       goto find_char_rep
+    if #dispres = no
+       {
+       set %use_horse #false
+       display yesno This script will damage your armor.$
+                     +Are you sure you want to continue in while guilded?
+                     if #dispres = yes 2
+                     set %fel #true
+                     return
+                     if #dispres = no 2
+                     menu hide
+                     Halt
+       }
+}
+if #curskind = 0 && #findrep <> 6
+{
+display yesno This script will be move effective for you$
+              +if you train in a facet with Trammel rulesets.$
+              +Would you still like to train in Felucca?
+    if #dispres = yes
+       {
+       display yesno This script will damage your armor.$
+                     +Are you sure you want to continue in Felucca?
+       if #dispres = yes 2
+       set %fel #true
+       return
+       if #dispres = no 2
+       menu hide
+       Halt
+       }
+    if #dispres = no 2
+    menu hide
+    Halt
+}
+if #findrep = 6
+{
+ display This script will damage your armor.$
+        +Consider this your only warning.
+ set %fel #true
+}
+return
+;===================================================
+; Script Name: Everything property sub
+; Author:  nilmer
+; Version: 2.2
+; Client Tested with:
+; EUO version tested with:
+; Shard OSI / FS: OSI
+; Revision Date:
+; Public Release:
+; Purpose: finds a name, number, percentage, or word in a objects
+; description using event property. Special thanks to CEO and Cheffe
+; For help and inspiration.
+;==================================
+; commandline: gosub property [#objectid] [name/yesno/number] ["word"]; commandline: gosub property [#objectid] [name/yesno/number] ["word"]
+sub property
+event property %1
+if %2 = name 9
+set %return #property
+str pos %return #spc
+if #strres = 1 2
+str del #property 1 1
+set %return #strres
+str pos %return #spc
+str del %return #strres 900
+set %return #strres
+return
+if %2 = yesno 5
+if %3 in #property
+set %return yes
+else
+set %return no
+return
+str pos #property %3
+str del #property 1 #strres
+set %return #strres
+str pos %return $
+if #strres > 1
+str del %return #strres 900
+set %return #strres
+str len %return
+set %strlen #strres
+set %number1 1
+str del %number1 1 1
+set %number1 #strres
+set %number2 1
+str del %number2 1 1
+set %number2 #strres
+set %numb 1
+for %i 1 %strlen
+{
+   str mid %return %i 1
+if ! ( #strres < 1 || #strres > 0 ) 3
+if %number1 > 0 2
+set %numb 2
+goto skip
+if ( #strres < 1 || #strres > 0 )
+set %number . %numb %number . %numb , #strres
+skip:
+}
+return
+;===================================================
+sub get_outta_form
+check_form:
+finditem #charid
+if %char_type = #findtype
+{
+	gosub set_spell
+	gosub required_mana
+	return
+}
+set %spell 609
+set %cast_delay 3
+set %mana_needed 34
+gosub required_mana
+menu set update_status Changing out of Reaper Form....
+event macro 15 %spell
+wait %cast_delay , s
+wait 15
+goto check_form
+;===================================================
+
+sub Get_PaperDoll_Placement
+GPDXY1:
+event macro 8 1
+wait 30
+if #contname <> paperdoll_gump
+  goto GPDXY1
+contpos 775 0
+wait %short_delay
+set %paperdollx #contposx
+set %paperdolly #contposy
+wait 20
+event macro 8 7
+wait 15
+contpos 775 350
+set %backpackid #BACKPACKID
+wait %short_delay
+wait 15
+event macro 8 2
+wait 15
+contpos 645 565
+finditem #charid
+set %char_type #findtype
+return
+;===================================================
+sub Set_variables
+set %ring_types UJG_LWL
+set %braclet_types IJG_CWL
+set %hat_types NJL_QJL_NZH_TDI_VVI_KZH_PZH_DZH_CZH_
+							 +HZH_GZH_BWI_WVI_XVI_YVI_IWI_HWI_KWI_
+							 +JWI_EWI_JJN_OZH_DZH_BZH_EZH_VSH_QSH_
+							 +VSH_NWL_GWO_CCP_IJQ_DSH_ASH_TSH_ESH_
+							 +YPH_GSH_OSH_ZPH_ZRH_IWL_CSH_CSH_BSH_
+							 +FSH_DPH_LKO_NWL_MKH_RBP_DCP_QWO_DWO_
+							 +SBP_VBP_FWO_RJQ_UJQ_TJQ_
+set %gorget_types JKH_RJG_SJG_FJG_MWL_SWO_BAS_NSH_
+									+ALH_PCP_QJQ_JJQ_
+set %gloves_types KKH_SKH_WTO_HKH_PKH_OCP_VPH_ISH_
+									+AQH_BMH_USH_XKH_FLH_KMH_RKO_NJQ_
+									+MJQ_
+set %sleeves_types HKH_PKH_OWO_MAS_CAS_BQH_JSH_XLH_
+									 +GLH_MSH_YLH_QPH_YKH_DLO_NWO_WBP_
+									 +PJQ_GJQ_
+set %tunic_types QKH_DLH_ATK_ZSK_OSK_NSK_RWO_NCP_ZZR_
+								 +HSH_ULH_LLH_ZOH_IKH_VLH_KSH_WLH_WPH_
+								 +PKO_PPH_RSK_USK_SSK_MSK_TSK_LSK_USK_
+								 +MWO_LWO_OJQ_ZIQ_
+set %leggings_types VKH_ELH_QSK_YSK_PSK_GCP_UBP_LCP_
+										+ECP_OAS_LAS_HMH_LSH_IMH_CQH_WSH_
+										+APH_MLH_RLH_NKH_XPH_NKO_FCP_TBP_
+										+ZBP_AKQ_LJQ_
+set %spellbook_types MPF
+set %talisman_types DWR_FWR_EWR_GWR
+set %shipkey_types SEG_REG_CFG_DFG
+set %plankNS_types GWX_DWX_ISX_HSX
+set %tillerman_types ENX_HNX_JNX_ONX
+set %insurex 40
+set %lmc Lower , #spc , Mana , #spc , Cost
+set %lrc Lower , #spc , Reagent , #spc , Cost
+set %mod_amount 0
+set %med_timer #scnt
+set %maxtries 3
+set %maxtriesNF 10
+set %bandaids ZLF
+set %garlic KZF
+set %ginseng JZF
+set %root MZF
+set %silk RZF
+set %horse_types OF_SF_MG_SG
+set %cycles 0
+set %on_gain #false
+set %failed_to_move 0
+set %user_lmc 0
+set %total_lines 0
+set %gains_this_line 0
+set %best_line 0
+set %true_lmc N/A
+return
+;===================================================
+sub Pause_button
+if #menubutton = pause
+{
+ event macro 3 0 Stop
+ menu set update_status Script paused by user.
+ menu set pause Resume
+ display OK You have paused the script.$
+        +To continue press the Resume button on the menu.$
+ set #menubutton N/A
+wait_for_unpause:
+if #menubutton <> pause 2
+  wait 5
+  goto wait_for_unpause
+set #menubutton N/A
+menu set pause Pause
+menu set update_status Resuming script....
+gosub Refresh_and_move_boat
+}
+return
+;===================================================
+sub SpellweavingMenu
+	menu Clear
+	menu Window Title Hosebomber's Spellweaving Ver 1.1
+	menu Window Color Black
+	menu Window Size 275 102
+	menu Font Transparent #true
+	menu Font Align Right
+	menu Font Name MS Sans Serif
+	menu Font Size 10
+	menu Font Style b
+	menu Font Color Lime
+	menu Font Align Left
+	menu Font BGColor None
+	menu Text status 10 5 Status:
+	menu Font Size 8
+	menu Font Style
+	menu Text update_status 60 7 Initializing....
+	menu Font Style b
+	menu Font Color Silver
+	menu Text start_skill 10 25 Start Skill:
+	menu Text current_skill 10 40 Current Skill:
+	menu Text best_gain 10 70 Best Gain Line:
+	menu Text total_gain 10 85 Total Gain Lines:
+	menu Text lmc 160 25 User LMC:
+	menu Text line_gain 10 55 Gains This Line:
+	menu Text start 110 25 %start_skill
+	menu Text current 110 40 %current_skill
+	menu Text line_gaines 110 55 %gains_this_line
+	menu Text best_line 110 70 %best_line
+	menu Text total_lines 110 85 %total_lines
+	menu Text user_lmc 225 25 %true_lmc
+	menu Font Size 10
+	menu Font Color Black
+	menu Font BGColor Green
+	menu Button pause 180 72 81 25 Pause
+	menu Show 650 25
+return
