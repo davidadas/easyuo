@@ -1,0 +1,320 @@
+;================================== 
+; Script Name: RoadkillsBladeSpiritArcher.txt 
+; Author: Roadkill
+; Version: 1.9
+; Client Tested with: 4.0.2a
+; EUO version tested with: build 0081
+; Shard OSI / FS: OSI
+; Revision Date: 10Aug04
+; Public Release: 15Apr03
+; Global Variables Used: none
+; Purpose: Work Archery from 80-120 (~60 with skill-jewelry) casting bladespirits
+;==================================
+;Version History at end with changelog
+;===INSTRUCTIONS=====
+; 1. Load repeating xbows (or bows) up in your mainpack with plenty
+;    of bolts (or arrows).  If you can get one with some poison damage, this will reduce
+;    the damage to the bladespirits.
+; 2. Load up mainpack with BladeSpirit regs, or scrolls if using them.
+; 3. Find a safe spot to stand and cast BladeSpirits nearby--I recommend casting across
+;    a small stream, OR be on your boat and cast to shore. 
+; 4. Script will keep you armed and cast BS when needed, and keep attacking BS 
+;    until out of arrows, and recast BS. 
+;    You can easily cast BladeSpirits (BS) with 31 magery with scrolls.
+;=== CONFIGURATION section==============
+SET %delay 10            ; increase if script too quick for your connect when casting
+;=====================================
+;=Main Program, don't edit below here
+;=====================================
+	set %version 1.9-10Aug04
+	set %bowtypes WOH_TOH_QPO_SPO_
+	set %rhandbowtypes WOH_TOH_JSF_USF_LMH_MMH_
+	set %lhandbowtypes QPO_SPO_PPO_RPO_
+	set %xbowtypes JSF_USF_LMH_MMH_PPO_RPO_
+INITEVENTS
+GOSUB Setup
+GOSUB GetBSCastSpot
+BS:
+	GOSUB BladeSpirit
+	if %useDivineFury && #tp > 10
+		gosub CastDivineFury
+	GOSUB WeaponReplacer %weaponid %weapontype weaponid
+	IF G NOTIN #CHARSTATUS
+		event macro 6
+	SET #LTARGETID %victim
+	EVENT MACRO 27
+	SET %noAmmoCnt 0
+RKBSALoop:
+	FINDITEM %victim
+	IF #FINDKIND = -1
+		GOTO BS
+	FINDITEM RWF_LNK C
+	IF #FINDKIND = 0
+		SET %noAmmoCnt 0
+	IF #FINDKIND = -1
+	{
+		SET %noAmmoCnt %noAmmoCnt + 1
+		wait 10
+		IF %noAmmoCnt >= 20
+			DISPLAY OK Cant find arrows and bolts in an open pack!$
+			+If you are out, pause script and reload. If you have some$
+			+left, try separating them into several piles!
+	}
+GOTO RKBSALoop
+
+;========================
+; SUBROUTINES============
+;========================
+SUB Setup
+;purpose: get the type for your weapons and your mainpack ID,
+;         get and give spell casting info, and check skill lock
+	event macro 8 7
+	WAIT 20
+	SET %mainpack #CONTID
+	display ok WELCOME to Roadkill's BladeSpirit Archer! 80-120 Archery$
+	+ I will auto get all your config info, because "Roadkill Rox!"$
+	+ Your backpack ID is %mainpack ,And you may now re-open any packs you want$
+	display yesno Do you want to use scrolls to cast your BS?$
+	SET %useScrollsForBS #FALSE
+	IF #DISPRES = yes
+		SET %useScrollsForBS #TRUE
+	IF ! %useScrollsForBS
+	{
+		chooseskill mage
+		IF #SKILL < 400 
+		{
+			DISPLAY OK You don't have the required magery skill (~40)$
+				+ You can buy 23 magery skill from any mage$
+				+ and use scrolls for 33% success (14 INT required).$
+			HALT
+		}
+		DISPLAY OK Here is your chance to cast BladeSpirits$
+			+ 40 magery = 5%$
+			+ 50 magery = 30%$
+			+ 60 magery = 55%$
+			+ 70 magery = 80%$
+			+ >= 78 magery = 100%$
+			
+	}
+	chooseskill arch
+	if #skill < 80
+	{
+		display ok Your archery skill is < 80, and bladespirits don't work$
+		+ until then.  Put on some jewelry to get above 80 first! Halt then$
+		+ restart script.		
+	}
+	IF #SKILLLOCK <> UP
+	{
+		DISPLAY OK It looks like your archery skill is NOT set to raise$
+			+ Please change it to UP then hit play
+		PAUSE
+	}
+	chooseskill chiv
+	set %useDivineFury #false
+	if #skill > 30
+	{
+		display yesno Your skill in chivalry is #skill .$  $
+		+Do you want to use divineFury to increase shotspeed?$
+		+(10tithingPts/15mana/25minChiv/75Chiv=100%success)
+		if #dispres = yes
+			set %useDivineFury #true
+	}
+_dragbow:
+	display ok Drag one of the weapons now and put it in your hand$
+     +  Even if it is already there, drag it OFF then back into hand.$
+     + NOTE--BladeSpirits are 100%poison-resist!--A poison-enhanced-repeatingXbow is best!$
+     +  you have 5 seconds$
+	WAIT 5s
+	SET %weaponid #LLIFTEDID
+	FINDITEM %weaponid
+	SET %weapontype #FINDTYPE
+		IF %weapontype notin %bowtypes , %xbowtypes
+		{
+			DISPLAY OK I didn't see a bow or Xbow, lets try again$
+			GOTO _dragbow
+		}
+	gosub CheckGuildStatus #false
+	if ! #result && #curskind <> 0
+	{
+		display ok You aren't showing cleanly guilded(You may be grey/orange/red)$
+		+--you must be in Fel to damage the blades. You SHOULD be guilded.$
+		+I'll keep running assuming you're NOT an idiot about this...don't$
+		+prove me wrong with some bogus "helppppp-Me" post!
+	}
+RETURN
+;=======================
+SUB GetBSCastSpot
+;ver 1.1 27May04
+;purpose: get the screen coords for the spot to cast BS
+DISPLAY OK Stand where you want to be to run script, $
+	+ then cast BladeSpirits where you want them.$
+	+ You must be within archery distance but safe.$
+	+ range:bows=10/xbows=8/repeatingXbow=7$
+	+ When you succeed, press ENTER$
+	CastSpotLoop:
+	ONHOTKEY ENTER
+		GOTO GetSpot
+	GOTO CastSpotLoop
+	GetSpot:
+	SET %CastSpotx #LTARGETX
+	SET %CastSpoty #LTARGETY
+	SET %CastSpotz #LTARGETZ
+	SET %Ltargetk #LTARGETKIND
+	SET %StandSpotx #CHARPOSX
+	SET %StandSpoty #CHARPOSY
+	set !castdist  
+	if  #ltargety - #charposy abs > !castdist
+	set !castdist #ltargety - #charposy abs
+	if !castdist > 7
+	display ok Your distance to the bladespirit is !castdist $
+	+ Remember your archery maxranges, and that repeatingXbow$
+	+ with range=7 shoots fastest for max gains!
+RETURN
+;======================
+SUB BladeSpirit 
+;ver 1.2 27May04 by Roadkill 
+;purpose: check for a bladespirit within 20 tiles, cast one if none there 
+;    using magery or scrolls as specified in config section. 
+CheckForBS: 
+	FINDITEM SY G_20
+	if #findkind = 1
+	{
+		SET %victim #FINDID 
+		RETURN
+	}
+	MOVE %StandSpotx %StandSpoty 0 2s
+	wait 1s
+	IF %useScrollsForBS 
+	{ 
+		FINDITEM VTL C 
+      		IF #FINDKIND = -1 
+      		{ 
+         		DISPLAY OK Can't find any Blade Spirit scrolls$ 
+           	 	+ in your open packs, go get some. Halting.$ 
+         		HALT 
+      		} 
+      		SET #LOBJECTID #FINDID 
+      		event macro 17 
+   	} 
+   	IF ! %useScrollsForBS
+      		event macro 15 32
+   	SET #LTARGETX %CastSpotx 
+   	SET #LTARGETY %CastSpoty 
+   	SET #LTARGETZ %CastSpotz 
+   	SET #LTARGETKIND %Ltargetk 
+   	target 9s 
+   	event macro 22 
+   	WAIT 30 
+GOTO CheckForBS 
+
+;========================
+;** 
+;* @Name: WeaponReplacer
+;* @ver	1.2 3Jan04
+;* @author  Roadkill 
+;* @purpose Checks for and keeps weapon in your hand, replace it from open pack if breaks
+;* @param   %1  weaponid  	req
+;*          %2  weapontype    	req
+;*	    %3  var holding ID  req
+;* @return  @%3 var may be changed, it is always assigned with new weapon
+;* @changes %weaponid may be modified when weapon is replaced, for legacy
+;* @example call rksubs.txt WeaponReplacer %weaponid %weapontype weaponid
+;* @status  tested
+SUB WeaponReplacer
+	SET !_weaponid %1
+	SET !_weapontype %2
+_WRCheckForInHand:	
+	FINDITEM !_weaponid C
+	if #findkind = 0 && #findbagid = #charid
+		return
+	IF #FINDKIND = 0
+	{
+		event macro 15 0
+		target
+		key esc
+		WAIT 5
+		GOTO _rearm
+		;this section casts bogus spell to empty hands to prep for rearm
+	}
+; weaponID not found, find a new weapon of %weapontype in any open pack,set to new ID
+	FINDITEM !_weapontype C
+	IF #FINDKIND = -1
+	{
+		display OK cant find any of your weapons, pausing$
+		pause
+		return
+	}
+	SET !_weaponid #FINDID
+	IF %0 >= 3
+		set % . %3 !_weaponid
+	else
+		set %weaponid #findid
+_rearm:
+	SET #LHANDID !_weaponid
+	SET #RHANDID !_weaponid
+	WAIT 5
+	event macro 24 2
+	WAIT 3s
+	event macro 24 1
+	WAIT 3s
+	goto _WRCheckForInHand
+;=====================================
+;** 
+;* @Name CheckGuildStatus
+;* checks your guild status and outputs message if required and you're not guilded
+;* @ver 1.0 1Apr04
+;* @author  Roadkill 
+;* @purpose checks your guild status and outputs message
+;* @param   %1  opt (default #true), #T/F, #true= you must be guilded
+;* @returns #result is #true/#false, #true if you are guilded
+;* @dependencies 
+;* @example call rksubs.txt CheckGuildStatus #true
+;* @changes #result
+;* @notes 
+;* @status
+sub CheckGuildStatus
+	set !mustbeGuilded %1
+	if %0 < 1 || %1 = n/a
+		set !mustbeGuilded #true
+	finditem #charid
+	set !guilded #findrep = 2
+	if !mustbeGuilded && ! !guilded
+	{
+		display OK You must be guilded for this script to work. Halting.
+		halt
+	}	
+return !guilded
+;=================
+sub CastDivineFury
+	wait 2s
+	event macro 15 205
+	wait 2s
+return
+;=====================================
+;Version History and Changes
+; 1.1 23 Apr 03 Fixed bugs on testing
+; 1.2 23 Apr 03 added xbows and bolts
+; 1.3 27 Apr 03 added repeating xbow, 3 sec arm time
+; 1.4 13 May 03 fixed bogus "no ammo" problem
+; 1.5 2 dec 03 modded bs spell delay to 9s
+; 1.6 27May04 -added guild status/felucca check with message
+;	-added check for archery < 80 with message to put on jewelry
+;	-replace WeaponReplacer sub with newer version, now it doesn't cast spell
+;		to disarm first, if it detects wpn in your hand.
+;	-added half second wait to no-ammo check, made it look 20 times/10sec
+;	-made script not halt, just "ok" upon no ammo, so you can pause/fix
+;	-added display note about separating ammo into piles if no-ammo problems
+;	-added option to use Divine fury, and also chiv skillcheck and tithing pts check
+;	-added all bows and xbows
+;	-fixed the initial arming check to include all bows/xbows
+;	-redid the checkForBS, added 1s delay to improve bs casting success (lag)
+;	-added info on bowranges
+;	-added check for distance in the sub to get your BS spot and warn you if too>
+;	-added display telling you poison-enhanced repeating xbow works best on Blades
+; 1.7 2Jun04 -fixed bug in sub name call (checkFORguildstatus instead of checkGuildStatus)
+; 1.8 7Jun04 -fixed #usedivinefure to % heh
+; 1.9 10Aug04 guild status <> from = typo bug fix
+;	-changed the guild/fel check to allow continue in case grey/orange/red nerfing it
+;========end or RoadkillsBladeSpiritArcher.txt=========
+
+

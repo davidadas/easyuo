@@ -1,0 +1,60 @@
+;==================================
+; Script Name: Arrow Grabber!
+; Author: Scriblit
+; Version: 1.2
+; Client Tested with: 4.0.8.0
+; EUO version tested with:  1.42.009b
+; Shard OSI / FS: UODEMISE
+; Revision Date:  1/2/09
+; Public Release:  10/29/04
+; Purpose: Arrow Grabber!
+; Copyright: Scriblit
+;==================================
+InitEvents
+;------------SETUP-------------
+Set %ammo RWF_LNK_
+Set %wait1 50
+set %backpackpos 143_223
+;------------------------------
+gosub showEUOMenu1
+gosub Mainloop
+
+Mainloop:
+set #FindMod  0_0
+FindItem %ammo G_2
+wait 10
+if #findKind = -1
+goto mainloop
+
+if #lliftedkind = 1
+goto mainloop
+
+event Drag #findid
+wait 10
+msg $
+set #findmod %backpackpos
+finditem #backpackid C
+click #findx #findy f
+
+goto mainloop:
+;--------- EasyUO Menu Designer Code Begin ---------
+sub showEUOMenu1
+	menu Clear
+	menu Window Title Scriblits Arrow Grabber
+	menu Window Color $00C08000
+	menu Window Size 334 164
+	menu Font Transparent #true
+	menu Font Align Right
+	menu Font Name MS Sans Serif
+	menu Font Size 8
+	menu Font Style
+	menu Font Color WindowText
+	menu Font Transparent #false
+	menu Font Align Left
+	menu Font BGColor $00C08000
+  menu Text EUOLabel0 31 21 Thank you For using my script please vote for it. [Version 1.2]
+  menu Text EUOLabel1 64 39 1/2/09 I will be adding a counter and satus animation.
+	menu Text EUOLabel2 104 96 Collecting Arrows And Bolts  \ / \ / \ / \ / \
+	menu Show 421 270
+goto Mainloop
+;--------- EasyUO Menu Designer Code

@@ -2,6 +2,11 @@
 Below are scripts archived from the EasyUO website. These are stored in the event that the website goes down and is not restored.
 
 ## Scripts
+
+### [Combat](https://github.com/davidadas/easyuo/tree/main/Combat) (6)
+* [Archery](https://github.com/davidadas/easyuo/tree/main/Combat/Archery) (2)
+* [Bushido](https://github.com/davidadas/easyuo/tree/main/Combat/Bushido) (4)
+
 ### [Resource Gathering](https://github.com/davidadas/easyuo/tree/main/Resource%20Gathering) (13)
 * [Lumberjacking](https://github.com/davidadas/easyuo/tree/main/Resource%20Gathering/Lumberjacking) (10)
 * [Mining](https://github.com/davidadas/easyuo/tree/main/Resource%20Gathering/Mining) (3)

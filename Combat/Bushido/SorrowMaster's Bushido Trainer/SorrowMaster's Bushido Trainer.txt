@@ -1,0 +1,240 @@
+;==================================
+; Script Name: SorrowMaster's Bushido Trainer
+; Author: SorrowMaster
+; Version: 1.0
+; Client Tested with: 4.0.6a
+; EUO version tested with: 1.42.009D
+; Shard OSI / FS: OSI
+; Revision Date:
+; Public Release: 11/04/04
+; Global Variables Used:
+; Purpose: Trains Bushido. Boat and 8x8.
+;==================================
+;
+;##################################
+;Instructions! Read before use!!###
+;##################################
+;
+;
+;Get on a boat and sail to the long serverline between
+;Skara and Moonglow. Turn your boat North. You should wear
+;an armor with a lot manareg (+2 items with crappy resists
+;are very cheap these days).
+;If there are ANY problems with the script, drop me a 
+;message at the proper thread, related to this script. Do
+;not PM me about this and please wait for a fix (which usually
+;comes fast when I get enough information) until you rate the
+;script.
+;Press play and enjoy. There is no fancy looking panel, no
+;statistics or other things. Just a fire and forget 8x8 macroer.
+;
+;There will be NO! version which uses the jewelery trick, since
+;the passive moves do not gain to your cap.
+;
+;Cap - Maximum of skill you can gain with this macroer
+;100 - 97.5
+;105 - 100
+;110 - 102.5
+;115 - 105
+;120 - 107.5
+;
+;
+;##################################
+
+event macro 3 0 raise anchor
+wait 30
+event macro 3 0 slow forward
+wait 3s
+
+init:
+
+set %8x8 #false
+set %disturbed #false
+set %checked #false
+set %lasty #false
+set %skill #false
+set %repeat #false
+
+loop:
+
+if %8x8
+gosub 8x8
+if %disturbed
+{
+set %8x8 #false
+gosub antiblock
+goto init
+}
+
+cast:
+
+if ! %8x8 && %checked
+{
+if %lasty = #CHARPOSY
+gosub antiblock
+set %checked #false
+}
+elseif ! %8x8 && ! %checked
+{
+set %lasty #CHARPOSY
+set %checked #true
+}
+
+
+
+gosub resetjournal
+gosub manacheck
+if ! #result
+{
+if ! %8x8
+event macro 3 0 stop
+goto manawait
+}
+
+chooseskill bush
+set %skill #SKILL
+
+if #SKILL >= 750
+{
+set %spell evasion
+set %string you_feel_that_you_might
+set %mana 10
+event macro 15 147
+}
+if #SKILL < 750 && #SKILL >= 600
+{
+set %spell counterattack
+set %string the_next_blocked
+set %mana 5
+event macro 15 148
+}
+if #SKILL < 600 && #SKILL >= 250
+{
+set %spell confidence
+set %string exude_confidence
+set %mana 10
+event macro 15 146
+}
+wait 18
+
+chooseskill bush
+if #SKILL > %skill && ! %8x8
+{
+event macro 3 0 stop
+set %8x8 #true
+}
+
+gosub FindJournalMessage %string
+if ! #result && %8x8
+{
+wait 3s
+goto cast
+}
+
+if #result && #SKILL = %skill && %8x8 && ! %repeat
+{
+set %repeat #true
+gosub repeat
+goto cast
+}
+
+if #result && #SKILL = %skill && %8x8 && %repeat
+{
+set %8x8 #false
+set %repeat #false
+event macro 3 0 slow forward
+wait 3s
+}
+
+wait 3s
+goto loop
+
+sub 8x8
+set %disturbed #false
+set %i 0
+
+sub:
+
+if %i = 1 || %i = 3 || %i = 5 || %i = 7 || %i = 9 
+set %lasty #CHARPOSY
+event macro 3 0 forward one
+wait 30
+if %i = 2 || %i = 4 || %i = 6 || %i = 8 || %i = 10 
+{
+if %lasty = #CHARPOSY
+set %disturbed #true
+}
+set %i %i + 1
+
+if ! %disturbed && %i <> 8
+goto sub
+
+wait 3s
+return
+
+;##############################
+;Begin of CEO's journal-subs###
+;##############################
+
+;###CEO's Journal Sub 1###
+sub FindJournalMessage
+set %jc 1 
+FJM1: 
+scanjournal %jc
+if #journal = N/A
+	return #false
+for %_i 1 %0
+{
+ 	if % . %_i in #journal
+	{
+		deletejournal
+		return #true
+	}
+}
+set %jc %jc + 1 
+goto FJM1
+
+;###CEO's Journalsub 2###
+sub resetjournal
+scanjournal 1
+deletejournal
+return
+
+;##############################
+;End of CEO's journal-subs#####
+;##############################
+
+sub manacheck
+if #MANA < %mana
+return #false
+return #true
+
+manawait:
+if #MANA < #MAXMANA
+goto manawait
+if ! %8x8
+event macro 3 0 slow forward
+goto cast
+
+sub antiblock
+	event macro 3 0 back
+	wait 5s
+	event macro 3 0 left
+	wait 5s
+	event macro 3 0 forward
+	wait 10s
+	event macro 3 0 right
+	wait 5s
+	event macro 3 0 slow forward
+return
+
+sub repeat
+	event macro 3 0 back one
+	wait 30
+	event macro 3 0 back one
+	wait 30
+	event macro 3 0 back one
+	wait 30
+	event macro 3 0 back one
+	wait 30
+return

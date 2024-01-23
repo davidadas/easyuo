@@ -1,0 +1,722 @@
+;================================== 
+; Script Name:   Archangel's Bushido Trainer 
+; Author: sgazaway 
+; Version: 2.05
+; Client Tested with: 4.0.5b 
+; EUO version tested with: 1.42.009C
+; Shard OSI / FS: OSI 
+; Revision Date: 12/05/2004 
+; Public Release: 11/13/2004 
+; Global Variables Used: 
+; Purpose: Train Bushido from 20 to 120
+;================================== 
+; 
+;**************************************************************************************************************** 
+; 
+; Items required 
+; 
+; 1. Boat 
+; 2. Bushido book 
+; 3. At least 25 in Bushido
+; 4. A pet that you own. Horses are the best since you can recall to the boat with them. (once you reach 97.5*) 
+; 5. A weapon you have skill using (once you hit 97.5*) 
+; 
+; * Depends on Skill Cap
+; 
+; Instructions 
+; Get on a boat in 8x8 allie (east of Moonglow) 
+; Start the script, sit back and relax and watch your Bushido skill go up. 
+; 
+; Version Info 
+; 
+; v2.05
+;    Removed the option of using jewlery for the trick as it does not work with Bushido
+;    Removed the pet check so you can use any pet you want
+;    Modified the script to detect what your Skill Cap is and cast Evasion up to the maximum you can. Then it will start casting Lightning Strike.
+;            if you have 100 skill cap, it will do evasion to 97.5
+;            if you have 105 skill cap, it will do evasion to 100.0
+;            if you have 110 skill cap, it will do evasion to 102.5
+;            if you have 115 skill cap, it will do evasion to 105.0
+;            if you have 120 skill cap, it will do evasion to 107.5
+;
+; v2.04
+;    Undocumented changes
+;
+; v2.03
+;    Modified code to cast correct spells when using jewlery
+;
+; v2.02
+;   Fixed code for using jewlery
+;
+; v2.01
+;   Tweaked code to catch gains sooner
+;
+; v2.00
+;   Converted code to use EUO Bushido variables
+;
+; v1.02
+;   Added the ability to train to 120 using a horse from 97
+;
+; v1.01
+;   Made the code to detect a gain a little bit more reliably until I have teh exact messages of a successful cast.
+;
+; v1.00 
+;   Initial Release 
+; 
+;**************************************************************************************************************** 
+; USER CONFIGURED VARIABLES 
+; 
+set %debug #FALSE ; #TRUE/#FALSE - Set this to #TRUE to not hide the EasyUO main screen (used for debugging mainly) 
+set %bushidoBookType QON ; Bushido book type 
+set %shortWait 20
+set %longWait 40
+;
+;**************************************************************************************************************** 
+;*********************** DO NOT EDIT THE SCRIPT BELOW !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! *************************** 
+;**************************************************************************************************************** 
+
+InitEvents
+if %debug = 0
+{
+  menu HideEUO
+}
+gosub showSetup
+gosub startupMenu
+chooseskill bush
+wait %shortWait
+set %currentSkill #SKILL
+checkMana1:
+IF #MANA = N/A
+{
+   event macro 8 2
+   goto checkMana1
+}
+set %serverLine 0
+gosub showRunning
+finditem %bushidoBookType C_ , #BACKPACKID
+if #FINDKIND = -1
+{
+   event macro 8 7
+   wait %shortWait
+   finditem %bushidoBookType C_ , #BACKPACKID
+   if #FINDKIND = -1
+   {
+     display Ok You must have a Bushido book in your backpack to train Bushido! Go kill a ronan!
+     menu hide
+     stop
+   }
+}
+set %bushidoBook #FINDID
+if %currentSkill < 250
+{
+  display Ok You must have at least 25.0 in Bushido before you can train it. Find a samurai in Zento!
+  menu hide
+  stop
+}
+if %sailDirection = North
+{
+   gosub FaceBoatNorth
+}
+else
+{
+   gosub faceBoatSouth
+}
+event macro 3 0 Slow Forward
+useSkill:
+set %workingGain 0
+set %stopped #CHARPOSY
+gosub IsBoatStopped
+if %boatStopped = 1
+{
+  gosub FixBoatStopped
+}
+skillGain:
+set %stopped #CHARPOSY
+set %fizzled 0
+if %currentSkill = #SKILLCAP
+{
+  event macro 3 0 Stop
+  wait %shortWait
+  event macro 3 0 Drop Anchor
+  menu hide
+  display Ok You have reached your skill cap in Bushido!
+  stop
+}
+if #MENUBUTTON = Stop
+{
+  set #MENUBUTTON N/A
+  event macro 3 0 Stop
+  wait %shortWait
+  event macro 3 0 Drop Anchor
+  menu hide
+  stop
+}
+set %scanStart ( #JINDEX + 1 )
+if %currentSkill > 249 && %currentSkill < 600
+{
+  gosub confidence
+}
+if %currentSkill > 599 && %currentSkill < 750
+{
+  gosub counterAttack
+}
+if %currentSkill > 749 && %currentSkill < 975
+{
+  gosub evasion
+}
+if %currentSkill > 974
+{
+  if #SKILLCAP = 1050 && %currentSkill < 1000
+  {
+    gosub evasion
+    goto skipLightningStrike
+  }
+  if #SKILLCAP = 1100 && %currentSkill < 1025
+  {
+    gosub evasion
+    goto skipLightningStrike
+  }
+  if #SKILLCAP = 1150 && %currentSkill < 1050
+  {
+    gosub evasion
+    goto skipLightningStrike
+  }
+  if #SKILLCAP = 1200 && %currentSkill < 1075
+  {
+    gosub evasion
+    goto skipLightningStrike
+  }
+  gosub lightningStrike
+  skipLightningStrike:
+}
+wait %shortWait
+if #SKILL > %currentSkill
+{
+   if #CHARPOSY <> %stopped
+   {
+      event macro 3 0 Stop
+      set %stopped #CHARPOSY
+   }
+}
+for %journalLine %scanStart #JINDEX
+{
+  scanJournal %journalLine
+  if %currentSkill > 249 && %currentSkill < 600
+  {
+    if YOU_EXUDE_CONFIDENCE. in #JOURNAL
+    {
+      set %fizzled 0
+      goto successCast
+    }
+    else
+    {
+      set %fizzled 1
+    }
+  }
+  if %currentSkill > 599 && %currentSkill < 750
+  {
+    if YOU_PREPARE_TO_RESPOND_IMMEDIATELY_TO_THE_NEXT_BLOCKED_BLOW. in #JOURNAL
+    {
+      set %fizzled 0
+      goto successCast
+    }
+    else
+    {
+      set %fizzled 1
+    }
+  }
+   if %currentSkill > 749 && %currentSkill < 975
+  {
+    if YOU_FEEL_THAT_YOU_MIGHT_BE_ABLE_TO_DEFLECT_ANY_ATTACK! in #JOURNAL
+    {
+      set %fizzled 0
+      goto successCast
+    }
+    else
+    {
+      set %fizzled 1
+    }
+  }
+  if %currentSkill > 974
+  {
+    if #SKILLCAP = 1050 && %currentSkill < 1000
+    {
+      if YOU_FEEL_THAT_YOU_MIGHT_BE_ABLE_TO_DEFLECT_ANY_ATTACK! in #JOURNAL
+      {
+        set %fizzled 0
+        goto successCast
+      }
+      else
+      {
+        set %fizzled 1
+      }
+      goto skipLightningFizzle
+    }
+    if #SKILLCAP = 1100 && %currentSkill < 1025
+    {
+      if YOU_FEEL_THAT_YOU_MIGHT_BE_ABLE_TO_DEFLECT_ANY_ATTACK! in #JOURNAL
+      {
+        set %fizzled 0
+        goto successCast
+      }
+      else
+      {
+        set %fizzled 1
+      }
+      goto skipLightningFizzle
+    }
+    if #SKILLCAP = 1150 && %currentSkill < 1050
+    {
+      if YOU_FEEL_THAT_YOU_MIGHT_BE_ABLE_TO_DEFLECT_ANY_ATTACK! in #JOURNAL
+      {
+        set %fizzled 0
+        goto successCast
+      }
+      else
+      {
+        set %fizzled 1
+      }
+      goto skipLightningFizzle
+    }
+    if #SKILLCAP = 1200 && %currentSkill < 1075
+    {
+      if YOU_FEEL_THAT_YOU_MIGHT_BE_ABLE_TO_DEFLECT_ANY_ATTACK! in #JOURNAL
+      {
+        set %fizzled 0
+        goto successCast
+      }
+      else
+      {
+        set %fizzled 1
+      }
+      goto skipLightningFizzle
+    }
+    if YOU_ATTACK_WITH_LIGHTNING_PRECISION! in #JOURNAL
+    {
+      set %fizzled 0
+      goto successCast
+    }
+    else
+    {
+      set %fizzled 1
+    }
+    skipLightningFizzle:
+  }
+}
+successCast:
+gosub skillGainCheck
+if %workingGain = 1
+{
+  goto skillGain
+}
+
+goto useSkill
+;**************************************************************************************************************** 
+
+sub skillGainCheck
+
+if %fizzled = 1 && %workingGain = 1
+{
+  goto fizzledSkillCheck
+}
+else
+{
+  set %workingGain 0
+}
+if #SKILL > %currentSkill
+{
+   set %currentSkill #SKILL
+   set %workingGain 1
+   if #CHARPOSY <> %stopped
+   {
+      event macro 3 0 Stop
+   }
+   menu Set bushidoSkill %currentSkill
+   set %stopped #CHARPOSY
+   wait %shortWait
+   event macro 3 0 Forward One
+   wait 30
+   if #CHARPOSY <> %stopped
+   {
+      for %loop 1 7
+      {
+         event macro 3 0 Forward One
+         wait 30
+      }
+   }
+   wait %shortWait
+}
+fizzledSkillCheck:
+wait %shortWait
+
+return
+;**************************************************************************************************************** 
+
+sub FaceBoatNorth
+
+set %tempX #charposX
+set %tempY #charposY
+
+event macro 3 0 Raise Anchor
+wait %shortWait
+event macro 3 0 Forward One
+wait %longWait
+if #CHARPOSY <> %tempY
+{
+  if #CHARPOSY <> %tempY - 1
+  {
+    if #charposY = %tempY + 1
+    {
+      event macro 3 0 Come About
+      wait %longWait
+      return
+    }
+    if #charposx = %tempX + 1
+    {
+      event macro 3 0 Turn Left
+      wait %longWait
+      return
+    }
+    if #charposx = %tempX - 1
+    {
+      event macro 3 0 Turn Right
+      wait %longWait
+      return
+    }
+  }
+}
+if #CHARPOSY = %tempY
+{
+  event macro 3 0 Back One
+  wait %longWait
+  if #charposY <> %tempY + 1
+  {
+    if #charposY = %tempY - 1
+    {
+      event macro 3 0 Come About
+      wait %longWait
+      return
+    }
+    if #charposx = %tempX - 1
+    {
+      event macro 3 0 Turn Left
+      wait %longWait
+      return
+    }
+    if #charposx = %tempX + 1
+    {
+      event macro 3 0 Turn Right
+      wait %longWait
+      return
+    }
+  }
+}
+
+return
+;**************************************************************************************************************** 
+
+sub FaceBoatSouth
+
+set %tempX #charposX
+set %tempY #charposY
+
+event macro 3 0 Raise Anchor
+wait %shortWait
+event macro 3 0 Forward One
+wait %longWait
+if #CHARPOSY <> %tempY
+{
+  if #CHARPOSY <> %tempY + 1
+  {
+    if #charposY = %tempY - 1
+    {
+      event macro 3 0 Come About
+      wait %longWait
+      return
+    }
+    if #charposx = %tempX - 1
+    {
+      event macro 3 0 Turn Left
+      wait %longWait
+      return
+    }
+    if #charposx = %tempX + 1
+    {
+      event macro 3 0 Turn Right
+      wait %longWait
+      return
+    }
+  }
+}
+if #CHARPOSY = %tempY
+{
+  event macro 3 0 Back One
+  wait %longWait
+  if #charposY <> %tempY - 1
+  {
+    if #charposY = %tempY + 1
+    {
+      event macro 3 0 Come About
+      wait %longWait
+      return
+    }
+    if #charposx = %tempX + 1
+    {
+      event macro 3 0 Turn Left
+      wait %longWait
+      return
+    }
+    if #charposx = %tempX - 1
+    {
+      event macro 3 0 Turn Right
+      wait %longWait
+      return
+    }
+  }
+}
+
+return
+;**************************************************************************************************************** 
+
+sub IsBoatStopped
+
+wait %longWait
+if #CHARPOSY = %stopped
+{
+  set %scanStart ( #JINDEX + 1 )
+  event macro 3 0 Slow Forward
+  wait %longWait
+  if #CHARPOSY = %stopped
+  {
+    set %boatStopped 1
+    for %journalLine %scanStart #JINDEX
+    {
+      scanJournal %journalLine
+      if DID_I_EVER_TELL_THEE in #journal
+      {
+        set %serverLine 1
+      }
+    }
+  }
+}
+
+return
+;**************************************************************************************************************** 
+
+sub FixBoatStopped
+
+if %serverLine = 1
+{
+  if %crossServerLine = -1
+  {
+    if %goLeft = 1
+    {
+      event macro 3 0 Left
+    }
+    else
+    {
+      event macro 3 0 Right
+    }
+    wait 120
+    event macro 3 0 Stop
+  }
+}
+if %serverLine = 0
+{
+  if %boatStopped = 1
+  {
+    event macro 3 0 Back
+    wait 180
+    if %goLeft = 1
+    {
+      event macro 3 0 Left
+    }
+    else
+    {
+      event macro 3 0 Right
+    }
+    wait 240
+    event macro 3 0 Slow Forward
+    wait 550
+    if %goLeft = 1
+    {
+      event macro 3 0 Right
+    }
+    else
+    {
+      event macro 3 0 Left
+    }
+    wait 240
+    event macro 3 0 Stop
+  }
+}
+if %goLeft = 1
+{
+  set %goLeft 0
+}
+else
+{
+  set %goLeft 1
+}
+set %serverLine 0
+set %boatStopped 0
+event macro 3 0 Slow Forward
+
+return
+;**************************************************************************************************************** 
+
+sub confidence
+
+manaWaitConfidence:
+IF #MANA = N/A
+{
+   event macro 8 2
+   wait %shortWait
+}
+if #MANA < 10
+{
+  goto manaWaitConfidence
+}
+event macro 15 146
+wait %shortWait
+
+return
+;**************************************************************************************************************** 
+
+sub counterAttack
+
+manaWaitCounter:
+IF #MANA = N/A
+{
+   event macro 8 2
+   wait %shortWait
+}
+if #MANA < 5
+{
+  goto manaWaitCounter
+}
+event macro 15 148
+wait %shortWait
+
+return
+;**************************************************************************************************************** 
+
+sub evasion
+
+manaWaitEvasion:
+IF #MANA = N/A
+{
+   event macro 8 2
+   wait %shortWait
+}
+if #MANA < 10
+{
+  goto manaWaitEvasion
+}
+event macro 15 147
+wait %shortWait
+
+return
+;**************************************************************************************************************** 
+
+sub lightningStrike
+
+manaWaitlightningStrike:
+IF #MANA = N/A
+{
+   event macro 8 2
+   wait %shortWait
+}
+if #MANA < 10
+{
+  goto manaWaitlightningStrike
+}
+event macro 15 149
+wait %shortWait
+event macro 3 0 All Kill
+target
+event macro 23 0
+
+return
+;**************************************************************************************************************** 
+
+sub showRunning
+	menu Clear
+	menu Window Title Bushido Trainer
+	menu Window Color Black
+	menu Window Size 146 85
+	menu Font Transparent #true
+	menu Font Align Right
+	menu Font Name MS Sans Serif
+	menu Font Size 8
+	menu Font Style
+	menu Font Color Green
+	menu Font Align Left
+	menu Font BGColor Black
+	menu Text EUOLabel1 4 6 Bushido
+	menu Text EUOLabel2 4 22 Sailing
+	menu Font Align Right
+	menu Text bushidoSkill 142 6 %currentSkill
+	menu Text EUOLabel3 142 22 %sailDirection
+	menu Font Color WindowText
+	menu Font BGColor BtnFace
+	menu Button Stop 40 50 75 25 Stop
+	menu Show
+return
+;**************************************************************************************************************** 
+
+sub startupMenu
+
+waitForStart:
+if #MENUBUTTON <> Start
+{
+  goto waitForStart
+}
+event sysMessage Loading...
+set #MENUBUTTON N/A
+menu get sailDirection
+wait %shortWait
+if #MENURES = 0
+{
+	display Ok You must choose a sail direction!
+	goto waitForStart
+}
+if #MENURES = 1
+{
+	set %sailDirection North
+}
+if #MENURES = 2
+{
+	set %sailDirection South
+}
+menu get crossServerLines
+wait %shortWait
+set %crossServerLine #MENURES
+
+return
+;**************************************************************************************************************** 
+
+sub showSetup
+	menu Clear
+	menu Window Title Bushido Training
+	menu Window Color BtnFace
+	menu Window Size 150 158
+	menu Font Transparent #true
+	menu Font Align Right
+	menu Font Name MS Sans Serif
+	menu Font Size 8
+	menu Font Style
+	menu Font Color WindowText
+	menu Font Transparent #false
+	menu Font Align Left
+	menu Text EUOLabel3 6 84 Sail in which
+	menu Text EUOLabel4 12 98 direction?
+	menu Font BGColor BtnFace
+	menu Button Start 36 124 75 25 OK
+	menu Check crossServerLines 8 40 135 17 #true Can cross server lines
+	menu Font BGColor Window
+	menu Combo Create sailDirection 68 86 75
+	menu Combo Add sailDirection North
+	menu Combo Add sailDirection South
+	menu Show
+return
