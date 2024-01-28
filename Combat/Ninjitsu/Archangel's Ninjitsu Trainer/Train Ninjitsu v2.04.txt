@@ -1,0 +1,736 @@
+;================================== 
+; Script Name:   Archangel's Ninjitsu Trainer 
+; Author: sgazaway 
+; Version: 2.04
+; Client Tested with: 4.0.5b 
+; EUO version tested with: 1.42.009C
+; Shard OSI / FS: OSI 
+; Revision Date: 11/27/2004 
+; Public Release: 11/09/2004 
+; Global Variables Used: 
+; Purpose: Train Ninjitsu from 20 to 120 
+;================================== 
+; 
+;**************************************************************************************************************** 
+; 
+; Items required 
+; 
+; 1. Boat 
+; 2. Ninjitsu book 
+; 3. At least 20 in Ninjitsu 
+; 4. A Normal white, dark brown and light brown horses ONLY!!! (once you reach 70) 
+; 5. A weapon (once you hit 70) 
+; 6. Jewlery (optional but makes it easier) 
+; 
+; 
+; Instructions 
+; Get on a boat in 8x8 allie (east of Moonglow) 
+; Be sure to have a weapon equiped at least by time you hit 70 
+; Start the script, sit back, relax and watch your Ninjitsu skill go up. 
+; 
+; Version Info 
+; 
+; v2.04
+;    Modified code to cast the right spell when using jewlery
+;
+; v2.03
+;   Modified code to catch gain spot sooner
+;   Fixed code to check 3 times for horse nearby before saying it was not near
+;
+; v2.02
+;   Fixed using jewlery
+;
+; v2.01
+;   Removed a pause left over after debugging
+;
+; v2.00
+;   Converted code to use the EUO variables for Ninjitsu
+;
+; v1.09
+;   Fixed code for variables that were either #TRUE or #FALSE
+;   Adjusted check for horse for server line. Made it check for a horse nearby 3 times before saying there was none.
+;
+; v1.08
+;   Added the ability to choose trolling direction, North or South
+;
+; v1.07
+;   Added code to check if the statusbar is opened, if not then it will open it (used to determine current mana (Thanks CEO)
+;
+; v1.06
+;   Added code to check if you are in animal form when starting to cast Force Attack or Death Strike
+; 
+; v1.05 
+;   Added code to fix itself if you enter a period when entering skill at teh beginning 
+; 
+; v1.04 
+;   Changed from casting Ki Attack at 90 to casting Death Strike since everyone else does... 
+;   Replaced all of the deleteJournals with #JINDEX 
+;   Added code to determine if you "fizzle" with Focused Attack and Death Strike 
+;   Added code to check if you have a horse near you once you hit 70 
+; 
+; v1.03 
+;   Adjusted the deleteJournal entries to make the the script more reliable at catching the skill gains 
+; 
+; v1.02 
+;   Cleaned up some tabs that broke the code at the beginning 
+; 
+; v1.01 
+;   Reworked some code to better track skill gains until EUO supports Ninjitsu 
+;   Added code for when EUO supports Ninjitsu 
+;   Tweaked code to update menu with current skill more accurently 
+; 
+; v1.00 
+;   Initial Release 
+; 
+;**************************************************************************************************************** 
+; USER CONFIGURED VARIABLES 
+; 
+set %debug #FALSE ; #TRUE/#FALSE - Set this to #TRUE to not hide the EasyUO main screen (used for debugging mainly) 
+set %ninjitsuBookType SPN ; Ninjitsu book type 
+set %petType OF_SG_SF_MG ; Horse Types for the normal white, dark brown and light brown horses ONLY!!! 
+set %shortWait 20
+set %longWait 40
+;
+;**************************************************************************************************************** 
+;*********************** DO NOT EDIT THE SCRIPT BELOW !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! *************************** 
+;**************************************************************************************************************** 
+
+InitEvents
+if %debug = 0
+{
+  menu HideEUO
+}
+gosub showSetup
+gosub startupMenu
+if %useJewlery = -1
+{
+  chooseSkill ninj
+  wait %shortWait
+  set %trainSkill #SKILL
+  chooseSkill ninj real
+  wait %shortWait
+}
+else
+{
+  chooseskill ninj
+  wait %shortWait
+  set %trainSkill #SKILL
+}
+set %currentSkill #SKILL
+set %maxSkill #SKILLCAP
+IF #MANA = N/A
+{
+   event macro 8 2
+   wait %shortWait
+}
+set %serverLine 0
+gosub showRunning
+finditem %ninjitsuBookType C_ , #BACKPACKID
+if #FINDKIND = -1
+{
+  display Ok You must have a Ninjitsu book in your backpack to train Ninjitsu! Go kill an elite ninja!
+  menu hide
+  stop
+}
+if %trainSkill < 200
+{
+  display Ok You must have at least 20.0 in Ninjitsu before you can train it. Find a ninja in Zento!
+  menu hide
+  stop
+}
+set %ninjitsuBook #FINDID
+if %sailDirection = North
+{
+   gosub FaceBoatNorth
+}
+else
+{
+   gosub faceBoatSouth
+}
+event macro 3 0 Slow Forward
+
+useSkill:
+set %workingGain 0
+set %stopped #CHARPOSY
+gosub IsBoatStopped
+if %boatStopped = 1
+{
+  gosub FixBoatStopped
+}
+
+skillGain:
+set %stopped #CHARPOSY
+set %fizzled 0
+if %currentSkill = %maxSkill
+{
+  event macro 3 0 Stop
+  wait %shortWait
+  event macro 3 0 Drop Anchor
+  display Ok You have reached your skill cap in Ninjitsu!
+  menu hide
+  stop
+}
+if #MENUBUTTON = Stop
+{
+  set #MENUBUTTON N/A
+  event macro 3 0 Stop
+  wait %shortWait
+  event macro 3 0 Drop Anchor
+  menu hide
+  stop
+}
+set %scanStart ( #JINDEX + 1 )
+if %trainSkill > 199 && %trainSkill < 500
+{
+  gosub animalForm
+}
+if %trainSkill > 499 && %trainSkill < 700
+{
+  gosub mirrorImage
+}
+if %trainSkill > 699 && %trainSkill < 900
+{
+	set %retryPetSearch 0
+	retryPetSearchFocus:
+	finditem %petType G_2
+	if #FINDKIND = -1
+	{
+		set %retryPetSearch ( %retryPetSearch + 1 )
+		if %retryPetSearch > 2
+		{
+			display Ok You must have a pet near you to continue!
+			event macro 3 0 Stop
+			wait %shortWait
+			event macro 3 0 Drop Anchor
+			menu hide
+			stop
+		}
+		goto retryPetSearchFocus
+	}
+	gosub focusAttack
+}
+if %trainSkill > 899
+{
+	set %retryPetSearch 0
+	retryPetSearchDeath:
+	finditem %petType G_2
+	if #FINDKIND = -1
+	{
+		set %retryPetSearch ( %retryPetSearch + 1 )
+		if %retryPetSearch > 2
+		{
+			display Ok You must have a pet near you to continue!
+			event macro 3 0 Stop
+			wait %shortWait
+			event macro 3 0 Drop Anchor
+			menu hide
+			stop
+		}
+		goto retryPetSearchDeath
+	}
+	gosub deathStrike
+}
+wait %shortWait
+if #SKILL > %currentSkill
+{
+   event macro 3 0 Stop
+}
+for %journalLine %scanStart #JINDEX
+{
+  scanJournal %journalLine
+  if %trainSkill > 199 && %trainSkill < 700
+  {
+    if THE_SPELL_FIZZLES. in #JOURNAL
+    {
+      set %fizzled 1
+    }
+  }
+  if %trainSkill > 699 && %trainSkill < 900
+  {
+    if YOU_FOCUS_ALL_OF_YOUR_ABILITIES_AND_STRIKE_WITH_DEADLY_FORCE! in #JOURNAL
+    {
+      set %fizzled 0
+      goto successCast
+    }
+    else
+    {
+      set %fizzled 1
+    }
+  }
+  if %trainSkill > 899
+  {
+    if YOU_INFLICT_A_DEATH_STRIKE_UPON_YOUR_OPPONENT! in #JOURNAL
+    {
+      set %fizzled 0
+      goto successCast
+    }
+    else
+    {
+      set %fizzled 1
+    }
+  }
+}
+successCast:
+gosub skillGainCheck
+if %workingGain = 1
+{
+  goto skillGain
+}
+
+goto useSkill
+;**************************************************************************************************************** 
+
+sub skillGainCheck
+
+if %fizzled = 1 && %workingGain = 1
+{
+  goto fizzledSkillCheck
+}
+else
+{
+  set %workingGain 0
+}
+if #SKILL > %currentSkill
+{
+   set %currentSkill #SKILL
+   set %workingGain 1
+   if #CHARPOSY <> %stopped
+   {
+      event macro 3 0 Stop
+   }
+   menu Set ninjitsuSkill %currentSkill
+   if %useJewlery = 0
+   {
+      set %stopped #CHARPOSY
+      wait %shortWait
+      event macro 3 0 Forward One
+      wait 30
+      if #CHARPOSY <> %stopped
+      {
+         for %loop 1 7
+         {
+            event macro 3 0 Forward One
+            wait 30
+         }
+      }
+   }
+   wait %shortWait
+}
+fizzledSkillCheck:
+wait %shortWait
+
+return
+;**************************************************************************************************************** 
+
+sub FaceBoatNorth
+
+set %tempX #charposX
+set %tempY #charposY
+
+event macro 3 0 Raise Anchor
+wait %shortWait
+event macro 3 0 Forward One
+wait %longWait
+if #CHARPOSY <> %tempY
+{
+  if #CHARPOSY <> %tempY - 1
+  {
+    if #charposY = %tempY + 1
+    {
+      event macro 3 0 Come About
+      wait %longWait
+      return
+    }
+    if #charposx = %tempX + 1
+    {
+      event macro 3 0 Turn Left
+      wait %longWait
+      return
+    }
+    if #charposx = %tempX - 1
+    {
+      event macro 3 0 Turn Right
+      wait %longWait
+      return
+    }
+  }
+}
+if #CHARPOSY = %tempY
+{
+  event macro 3 0 Back One
+  wait %longWait
+  if #charposY <> %tempY + 1
+  {
+    if #charposY = %tempY - 1
+    {
+      event macro 3 0 Come About
+      wait %longWait
+      return
+    }
+    if #charposx = %tempX - 1
+    {
+      event macro 3 0 Turn Left
+      wait %longWait
+      return
+    }
+    if #charposx = %tempX + 1
+    {
+      event macro 3 0 Turn Right
+      wait %longWait
+      return
+    }
+  }
+}
+
+return
+;**************************************************************************************************************** 
+
+sub FaceBoatSouth
+
+set %tempX #charposX
+set %tempY #charposY
+
+event macro 3 0 Raise Anchor
+wait %shortWait
+event macro 3 0 Forward One
+wait %longWait
+if #CHARPOSY <> %tempY
+{
+  if #CHARPOSY <> %tempY + 1
+  {
+    if #charposY = %tempY - 1
+    {
+      event macro 3 0 Come About
+      wait %longWait
+      return
+    }
+    if #charposx = %tempX - 1
+    {
+      event macro 3 0 Turn Left
+      wait %longWait
+      return
+    }
+    if #charposx = %tempX + 1
+    {
+      event macro 3 0 Turn Right
+      wait %longWait
+      return
+    }
+  }
+}
+if #CHARPOSY = %tempY
+{
+  event macro 3 0 Back One
+  wait %longWait
+  if #charposY <> %tempY - 1
+  {
+    if #charposY = %tempY + 1
+    {
+      event macro 3 0 Come About
+      wait %longWait
+      return
+    }
+    if #charposx = %tempX + 1
+    {
+      event macro 3 0 Turn Left
+      wait %longWait
+      return
+    }
+    if #charposx = %tempX - 1
+    {
+      event macro 3 0 Turn Right
+      wait %longWait
+      return
+    }
+  }
+}
+
+return
+;**************************************************************************************************************** 
+
+sub IsBoatStopped
+
+wait %longWait
+if #CHARPOSY = %stopped
+{
+  set %scanStart ( #JINDEX + 1 )
+  event macro 3 0 Slow Forward
+  wait %longWait
+  if #CHARPOSY = %stopped
+  {
+    set %boatStopped 1
+    for %journalLine %scanStart #JINDEX
+    {
+      scanJournal %journalLine
+      if DID_I_EVER_TELL_THEE in #journal
+      {
+        set %serverLine 1
+      }
+    }
+  }
+}
+
+return
+;**************************************************************************************************************** 
+
+sub FixBoatStopped
+
+if %serverLine = 1
+{
+  if %crossServerLine = -1
+  {
+    if %goLeft = 1
+    {
+      event macro 3 0 Left
+    }
+    else
+    {
+      event macro 3 0 Right
+    }
+    wait 120
+    event macro 3 0 Stop
+  }
+}
+if %serverLine = 0
+{
+  if %boatStopped = 1
+  {
+    event macro 3 0 Back
+    wait 180
+    if %goLeft = 1
+    {
+      event macro 3 0 Left
+    }
+    else
+    {
+      event macro 3 0 Right
+    }
+    wait 240
+    event macro 3 0 Slow Forward
+    wait 550
+    if %goLeft = 1
+    {
+      event macro 3 0 Right
+    }
+    else
+    {
+      event macro 3 0 Left
+    }
+    wait 240
+    event macro 3 0 Stop
+  }
+}
+if %goLeft = 1
+{
+  set %goLeft 0
+}
+else
+{
+  set %goLeft 1
+}
+set %serverLine 0
+set %boatStopped 0
+event macro 3 0 Slow Forward
+
+return
+;**************************************************************************************************************** 
+
+sub animalForm
+
+retryCast:
+if #CONTSIZE = 408_298 && #CONTNAME = generic_gump
+{
+  set %animalFormGumpKindX #CONTPOSX + 50
+  set %animalFormGumpKindY #CONTPOSY + 50
+  click %animalFormGumpKindX %animalFormGumpKindY r
+}
+event macro 15 247
+wait %longWait
+if #CONTSIZE <> 408_298 && #CONTNAME <> generic_gump
+{
+  wait %longWait
+  goto retryCast
+}
+if %trainSkill > 199 && %trainSkill < 400
+{
+  set %FormX #CONTPOSX + 220
+}
+if %trainSkill > 399 && %trainSkill < 500
+{
+  set %FormX #CONTPOSX + 20
+}
+set %FormY #CONTPOSY + 220
+click %FormX %FormY F
+wait %shortWait
+set %okayX #CONTPOSX + 40
+set %okayY #CONTPOSY + 280
+click %okayX %okayY F
+
+return
+;**************************************************************************************************************** 
+
+sub mirrorImage
+
+manaWaitmirror:
+IF #MANA = N/A
+{
+   event macro 8 2
+   wait %shortWait
+}
+if #MANA < 10 || #FOLLOWERS = 5
+{
+  goto manaWaitmirror
+}
+event macro 15 252
+wait %shortWait
+
+return
+;**************************************************************************************************************** 
+
+sub focusAttack
+
+manaWaitfocus:
+IF #MANA = N/A
+{
+   event macro 8 2
+   wait %shortWait
+}
+if #MANA < 20
+{
+  goto manaWaitfocus
+}
+event macro 15 245
+wait %shortWait
+for %journalLine %scanStart #JINDEX
+{
+	scanJournal %journalLine
+	if YOU_CANNOT_PERFORM_THIS_SPECIAL_MOVE_RIGHT_NOW. in #JOURNAL
+	{
+		event macro 15 247
+		wait %shortWait
+		goto skipCastFocus
+	}
+}
+event macro 3 0 All Kill
+target
+event macro 23 0
+skipCastFocus:
+
+return
+;**************************************************************************************************************** 
+
+sub deathStrike
+
+manaWaitdeath:
+IF #MANA = N/A
+{
+   event macro 8 2
+   wait %shortWait
+}
+if #MANA < 30
+{
+  goto manaWaitdeath
+}
+event macro 15 246
+wait %shortWait
+for %journalLine %scanStart #JINDEX
+{
+	scanJournal %journalLine
+	if YOU_CANNOT_PERFORM_THIS_SPECIAL_MOVE_RIGHT_NOW. in #JOURNAL
+	{
+		event macro 15 247
+		wait %shortWait
+		goto skipCastdeath
+	}
+}
+event macro 3 0 All Kill
+target
+event macro 23 0
+skipCastdeath:
+
+return
+;**************************************************************************************************************** 
+
+sub showRunning
+	menu Clear
+	menu Window Title Ninjitsu Trainer
+	menu Window Color Black
+	menu Window Size 146 85
+	menu Font Transparent #true
+	menu Font Align Right
+	menu Font Name MS Sans Serif
+	menu Font Size 8
+	menu Font Style
+	menu Font Color Green
+	menu Font Align Left
+	menu Font BGColor Black
+	menu Text EUOLabel1 4 6 Ninjitsu
+	menu Text EUOLabel2 4 22 Sailing
+	menu Font Align Right
+	menu Text ninjitsuSkill 142 6 %currentSkill
+	menu Text EUOLabel3 142 22 %sailDirection
+	menu Font Color WindowText
+	menu Font BGColor BtnFace
+	menu Button Stop 40 50 75 25 Stop
+	menu Show
+return
+;**************************************************************************************************************** 
+
+sub startupMenu
+
+waitForStart:
+if #MENUBUTTON <> Start
+{
+  goto waitForStart
+}
+set #MENUBUTTON N/A
+menu get sailDirection
+wait %shortWait
+if #MENURES = 0
+{
+	display Ok You must choose a sail direction!
+	goto waitForStart
+}
+if #MENURES = 1
+{
+	set %sailDirection North
+}
+if #MENURES = 2
+{
+	set %sailDirection South
+}
+menu get useJewlery
+wait %shortWait
+set %useJewlery #MENURES
+menu get crossServerLines
+wait %shortWait
+set %crossServerLine #MENURES
+
+return
+;**************************************************************************************************************** 
+
+sub showSetup
+	menu Clear
+	menu Window Title Ninjitsu Training
+	menu Window Color BtnFace
+	menu Window Size 150 158
+	menu Font Transparent #true
+	menu Font Align Right
+	menu Font Name MS Sans Serif
+	menu Font Size 8
+	menu Font Style
+	menu Font Color WindowText
+	menu Font Transparent #false
+	menu Font Align Left
+	menu Text EUOLabel3 6 84 Sail in which
+	menu Text EUOLabel4 12 98 direction?
+	menu Font BGColor BtnFace
+	menu Button Start 36 124 75 25 OK
+	menu Check crossServerLines 8 40 135 17 #true Can cross server lines
+	menu Check useJewlery 8 58 135 17 #false Using Jewlery
+	menu Font BGColor Window
+	menu Combo Create sailDirection 68 86 75
+	menu Combo Add sailDirection North
+	menu Combo Add sailDirection South
+	menu Show
+return

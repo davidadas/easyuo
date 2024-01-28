@@ -1,0 +1,1402 @@
+;==================================
+; Script Name: snicker7's Ninjitsu Trainer
+; Author: snicker7
+; Version: 4.0
+; Client Tested with: 4.0.7a
+; EUO version tested with: 1.42.009E
+; Shard OSI / FS:  OSI
+; Revision Date: 4/10/05
+; Public Release: 11/5/04
+; Global Variables Used:
+; Purpose: 8x8 the Samurai Empire Ninjitsu skill manually or using the jewelery trick.
+;==================================
+
+;=|ADVANCED USERS ONLY:|================
+; Set the levels at which you want to 
+; begin using certain skills or attacks.
+;=======================================
+
+set %_AF_bunny 200    ; Cast rabbit form  (default 20.0)
+set %_AF_cat   400    ; Cast Cat form     (default 40.0)
+set %_MI_skill 500    ; Cast Mirror Image (default 50.0)
+set %_FA_skill 750    ; Use Focus Attack  (default 75.0)
+set %_DS_skill 900    ; Use Death Strike  (default 90.0)
+
+
+;======================
+; NO EDITE BELOWO!!!111
+;======================
+set %version 4.0
+set %gainrunsfound 0
+set %ninjitsugains 0
+set %striketimeout 2
+set %stoppedforgain #false
+set %initialsetup #true
+set %initJewelPause #true
+set %gainrun #false
+set #menubutton N/A
+
+menu hideeuo
+gosub showConfigureMenu
+gosub initSetup
+gosub checkSkill
+set %starttime #systime
+gosub showSkillGainMenu
+gosub updMenu
+set %charpos #charposx , _ , #charposy
+gosub checkBoatMove
+
+_gainloop:
+gosub updMenu
+set %jboatS #jindex
+if %checkboattimeout + 13 < #scnt2
+{
+ gosub checkBoatMove
+ set %checkboattimeout #scnt2
+}
+set %jboatE #jindex
+for %jboatI %jboatS %jboatE
+{
+ scanjournal %jboatI
+ if stopped in #journal
+  gosub unblockBoat
+}
+if %_fcrtimer + %FCRWait < #systime
+{
+ set %j1s #jindex + 1
+ gosub useSkill
+ set %_fcrtimer #systime
+ _castTimer:
+ gosub updMenu
+ if %_casttimer + %FCWait > #systime
+ {
+  set %gained false
+  gosub checkForGain NINJ ninjitsuskill
+  if #result 2
+   set %gained #true
+   goto _castTimerDone
+  goto _castTimer
+ }
+ set %gained #false
+ gosub checkForGain NINJ ninjitsuskill
+ if #result
+  set %gained #true
+ _castTimerDone:
+ gosub updMenu
+ set %j1e #jindex + 1
+ if %gained
+ {
+  set %timeswithoutgain 0
+  if ! %usejewelerytrick && %ninjitsuskill < %jewelerypause
+  {
+   gosub updMenu
+   if ! %gainrun 3
+    event macro 3 0 stop
+    set %gainrun #true
+    set %gainrunsfound %gainrunsfound + 1
+   set %resTileY #charposy / 8
+   set %resTileX #charposx / 8
+   for %1x1boat 1 8
+   {
+    gosub updMenu
+    set %BSjS #jindex + 1
+    event macro 3 0 forward one
+    wait 20
+    set %BSjE #jindex + 1
+    if %resTileY <> ( #charposy / 8 )
+     goto _moved_done
+    for %BSjI %BSjS %BSjE
+    {
+     scanjournal %BSjI
+     if stopped in #journal
+     {
+      gosub unblockBoat
+     }
+    }
+   }
+   _moved_done:
+   ;set %movetoY #charposy - 8
+   ;set %movetoX #charposx
+   ;gosub moveBoatTo %movetox %movetoY 0
+   ;if ! #result
+   ;{
+   ; gosub unblockBoat
+   ; gosub moveBoatTo %movetox %movetoY 0
+   ;}
+  }
+  if %usejewelerytrick && %ninjitsuskill >= %jewelerypause
+  {
+   if ! %stoppedforgain
+   {
+    set %gainrun #true
+    set %gainrunsfound %gainrunsfound + 1
+    event macro 3 0 stop
+    set %stoppedforgain #true
+   }
+  }
+ }
+ if ! %gained
+ {
+  gosub updmenu
+  if %gainrun
+  {
+   for %j1i %j1s %j1e
+   {
+    gosub updMenu
+    scanjournal %j1i
+    if fizzles. in #journal
+     goto _endj1ifor
+   }
+   if %spell = 245 || %spell = 246
+   {
+    if #mana >= %premana
+     goto _endj1ifor
+    if YOU_FOCUS in #sysmsg || YOU_INFLICT in #sysmsg
+    {
+     set %timeswithoutgain %timeswithoutgain + 1
+     event exmsg #charid 3 43 Failed to gain %timeswithoutgain times.
+    }
+    goto _endj1ifor
+   }
+   set %timeswithoutgain %timeswithoutgain + 1
+   event exmsg #charid 3 43 Failed to gain %timeswithoutgain times.
+   _endj1ifor:
+   deletejournal
+   if %timeswithoutgain > %castcountmax
+   {
+    event exmsg #charid 3 43 Moving on...
+    set %gainrun #false
+    set %stoppedforgain #false
+   }
+  }
+ }
+}
+gosub checkSkill
+goto _gainloop
+
+sub useSkill
+ if #charname = N/A
+  event macro 8 2
+ _useSkill:
+ if %spell = 247 ;AnimalForm
+ {
+  set %_casttimer #systime
+  event macro 15 %spell
+  finditem #charid
+  if #findtype notin _HS_IS_XU_AV && %ninjitsuskill > 350
+  {
+   _waitforhuman_animalform:
+   gosub updMenu
+   finditem #charid
+   if #findtype notin _HS_IS_XU_AV 2
+    wait 1
+    goto _waitforhuman_animalform
+   wait 65
+   goto _useSkill
+  }
+  _waitforAFgump:
+  gosub updMenu
+  if #contsize <> 520_404
+  {
+   wait 1
+   if %_casttimer + 3000 < #systime
+    goto _useSkill
+   goto _waitforAFgump
+  }
+  if #contname = generic_gump && #contsize = 520_404
+  {
+  	chooseskill ninj
+  	set %index 12
+  	gosub getAnimalFormIndex
+  	if #skill > %_AF_Cat
+  		set %index %index - 2
+  	gosub chooseAnimalForm %index
+  }
+  return
+ }
+ if %spell = 252 ;MirrorImage
+ {
+  finditem #charid
+  if #findtype notin _HS_IS_XU_AV
+  {
+   event macro 15 247
+   _waitforhuman:
+   gosub updMenu
+   finditem #charid
+   if #findtype notin _HS_IS_XU_AV 2
+    wait 1
+    goto _waitforhuman
+  }
+  if #followers >= 5
+  {
+   gosub lookForMirror
+   return
+  }
+  gosub manaCheck %manacost
+  set %premana #mana
+  gosub lookForMirror
+  set %_casttimer #systime
+  set %js #jindex
+  event macro 15 %spell
+  set %je #jindex
+  for %ji %js %je
+  {
+   gosub updMenu
+   scanjournal %ji
+   if CANNOT_USE_THIS_ABILITY_WHILE_MOUNTED. in #journal
+   {
+    set #lobjectid #charid
+    event macro 17
+    wait 10
+    event macro 3 0 all follow me
+    goto _useSkill
+   }
+  }
+  return
+ }
+ if %spell = 245 || %spell = 246 ;FocusAttack&DeathStrike
+ {
+  if %FADSTimer + 5 > #scnt
+   return
+  finditem #charid
+  if #findtype notin _HS_IS_XU_AV
+  {
+   event macro 15 247
+   _waitforhuman_FADS:
+   gosub updMenu
+   finditem #charid
+   if #findtype notin _HS_IS_XU_AV 2
+    wait 1
+    goto _waitforhuman_FADS
+  }
+  if siege in #shard || mugen in #shard || %charmurderer
+  	set %manacost %manacost + ( 10 - ( ( 10 * %LMC ) / 100 ) )
+  gosub manaCheck %manacost
+  if siege in #shard || mugen in #shard || %charmurderer
+  {
+   for %_redMirror 1 1
+   {
+    event macro 15 252
+    finditem HS_IS_XU_AV G_0
+    set %HSISCnt #findcnt
+    set %_RMTo #scnt
+    for %_waitForMirror 1 1
+    {
+     finditem HS_IS_XU_AV G_0
+     if #findcnt <= %HSISCnt && %_RMto + 4 > #scnt
+      set %_waitForMirror 0
+     if %_RMTo + 4 < #scnt 2
+      wait 20
+      set %_redMirror 0
+    }
+   }
+   ignoreitem #charid IgCharTemp
+   finditem HS_IS_XU_AV G_0
+   set %mirrortarget #findid
+   ignoreitem reset IgCharTemp
+  }
+  set %FADSTimer #scnt
+  event macro 15 %spell
+  set %premana #mana
+  if siege notin #shard && mugen notin #shard && ! %charmurderer
+  {
+   event macro 6 0
+   event macro 3 0 all kill
+   target 
+   event macro 23 0
+  }
+  if siege in #shard || mugen in #shard || %charmurderer
+  {
+   set #ltargetid %mirrortarget
+   event macro 27 0
+  }
+  set %striketimer #scnt
+  _waitfor_strike:
+  if %striketimer + %striketimeout > #scnt
+  {
+   wait 1
+   chooseskill ninj real
+   if #skill > %ninjitsuskill
+    goto _done_strike
+   goto _waitfor_strike
+  }
+  _done_strike:
+  if siege notin #shard && mugen notin #shard && ! %charmurderer
+  {
+   event macro 6 0
+   event macro 3 0 all stop
+   event macro 3 0 all follow me
+  }
+  return
+ }
+
+sub getAnimalFormIndex
+	if #skill < 100
+		set %ioffset 2
+	if #skill < 850
+		set %ioffset 4
+	if #skill < 700
+		set %ioffset 6
+	if #skill < 500
+		set %ioffset 8
+	if #skill < 400
+		set %ioffset 10
+	set %index %index - %ioffset
+return
+
+sub chooseAnimalForm
+ if #contsize <> 520_404
+  return
+ if %1 > 10
+ {
+  set %cx #contposx + 410
+  set %cy #contposy + 385
+  click %cx %cy f dmc
+  set %1 %1 - 10
+ }
+ set %xoff #contposx + 50
+ if %1 % 2 = 0
+  set %xoff #contposx + 290
+ set %yoff #contposy + 10 + ( ( ( %1 / 2 ) + ( %1 % 2 ) ) * 60 )
+ click %xoff %yoff f dmc
+return
+
+;======================
+;* @name menuline
+;* @author Roadkill
+;* @ver 1.1 9May04
+;* @purpose writes a menu line in lowercase, all menu functions included, 
+;*	changes bg and font before and after, message can be any length
+;* @params 	%1 is the name of the text field, like 'status'
+;*		%2 is the x menu-coord of the text field
+;*		%3 is the y menu-coord of the text field
+;*		%4 is the bgcolor, use - if no change
+;* 		%5 is the font color, use - if no change
+;* 		%6 is the exit bgcolor , use - if no change
+;* 		%7 is the exit fontcolor , use - if no change
+;* 		%8 and on are the message
+;* @returns none
+;* @notes be sure to change the field name and write position to your line info
+;*	where it says:   menu text status 50 5 #strres    (status, 50, 5 may change)
+;* @example: gosub menuline status 50 5 red black black lime need more bones #dot paused #dot
+;*	or   gosub menuline status 50 5 - - - - need more bones
+;* @status tested good
+sub menuline
+	if %4 <> - 
+		menu font bgcolor %4
+	if %5 <> -
+		menu font color %5
+	menu delete %1
+	set !_statusmsg %8
+	if %0 < 9
+		goto _statusLower
+	for !_i 9 %0
+	{
+		set !_statusmsg !_statusmsg , #spc , % . !_i
+	}
+_statusLower:
+	str lower !_statusmsg
+	menu text %1 %2 %3 #strres
+	if %6 <> - 
+		menu font bgcolor %6
+	if %7 <> -
+		menu font color %7
+return
+;----------------------
+;*
+;*End menuLine
+;*
+;----------------------
+
+
+
+;======================
+;* @name initSetup
+;* @author snicker7
+;* @ver 3.0 2Jan05
+;* @purpose Setup variables for ninjitsu training.
+;* @params 	none
+;* @returns none
+;* @notes none
+;* @example: gosub initSetup
+;* @status tested good
+sub initSetup
+ _setup_desktop:
+ menu delete status
+ menu Font Style b
+ menu font size 8
+ menu font align center
+ gosub menuline status 85 35 black red - - Setting up desktop...
+ finditem * C_ , #backpackid
+ if #findkind = -1
+ {
+  menu set status Opening backpack...
+  gosub s7WaitForAction 13
+  event macro 8 7
+  gosub s7WaitForVars contid = #backpackid 4
+  finditem * C_ , #backpackid
+  if #findkind = -1 2
+   display ok Failed to properly open your backpack!  Something is majorly wrong!!!$ either that or your backpack is empty. Which is bad because you should have a ninjitsu book anyways.
+   halt
+ }
+ finditem #backpackid C_ , #charid
+ if #findkind = -1
+ {
+  menu set status Opening paperdoll...
+  gosub s7WaitForAction 13
+  event macro 8 1
+  gosub s7WaitForVars contid = #charid contname = paperdoll_gump 4
+  finditem #backpackid C_ , #charid
+  if #findkind = -1 2
+   display ok Failed to open paperdoll right, restart script.
+   halt
+ }
+ if #charname = N/A
+ {
+  menu set status Opening status bar...
+  event macro 8 2
+  gosub s7WaitForVars contid = #charid contname = status_gump 5
+ }
+ finditem #charid G
+ set %charmurderer #false
+ if #findrep = 6
+  set %charmurderer #true
+ gosub GetEQStats
+ set #lpc 100
+ menu delete status
+ menu Font Name MS Sans Serif
+ menu Font Size 6
+ menu Font Style bu
+ menu Font Color green
+ menu text FCRFCLMC 8 25 Equipment Stats:
+ menu font style
+ namespace push
+ namespace local _s7_GEQStats
+ menu text FCRFCLMC 8 40 Faster Casting: !FC
+ menu text FCRFCLMC 8 55 Faster Cast Recovery !FCR
+ menu text FCRFCLMC 8 70 Lower Mana Cost: !LMC , %
+ namespace pop
+ menu Font Name MS Sans Serif
+ menu Font Size 8
+ menu Font Style
+ menu font color lime
+ set %optoffset 85
+ chooseskill medi
+ if #skill >= 500 2
+  menu Check chkMeditate 8 %optoffset 97 17 #false Meditate
+  set %optoffset %optoffset + 15
+ if siege notin #shard && mugen notin #shard
+  menu Check chkUseJewelry 8 %optoffset 97 17 #false Use Jewel Trick
+ set #lpc 10
+ ;;;;;;;;;;;;;;;;;;;;;;;;
+ _setup_step1:
+ finditem SPN C_ , #backpackid
+ if #findkind = -1
+ {
+  for %i 1 6
+  {
+   menu delete status
+   wait 2
+   menu Font Style b
+   menu font size 8
+   menu font align center
+   gosub menuline status 144 35 black red - - Ninjitsu book not found! Go$buy one from a scribe in$Makoto-Jima!
+   wait 2
+  }
+ }
+ if #findkind <> -1
+  set %bookfound #true
+ 
+ ;;;;;;;;;;;;;;;;;;;;;;;;;;
+ _setup_wait1:
+ if #menubutton = btnStart
+ {
+   set #menubutton N/A
+   if ! %bookfound
+    goto _setup_step1
+   goto _setup_step2
+ }
+ menu get chkUseJewelry
+ if #menures && ! %usejewelerytrick
+ {
+  set %usejewelerytrick #true
+  menu Font Name MS Sans Serif
+  menu Font Size 6
+  menu Font Style 
+  menu font align center
+  menu Edit txtJewelBonus 205 66 35 0
+  for %i 1 3
+  {
+   menu Font Style b
+   menu font size 8
+   gosub menuline status 144 35 black red - - Please enter your total skill$gained from jewelery!
+   wait 2
+   menu delete status
+   wait 2
+  }
+  gosub menuline status 144 35 black red - - Please enter your total skill$gained from jewelery!
+ }
+ if ! #menures && %usejewelerytrick
+ {
+  set %usejewelerytrick #false
+  menu delete txtJewelBonus
+  menu delete status
+ }
+ goto _setup_wait1
+ 
+ ;;;;;;;;;;;;;;;;;;;;;;;;;;
+ _setup_step2:
+ set %meditate 0
+ chooseskill medi
+ if #skill >= 50
+ {
+  menu get chkMeditate
+  if #menures
+   set %meditate 1
+ }
+ if siege notin #shard && mugen notin #shard
+ {
+  menu get chkUseJewelry
+  if #menures
+  {
+   menu get txtJewelBonus
+   if #menures > 30
+   {
+    for %i 1 6
+    {
+     menu delete status
+     wait 2
+     menu Font Style b
+     menu font size 8
+     menu font align center
+     gosub menuline status 148 35 black red - - You can't possibly have$more than +30 in jewelery!
+     wait 2
+    }
+    goto _setup_wait1
+   }
+   chooseskill ninj
+   set %jewelerypause ( #skillcap - ( #menures * 10 ) )
+  }
+  if ! #menures
+  {
+   set %jewelerypause #skillcap
+  }
+ }
+ ;;;;;;;;;;;;;;;;;;;;;;;;;;
+ _setup_step4:
+ ;=|check min skill|======;
+ chooseskill ninj real
+ set %ninjitsuskill #skill
+ set %ninjitsustartskill #skill
+ if %ninjitsuskill < %_AF_bunny
+ {
+  str len %_AF_bunny
+  str ins %_AF_bunny #dot #strRes  
+  for %i 1 6
+  {
+   menu delete status
+   wait 2
+   menu Font Style b
+   menu font size 8
+   menu font align center
+   gosub menuline status 147 35 black red - - You must have min. #strRes $ninjitsu skill! Go buy it$in Tokuno! 
+   wait 2
+  }
+  halt
+ }
+return
+;----------------------
+;*
+;*End initSetup
+;*
+;----------------------
+
+
+
+;======================
+;* @name checkSkill
+;* @author snicker7
+;* @ver 3.0 2Jan05
+;* @purpose check skill to use for 8x8ing ninjitsu
+;* @params 	none
+;* @returns none
+;* @notes none
+;* @example: gosub checkSkill
+;* @status tested good
+sub checkSkill
+ chooseskill ninj real
+ set %ninjitsuskill #skill
+ if %ninjitsuskill >= %jewelerypause && %initJewelPause
+ {
+  set #menubutton N/A
+  gosub resumeMenu
+  display ok You have reached the point where$you must now put on the jewelery$that you said you had. Please$press resume when you have.
+  btnResumeJewel:
+  if #menubutton = N/A 2
+   wait 1
+   goto btnResumeJewel
+  set #menubutton N/A
+  set %initJewelPause #false
+  if ! %initialsetup
+  {
+   gosub ShowSkillGainMenu
+   gosub updMenu
+  }
+  goto _skill_120
+ }
+ if %usejewelerytrick && %ninjitsuskill >= %jewelerypause
+ {
+  goto _skill_120
+ }
+ if %ninjitsuskill >= #skillcap
+ {
+  menu hide
+  display ok CONGRATS!!!$$You have reached your skillcap in Ninjitsu.$Eat a powerscroll or make a sandwich!
+  terminate euo
+ }
+ if %ninjitsuskill < %_MI_skill
+ {
+  set %spell 247
+  set %manacost 0
+  set %castcountmax 3
+  return
+ }
+ if %ninjitsuskill < %_FA_skill
+ {
+  set %spell 252
+  set %manacost 10 - ( ( 10 * %LMC ) / 100 )
+  set %castcountmax 5
+  return
+ }
+ _skill_120:
+ if %ninjitsuskill < 1200
+ {
+  if %initialsetup && siege notin #shard && mugen notin #shard && ! %charmurderer
+  {
+   gosub resumeMenu
+   display ok Your skill in Ninjitsu has reached a point where in order to gain$you must be in trammel, and you must have a pet with you on a boat.$ The script will pause now. Press resume when these criteria are met.
+   btnResume:
+   if #menubutton = N/A 2
+    wait 1
+    goto btnResume
+   set #menubutton N/A
+   set %initialsetup #false
+   gosub ShowSkillGainMenu
+   gosub updMenu
+  }
+  set %manacost 30 - ( ( 30 * %LMC ) / 100 )
+  set %castcountmax 6
+  set %spell 246
+  if ! %usejewelerytrick
+  {
+   if %ninjitsuskill < %_DS_skill 2
+   set %manacost 20 - ( ( 20 * %LMC ) / 100 )
+   set %spell 245
+  }
+ }
+return
+;----------------------
+;*
+;*End checkSkill
+;*
+;----------------------
+
+
+
+;======================
+;* @name checkForGain
+;* @author snicker7
+;* @ver 3.0 2Jan05
+;* @purpose checks for a gain in the specified skill
+;* @params 	%1 is the 4 letters of the skill to check
+;*              %2 is the stored skill variable
+;* @returns #true if the skill gained
+;*          #false it it did not
+;* @notes none
+;* @example: gosub checkForGain NINJ ninjitsuskill
+;* @status tested good
+sub checkForGain
+ chooseskill %1 real
+ if #skill > % . %2
+ {
+  set % . %2 #skill
+  return #true
+ }
+return #false
+;----------------------
+;*
+;*End checkForGain
+;*
+;----------------------
+
+
+
+;=========================== 
+;* @Name MoveBoatTo
+;* @ver 1.0 11/28/04
+;* @author  snicker7 
+;* @purpose To move a boat short distances by world coordinates
+;* @param    
+;*   %1 x-coordinate to move to 
+;*   %2 y-coordinate to move to 
+;*   %3 amount of tile tolerance
+;* @returns #result: #false if it failed, #true if success. 
+;* @example gosub MoveBoatTo 1337 779 2
+sub MoveBoatTo
+  set %movetoX %1
+  set %movetoY %2
+  set %tolerance %3
+  if %tolerance = N/A
+    set %tolerance 0
+  
+  _moveboatto_finddirections:
+  finditem ENX_ONX_HNX_JNX
+  if #findkind <> 1
+    return 0
+  finditem ENX
+  if #findkind = 1 4
+    set %_boatwest left
+    set %_boateast right
+    set %_boatnorth forward
+    set %_boatsouth back
+  finditem ONX
+  if #findkind = 1 4
+    set %_boatwest forward
+    set %_boateast back
+    set %_boatnorth right
+    set %_boatsouth left
+  finditem HNX
+  if #findkind = 1 4
+    set %_boatwest right
+    set %_boateast left
+    set %_boatnorth back
+    set %_boatsouth forward
+  finditem JNX
+  if #findkind = 1 4
+    set %_boatwest back
+    set %_boateast forward
+    set %_boatnorth left
+    set %_boatsouth right
+
+  _moveboatto_west:
+  if #charposx > %movetoX + %tolerance
+  {
+    set %lastposx #charposx
+    str lower %_boatwest
+    event macro 3 0 one #strRes
+    wait 25
+    if #charposx = %lastposx 2
+      event sysmessage Something blocking boat.
+      goto _moveboatto_east
+    goto _moveboatto_west
+  }
+
+  _moveboatto_east:
+  if #charposx < %movetoX - %tolerance
+  {
+    set %lastposx #charposx
+    str lower %_boateast
+    event macro 3 0 one #strRes
+    wait 25
+    if #charposx = %lastposx 2
+      event sysmessage Something blocking boat.
+      goto _moveboatto_north
+    goto _moveboatto_east
+  }
+
+  _moveboatto_north:
+  if #charposy > %movetoY + %tolerance
+  {
+    set %lastposy #charposy
+    str lower %_boatnorth
+    event macro 3 0 one #strRes
+    wait 25
+    if #charposy = %lastposy 2
+      event sysmessage Something blocking boat.
+      goto _moveboatto_south
+    goto _moveboatto_north
+  }
+
+  _moveboatto_south:
+  if #charposy < %movetoY - %tolerance
+  {
+    set %lastposy #charposy
+    str lower %_boatsouth
+    event macro 3 0 one #strRes
+    wait 25
+    if #charposy = %lastposy 2
+      event sysmessage Something blocking boat.
+      goto _moveboatto_done
+    goto _moveboatto_south
+  }
+
+  _moveboatto_done:
+  if #charposy < %movetoY - %tolerance || #charposx < %movetoX - %tolerance || #charposy > %movetoY + %tolerance || #charposx > %movetoX + %tolerance 2
+    event sysmessage Boat failed to reach destination.
+    return #false
+return #true
+;----------------------
+;*
+;*End moveBoatTo
+;*
+;----------------------
+
+
+
+;======================
+;* @name checkBoatMove
+;* @author snicker7
+;* @ver 3.0 2Jan05
+;* @purpose scans journal for stopped messages and unblocks
+;*          using my sub unblockBoat, also checks character
+;*          position using a one second interval by cross-
+;*          checking #charposx_#charposy in a variable %charpos.
+;* @params 	none
+;* @returns none
+;* @notes the first time before using the subroutine, you
+;*          must define %charpos by using
+;*          "set %charpos #charposx , _ , #charposy". After
+;*          that the sub will define it itself after.
+;*          Alternatively (though not recommended) the sub
+;*          can be called 2 times in sequence; the first will
+;*          define the variable, the second will perform the
+;*          actual function.
+;*          REQUIRES sub unblockBoat!!!!
+;* @example: gosub checkBoatMove
+;* @status tested good
+sub checkBoatMove
+ if %gainrun 2
+  set %charpos #charposx , _ , #charposy
+  return
+ _checkBoatMove:
+ for !i 1 3
+ {
+  scanjournal !i
+  if turbulent in #journal
+  {
+   wait 20
+   set %charpos #charposx , _ , #charposy
+   deletejournal
+   goto _checkBoatMove
+  }
+  if stopped in #journal
+  {
+   gosub unblockBoat
+   set %charpos #charposx , _ , #charposy
+   goto _checkBoatMove
+  }
+ }
+ set %charpos_now #charposx , _ , #charposy
+ if %charpos_now <> %charpos 2
+  set %charpos #charposx , _ , #charposy
+  return
+ if %charpos_now = %charpos
+ {
+  if ! %stoppedforgain
+  {
+   set %charpos #charposx , _ , #charposy
+   event macro 3 0 slow forward
+   wait 20
+   goto _checkBoatMove
+  }
+  return
+ }
+;----------------------
+;*
+;*End checkBoatMove
+;*
+;----------------------
+
+
+
+;======================
+;* @name unblockBoat
+;* @author snicker7
+;* @ver 3.0 2Jan05
+;* @purpose unblocks a boats path by moving back,
+;*          randomly left or right, forward, then
+;*          back left or right. Stops when finished.
+;* @params 	none
+;* @returns none
+;* @notes none
+;* @example: gosub unblockBoat
+;* @status tested good
+sub unblockBoat
+ set %direction #random % 2
+ event macro 3 0 back
+ wait 120
+ if %direction = 1    
+ {    
+  event macro 3 0 left
+ }    
+ if %direction = 0    
+ {    
+  event macro 3 0 right
+ }    
+ wait 200    
+ event macro 3 0 forward
+ wait 180    
+ if %direction = 1    
+ {    
+  event macro 3 0 right
+ }    
+ if %direction = 0    
+ {    
+  event macro 3 0 left
+ }    
+ wait 200    
+ event macro 3 0 stop
+return
+;----------------------
+;*
+;*End unblockBoat
+;*
+;----------------------
+
+
+;======================
+;* @name lookForMirror
+;* @author snicker7
+;* @ver 3.0 1Dec04
+;* @purpose sub to look for mirror images
+;*          and attack them to keep
+;*          follower slots < 5
+;* @params 	none
+;* @returns none
+;* @notes none
+;* @example: gosub lookForMirror
+;* @status tested good
+sub lookformirror
+    ignoreitem #charid ignoretemp
+    finditem IS_HS_XU_AV G_1
+    if #findkind <> -1  
+    {  
+        set #ltargetid #findid  
+        event macro 27  
+    }
+    ignoreitem reset ignoretemp
+return
+;----------------------
+;*
+;*End lookForMirror
+;*
+;----------------------
+
+
+
+;======================
+;* @name manaCheck
+;* @author snicker7
+;* @ver 3.0 1Dec04
+;* @purpose checks to see if mana is
+;*          avaliable. Meditates if
+;*          configured to.
+;* @params 	%1 Mana required before it will return
+;* @returns none
+;* @notes none
+;* @example: gosub manaCheck 77
+;* @status tested good
+sub manacheck
+ set %animal_peaced #false
+ manacheckloop:
+ gosub updMenu
+ if %meditate = 1 
+ { 
+  if #mana > %1
+   return
+  if ! %gainrun
+   event macro 3 0 stop
+  if %ninjitsuskill > %FA_skill && %animal_peaced <> #true 2
+   event macro 3 0 all stop
+   set %animal_peaced #true
+  set %medjs #jindex
+  _medwait:
+  if %medtimer + 11 > #scnt 2
+   wait 1
+   goto _medwait
+  set %medtimer #scnt
+  event macro 13 46
+  wait 10
+  set %medje #jindex
+  for %medji %medjs %medje
+  {
+   scanjournal %medji
+   if meditative in #journal 
+    goto manaloopmain
+  }
+  wait 20 
+  goto manacheckloop
+  if %! %gainrun
+   event macro 3 0 slow forward
+ } 
+ manaloopmain:
+ gosub updMenu 
+ if #mana < %1  
+ {  
+  wait 1  
+  goto MANALOOPmain
+ }
+ if %ninjitsuskill > %FA_skill && %animal_peaced = #true && %meditate = 1 2
+  event macro 3 0 all follow me
+  set %animal_peaced #false
+return
+;----------------------
+;*
+;*End manaCheck
+;*
+;----------------------
+
+
+
+sub GetEQStats
+	namespace push
+	namespace local _s7_GEQStats
+	set !exclude FIM_AIM_ZHM_CIM_BIM_ODM_NDM_KDM_JDM_MDM_LDM_WDM_VDM_YDM_XDM_SDM
+		+_FZH_IZH_NVI_QVI_PVI_AWI_BLO_ELO_TVI_OVI_ZVI_CWI_LJN_WJN_LTO_HCP_QAP
+		+_EDI_DDI_VDI_YDI_XKO_ALO_FLO_ILO_ZJF
+		+_FCI_QCI_TQL_WQL_TJN_EKN_IHO_HHO_LLO_WLO_VLO_YLO_XLO_SLO_RLO_ULO_TLO_EMO
+		+_DCI_ODI_JTO_MTO_UDM_OHO_NHO_BSO_WRO_VRO_YRO
+		+_GCI_NDI_QHO_PHO_VQL_EWL_DWL_GWL_QMO_PMO_SMO_RMO_ASO_SCP_XAP
+		+_XDI_SDI_RDI_UDI_KUD_ZJF_ZMF_MPF_YXM_QON_SPN_CDP_ZAP_YWO
+	set !FC 0
+	set !FCR 0
+	set !LMC 0
+	finditem * C_ , #charid
+	set !cnt #findcnt
+	for !i 1 1
+	{
+		finditem * C_ , #charid
+		set !percentage ( ( !cnt - #findcnt ) * 100 ) / !cnt
+		if #findkind = -1
+		{
+			menu set status Done.
+			if !FC > 0
+				set %fcWait 3400 / !FC
+			if !FC <= 0
+				set %fcWait 3400
+			if !FCR > 0
+				set %fcrWait 1700 / !FCR
+			if !FCR <= 0
+				set %fcrWait 1700
+			set %LMC !LMC
+			ignoreitem reset _S7_GEQStats
+			namespace pop
+			return
+		}
+		menu delete status
+		menu text status 85 35 Checking FC/FCR/LMC...$ , !percentage , % done.
+		if #findtype in !exclude
+			set !i 0
+		if !i = 1
+		{
+			gosub s7GetProperty #findid
+			if faster , #spc , casting in #property 2
+				gosub GetPropValue faster , #spc , casting
+				set !FC !FC + #result
+			if faster , #spc , cast , #spc , recovery in #property 2
+				gosub GetPropValue faster , #spc , cast , #spc , recovery
+				set !FCR !FCR + #result
+			if lower , #spc , mana , #spc , cost in #property 2
+				gosub GetPropValue lower , #spc , mana , #spc , cost
+				set !LMC !LMC + #result
+		}
+		ignoreitem #findid _s7_GEQStats
+		set !i 0
+	}
+	
+;----
+;* @name s7GetProperty
+;* @author snicker7
+;* @ver 1.0
+;* @purpose	 failsafe method for obtaining property values.
+;* @params 	 %1	ID of item to get property of.
+;* @dependencies N/A
+;* @returns 	 N/A
+;* @notes 	 N/A
+;* @example: gosub s7GetProperty #findid
+;* @status done
+sub s7GetProperty
+	set !_7gpt #systime
+	event property %1
+	for !_7gp 1 1
+	{
+		if !_7gpt + 1500 < #systime
+			return #false
+		if #property = $ || no , #spc , data in #property || ( %0 > 1 && %0 = 2 && #property = %2 )
+			set !_7gp 0
+		if no , #spc , data in #property || ( %0 > 1 && %0 = 2 && #property = %2 )
+			event property %1
+	}
+return #true
+
+;----
+;* @name s7GetPropValue (formerly Property by BadManiac/Nilmer)
+;* @author Nilmer, BadManiac, snicker7
+;* @ver 1.1
+;* @purpose	 obtain the value of a property.
+;* @params 	 %1	property to get the value of.
+;* @dependencies None
+;* @returns 	 value of desired property
+;* @notes 	 Sub originally by Nilmer, Modified by BadManiac, Namespaced by snicker7.
+;* @example: gosub s7GetPropValue lower , #spc , mana , #spc , cost
+;* @status done
+SUB GetPropValue
+	IF ( %0 <> 1 ) || ( %1 NOTIN #PROPERTY )
+		RETURN #FALSE
+	SET !_property %1
+	STR POS #PROPERTY !_property
+	STR DEL #PROPERTY 1 #STRRES
+	SET !_string #STRRES
+	STR POS #STRRES $
+	STR DEL !_string #STRRES 9999
+	SET !_string #STRRES
+	STR LEN !_string
+	IF skill IN !_string
+		SET #STRRES #STRRES - 6
+	IF % IN !_string
+		SET #STRRES #STRRES - 1
+	SET !num_len 0
+	FOR !gpvi #STRRES 1
+	{
+		SET !num_len !num_len + 1
+		STR MID !_string !gpvi 1
+		IF #SPC IN #STRRES
+		{
+			STR MID !_string !gpvi !num_len
+			SET !gpvi 1
+		}
+	}
+RETURN #STRRES
+
+;----
+;* @name s7WaitForAction 
+;* @author snicker7
+;* @ver 1.1 31Jan05
+;* @purpose waits 1.3 seconds before continuing, useful for waiting to perform
+;*    another action
+;* @params 	none
+;* @returns none
+;* @notes probably not an original idea, but I need to use it frequently and it
+;*    was easier to write it myself than to try to look for it as written by 
+;*    someone else
+;* @example: call s7Subs.euo s7WaitForAction 13
+;* @status tested good
+sub s7WaitForAction
+	_s7WaitForAction:
+	if %_s7ActionTimer + %1 > #scnt2 2
+		wait 1
+		goto _s7WaitForAction
+	set %_s7ActionTimer #scnt2
+return
+;----------------------
+;*
+;*End s7WaitForAction
+;*
+;----------------------
+
+
+
+;----
+;* @name s7WaitForVars
+;* @author snicker7
+;* @ver 1.1 20Jan05
+;* @purpose Multiple input sysvar waiter.
+;* @params 	%1*n is the gump sysvar being checked
+;*		%2*n is the comparative operator (>, <, <>, =, etc)
+;*		%3*n is the desired value of the sysvar
+;*		%nfinal is the timeout in seconds
+;* @returns #false if it times out
+;*          #true if success
+;* @notes %1 does not require the preceding number sign
+;*		one line shorter than Q's
+;* @example: call s7Subs.euo s7WaitForVars contID = #backpackID contSize = 7_9 3
+;* @status tested good
+sub s7WaitForVars
+	namespace Push
+	namespace Local _s7WFVs
+	set !C %0 / 3
+	set !T #scnt + 5
+	if ( %0 % 3 ) = 1
+		set !T #scnt + % . %0
+	for !i 1 !C
+	{
+		set !o 3 * !i - 2
+		set !p !o + 1
+		set !q !o + 2
+		if ! ( # . % . !o % . !p % . !q )
+			set !i 0
+		if #scnt > !T 2
+			set #result #false
+			goto _s7WFVs_D
+	}
+	set #result #true
+	_s7WFVs_D:
+	namespace Pop
+return #result
+;----------------------
+;*
+;*End s7WaitForVars
+;*
+;----------------------
+
+
+
+sub showConfigureMenu
+	menu Clear
+	menu Window Title HIYAH! Go Ninja!
+	menu Window Color Black
+	menu Window Size 307 128
+	menu Font Transparent #true
+	menu Font Align Right
+	menu Font Name Verdana
+	menu Font Size 10
+	menu Font Style bi
+	menu Font Color Red
+	menu Font Transparent #false
+	menu Font Align Left
+	menu Font BGColor Black
+	menu Text EUOLabel1 4 4 snicker7's 20-100+ ninjitsu trainer %version
+	menu Font Style 
+	menu Font Size 7
+	menu Font color maroon
+	menu Text credit1 2 116 written by snicker7.
+	menu Font Name Tahoma
+	menu Font Size 10
+	menu Font Style i
+	menu Font Color Red
+	menu Font BGColor BtnText
+	menu Button btnStart 225 96 75 25 HIYAH!
+	menu Show
+return
+
+sub showSkillGainMenu
+	menu Clear
+	menu Window Title HIYAH! Go Ninja!
+	menu Window Color Black
+	menu Window Size 375 126
+	menu Font Transparent #true
+	menu Font Align Right
+	menu Shape EUOShape1 124 24 125 97 4 5 1 Lime 2 White
+	menu Font Name Verdana
+	menu Font Size 10
+	menu Font Style bi
+	menu Font Color Red
+	menu Font Transparent #false
+	menu Font Align Left
+	menu Font BGColor Black
+	menu Text EUOLabel1 4 4 snicker7's 20-100+ ninjitsu trainer
+	menu Font Name MS Sans Serif
+	menu Font Size 8
+	menu Font Style 
+	menu Font Color Green
+	menu Font Align Center
+	menu Text EUOLabel2 140 32 Current Ninjitsu Skill:
+	menu Font Size 24
+	menu Font Color Lime
+	str len %ninjitsuskill
+	str ins %ninjitsuskill #dot #strres
+	menu Text lblNinjitsuSkill 148 48 #strRes
+	menu Font Size 8
+	menu Text lblTrainingMethod 132 95 unknown
+	menu Font Color Green
+	menu Text EUOLabel3 132 80 Current training method:
+	menu Font Size 8
+	menu Font Color Silver
+	menu Text lblGainRuns 12 88 0
+	menu Font Align Left
+	menu Text lblTimeElapsed 12 56 0:00:00
+	menu Font align right
+	menu Text lblGainsPerHr 360 88 0
+	menu Text lblTotalGains 360 56 0
+	menu Font Color Lime
+	menu Shape EUOShape2 4 24 117 97 4 5 1 Green 2 White
+	menu Shape EUOShape3 252 24 117 97 4 5 1 Green 2 White
+	menu Font Color Green
+	menu Font Align Left
+	menu Text EUOLabel4 12 40 Time Elapsed:
+	menu Font Color Green
+	menu Text EUOLabel6 12 72 Gain Runs Found:
+	menu Font Color Green
+	menu Font Align Right
+	menu Text EUOLabel7 360 40 Total Gains:
+	menu Font Color Green
+	menu Text EUOLabel9 360 72 Gains Per Hour:
+	menu Show
+return
+
+sub timeformat
+str len %time 
+set %timelenght  #strres - 3 
+str left %time %timelenght 
+set %t1 #strres / 3600 
+set %outhours %t1
+set %t2 #strres % 3600 / 60 
+set %t3 #strres % 3600 % 60 
+set %outtime %t1 
+for %timei 2 3 
+  { 
+  str len %t . %timei 
+  if #strres = 1 
+    set %outtime %outtime , : , 0 , %t . %timei 
+  if #strres <> 1 
+    set %outtime %outtime , : , %t . %timei 
+  } 
+return
+
+sub resumeMenu
+ menu clear
+ menu Font Transparent #true
+ menu Font Align Right
+ menu Font Name Verdana
+ menu Font Size 10
+ menu Font Style bi
+ menu Font Color Red
+ menu Font Transparent #false
+ menu Font Align Left
+ menu Font BGColor Black
+ menu Text EUOLabel1 4 4 snicker7's 20-100+ ninjitsu trainer
+ menu Font Name Tahoma
+ menu Font Size 10
+ menu Font Style
+ menu Font Color Red
+ menu Font BGColor BtnText
+ menu Button btnResume 225 96 75 25 Resume
+ menu show
+return
+
+;============
+; MenuUpdate
+;============
+sub updMenu
+  if #menubutton = closed
+    halt
+  if %menuupdatetimeout + 5 > #scnt2
+   return
+  set %time #systime - %starttime 
+  gosub timeformat 
+  menu set lblTimeElapsed %outtime
+  menu set lblGainRuns %gainrunsfound
+  set %ninjitsugains %ninjitsuskill - %ninjitsustartskill
+  menu set lblTotalGains %ninjitsugains
+  set %gainsperhr ( %ninjitsugains * 3600 ) / ( %time / 1000 )
+  menu set lblGainsPerHr %gainsperhr
+  if %spell = 247
+    menu set lblTrainingMethod Animal Form
+  if %spell = 252
+    menu set lblTrainingMethod Mirror Image
+  if %spell = 246
+    menu set lblTrainingMethod Death Strike
+  if %spell = 245
+    menu set lblTrainingMethod Focus Attack
+  str len %ninjitsuskill
+  str ins %ninjitsuskill #dot #strres
+  menu set lblNinjitsuSkill #strRes
+  if %usejewelrymethod = 1
+  {
+    if %jewelrunfound = 1
+    menu set lblTrainingMethod Jewelery, gain found!
+    if %jewelrunfound = 0
+    menu set lblTrainingMethod Jewelery, finding gain
+  }
+  set %menuupdatetimeout #scnt2
+return

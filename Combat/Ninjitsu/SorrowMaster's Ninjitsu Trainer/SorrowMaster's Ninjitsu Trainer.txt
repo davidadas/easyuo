@@ -1,0 +1,308 @@
+;==================================
+; Script Name: SorrowMaster's Ninjitsu Trainer
+; Author: SorrowMaster
+; Version: 1.0
+; Client Tested with: 4.0.6a
+; EUO version tested with: 1.42.009D
+; Shard OSI / FS: OSI
+; Revision Date:
+; Public Release: 11/04/04
+; Global Variables Used:
+; Purpose: Trains ninjitsu. Boat and 8x8.
+;==================================
+;
+;##################################
+;Instructions! Read before use!!###
+;##################################
+;
+;
+;Get on a boat and sail to the long serverline between
+;Skara and Moonglow. Turn your boat North. You should wear
+;an armor with a lot manareg (+2 items with crappy resists
+;are very cheap these days). Take an animal with you (for
+;best results, take something easy to hit such as a rabbit).
+;You MUST leave your guild, you must be in trammel and your
+;animal has to be [tame].
+;If there are ANY problems with the script, drop me a 
+;message at the proper thread, related to this script. Do
+;not PM me about this and please wait for a fix (which usually
+;comes fast when I get enough information) until you rate the
+;script.
+;Press play and enjoy. There is no fancy looking panel, no
+;statistics or other things. Just a fire and forget 8x8 macroer.
+;
+;The script will be updated to use jewelery in some time.
+;
+;
+;##################################
+
+event macro 3 0 raise anchor
+wait 30
+event macro 3 0 slow forward
+wait 3s
+
+init:
+
+set %8x8 #false
+set %disturbed #false
+set %checked #false
+set %lasty #false
+set %skill #false
+set %repeat #false
+
+loop:
+
+if %8x8
+gosub 8x8
+if %disturbed
+{
+set %8x8 #false
+gosub antiblock
+goto init
+}
+
+cast:
+
+if ! %8x8 && %checked
+{
+if %lasty = #CHARPOSY
+gosub antiblock
+set %checked #false
+}
+elseif ! %8x8 && ! %checked
+{
+set %lasty #CHARPOSY
+set %checked #true
+}
+
+
+
+gosub resetjournal
+gosub manacheck
+if ! #result
+{
+if ! %8x8
+event macro 3 0 stop
+goto manawait
+}
+
+chooseskill ninj
+set %skill #SKILL
+
+if #SKILL >= 850
+{
+set %anti #false
+set %spell death_strike
+set %string you_inflict_a
+set %mana 30
+event macro 15 246
+wait 10
+event macro 3 0 all kill
+target 1s
+event macro 23
+}
+if #SKILL < 850 && #SKILL >= 750
+{
+set %anti #false
+set %spell focus_attack
+set %string you_focus_all
+set %mana 20
+event macro 15 245
+wait 10
+event macro 3 0 all kill
+target 1s
+event macro 23
+}
+if #SKILL < 750 && #SKILL >= 500
+{
+set %anti #false
+set %spell mirror_image
+set %string begin_to_summon
+set %mana 10
+event macro 15 252
+wait 10
+event macro 3 0 all kill
+target 1s
+event macro 23
+}
+if #SKILL < 500 && #SKILL >= 400
+{
+set %anti #true
+set %spell animalform
+set %string the_spell
+set %mana 0
+event macro 15 247
+wait 30
+set %contposx #CONTPOSX
+set %contname #CONTNAME
+click 170 270
+wait 30
+click 90 333
+}
+if #SKILL < 400 && #SKILL >= 200
+{
+set %anti #true
+set %spell animalform
+set %string the_spell
+set %mana 0
+event macro 15 247
+wait 30
+set %contposx #CONTPOSX
+set %contname #CONTNAME
+click 370 270
+wait 30
+click 90 333
+}
+wait 18
+
+chooseskill ninj
+if #SKILL > %skill && ! %8x8
+{
+event macro 3 0 stop
+set %8x8 #true
+}
+
+if ! %anti
+{
+gosub FindJournalMessage %string
+if ! #result && %8x8
+{
+wait 3s
+goto cast
+}
+
+if #result && #SKILL = %skill && %8x8 && ! %repeat
+{
+set %repeat #true
+gosub repeat
+goto cast
+}
+
+if #result && #SKILL = %skill && %8x8 && %repeat
+{
+set %8x8 #false
+set %repeat #false
+event macro 3 0 slow forward
+wait 3s
+}
+}
+
+if %anti 
+{
+gosub FindJournalMessage %string
+if #result && %8x8
+{
+wait 3s
+goto cast
+}
+if ! #result && %8x8 && %contposx <> 50 && %contname <> generic_gump
+{
+wait 3s
+goto cast
+}
+if ! #result && #SKILL = %skill && %8x8 && ! %repeat
+{
+set %repeat #true
+gosub repeat
+goto cast
+}
+
+if ! #result && #SKILL = %skill && %8x8 && %repeat
+{
+set %8x8 #false
+set %repeat #false
+event macro 3 0 slow forward
+wait 3s
+}
+}
+
+
+wait 3s
+goto loop
+
+sub 8x8
+set %disturbed #false
+set %i 0
+
+sub:
+
+if %i = 1 || %i = 3 || %i = 5 || %i = 7 || %i = 9 
+set %lasty #CHARPOSY
+event macro 3 0 forward one
+wait 30
+if %i = 2 || %i = 4 || %i = 6 || %i = 8 || %i = 10 
+{
+if %lasty = #CHARPOSY
+set %disturbed #true
+}
+set %i %i + 1
+
+if ! %disturbed && %i <> 8
+goto sub
+
+wait 3s
+return
+
+;##############################
+;Begin of CEO's journal-subs###
+;##############################
+
+;###CEO's Journal Sub 1###
+sub FindJournalMessage
+set %jc 1 
+FJM1: 
+scanjournal %jc
+if #journal = N/A
+	return #false
+for %_i 1 %0
+{
+ 	if % . %_i in #journal
+	{
+		deletejournal
+		return #true
+	}
+}
+set %jc %jc + 1 
+goto FJM1
+
+;###CEO's Journalsub 2###
+sub resetjournal
+scanjournal 1
+deletejournal
+return
+
+;##############################
+;End of CEO's journal-subs#####
+;##############################
+
+sub manacheck
+if #MANA < %mana
+return #false
+return #true
+
+manawait:
+if #MANA < #MAXMANA
+goto manawait
+if ! %8x8
+event macro 3 0 slow forward
+goto cast
+
+sub antiblock
+	event macro 3 0 back
+	wait 5s
+	event macro 3 0 left
+	wait 5s
+	event macro 3 0 forward
+	wait 10s
+	event macro 3 0 right
+	wait 5s
+	event macro 3 0 slow forward
+return
+
+sub repeat
+for %i 1 6
+{
+event macro 3 0 forward one
+wait 30
+}
+return
