@@ -1,0 +1,83 @@
+; Hellspawn`s 8*8 Macroer    - based on Mitrandirs & Dumbanimals/Clovis`s
+;
+; This is part 2 and should be called Boatstopper.txt. Please load this part and press play & minimize then
+; open another instance of easyuo and load the 8*8macroer into it and press play.
+; Any bugs please post them on the board.
+;
+; public Beta Version 1.96
+;
+;new since 1.7 in boatstopper jewelry catcher
+;
+;new in 1.93 FIXED bug that prevented boat from stopping on all skills other than bush / ninjitsu
+;
+;new in 1.96 fixed excessive stopping when using jewelry to train
+;
+		set *64 on
+		set *12 off
+		set *14 OFF
+checkloop:
+		set *13 ON
+		if *14 = ON
+			{
+			stop
+			}
+		if *64 = on
+			{
+			if *16 = off
+				{
+				if *15 <> on
+					{
+					chooseskill *10
+					}
+				if *15 = on
+					{
+					chooseskill *10 real
+					}
+				}
+			if *16 <> off
+				{
+				chooseskill *16
+				}
+			set %curskill #skill
+			}
+		if *64 = off
+			{
+			if *16 = off
+				{
+				if *15 <> on
+					{
+					chooseskill *10
+					}
+				if *15 = on
+					{
+					chooseskill *10 real
+					}
+				if #skill > %curskill 
+					{ 
+					if *12 <> on
+						{
+						msg Stop$ 
+						}
+					set *12 off
+					set %curskill #skill 
+					set *64 on
+					goto checkloop
+					}
+				}
+			if *16 <> off
+				{
+				chooseskill *16
+				if #skill < %curskill 
+					{ 
+					if *12 <> on
+						{
+						msg Stop$ 
+						}
+					set *12 off
+					set %curskill #skill 
+					set *64 on
+					exit
+					}
+				}	
+			}
+		goto checkloop

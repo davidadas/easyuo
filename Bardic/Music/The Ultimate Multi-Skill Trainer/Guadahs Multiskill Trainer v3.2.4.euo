@@ -1,0 +1,4090 @@
+; #########################################################
+; Script Name: Guadah's Multi-Skill Trainer (Super Bob!)
+; Author: Guadah
+; Version: 3.2.4 (Fixed Magery Poisoning:  Cure & Skill select)
+; Client Tested with: EA 7.0.16.3 (Patch 53)
+; EUO version tested with: 1.5 Version 199
+; Shard OSI / FS: OSI Servers
+; Revision Date: 08-17-2011
+; Public Release: 10-12-2007
+; Global Variables Used:
+; Purpose: To Train a Varity of Skills from 25.0 to 120.0
+;          w/ Smart Casting Adjuster & Tracking Menu
+; #########################################################
+; Special Thanks: TrailMyx
+;                 Nilmer Everything Sub
+;                 Snicker Skill Tracking (base codework)
+; #########################################################
+set %timeout #scnt + 5
+GoSub TM_AddUnderscore #CHARNAME
+  set %charname #RESULT
+
+GoSub MainMenu
+; #########################################
+; ############# MAIN MENU #################
+; #########################################
+Sub MainMenu
+;     menu HideEUO
+     menu Clear
+     menu Window Title EUOMenu1
+     menu Window Color Silver
+     menu Window Size 410 300
+     menu Font Transparent #true
+     menu Font Name Times New Roman
+     menu Font Color Maroon
+     menu Window Title SuperBob v3.0
+     menu Font BGColor Silver
+     menu Font Color Maroon
+     Menu Font Align Center
+     menu Font Size 22
+     menu Text title 140 10 Super Bob
+     menu Font Size 14
+     Menu Text title 122 40 A Multi-Skill Trainer
+     Menu Shape TopGrey 8 8 394 2 4 7 1 White 5 White
+     menu Shape WhiteBottom 8 65 394 2 4 7 1 Gray 5 Gray
+     Menu Shape LeftSide 8 8 2 59 4 7 1 White 5 White
+     Menu Shape LeftSide 400 8 2 59 4 7 1 Gray 5 Gray
+     Menu Font Aligh Right
+     menu Font Name Times New Roman
+     menu Font Size 13
+     menu Text txt 300 80 Select a Skill:
+     menu Font BGColor Silver
+     menu Font Color Maroon
+     menu Font Size 11
+     menu Combo Create Select 296 100 105
+     menu Combo Add Select Anatomy
+     menu Combo Add Select Animal Lore
+     menu Combo Add Select Arms Lore
+     menu Combo Add Select Bushido
+     menu Combo Add Select Camping
+     menu Combo Add Select Cartography
+     menu Combo Add Select Chivalry
+     menu Combo Add Select Detect Hidden
+     menu Combo Add Select Discordance
+     menu Combo Add Select Eval Intel
+     menu Combo Add Select Healing
+     menu Combo Add Select Herding
+     menu Combo Add Select Hiding
+     menu Combo Add Select Magery
+     menu Combo Add Select Meditation
+     menu Combo Add Select Musianship
+     menu Combo Add Select Necromancy
+     menu Combo Add Select Ninjitsu
+     menu Combo Add Select Peacemaking
+     menu Combo Add Select Poisoning
+     menu Combo Add Select Provocation
+;     menu Combo Add Select Snooping
+     menu Combo Add Select Spirit Speak
+;     menu Combo Add Select Stealing
+     menu Combo Add Select Stealth
+     menu Combo Add Select Tracking
+     menu Font Size 14
+     menu Font Color Maroon
+     menu Text txt1 72 77 About This Script:
+     menu Font Size 10
+     menu Font BGColor Silver
+     menu Font Color Maroon
+     menu List Create Box 8 100 280 188
+     menu List Add Box This script is so smart, it is just like working with
+     menu List Add Box a real person! Because of this I shall call him BOB!
+     menu List Add Box
+     menu List Add Box Bob will train a varity of skills from 25 to your cap
+     menu List Add Box Select the skill from the pull down to learn more.
+     menu List Add Box Bob tracks your skill points, gains and total time.
+     menu List Add Box
+     menu List Add Box Bob believes in fast training, so bob will adjust
+     menu List Add Box casting speeds so your training as fast as possible
+     menu List Add Box
+     menu List Add Box So what are you waiting for?
+     menu List Add Box Pick a skill and get started!
+     menu Font BGColor Silver
+     menu Font Color Black
+     menu Button Quit  296 268 103 25 Quit
+     menu Show
+Set #menuButton N/A
+mainloop:
+  if #menuButton = Quit
+  {
+    Set #menuButton N/A
+    Display ok Thank you for using Guadah's Multi-Skill Trainer.$
+    +$
+    +Script is Halting$
+    Halt
+  }
+  if #menuButton = %Start
+  {
+    GoSub %Start
+  }
+  menu get Select
+  if #menuRes = 1 && !old_menures <> #menuRes
+  {
+    set !old_menures #menuRes
+    GoSub AnatMenu
+  }
+  if #menuRes = 2 && !old_menures <> #menuRes
+  {
+    set !old_menures #menuRes
+    GoSub AnilMenu
+  }
+  if #menuRes = 3 && !old_menures <> #menuRes
+  {
+    set !old_menures #menuRes
+    GoSub ArmsMenu
+  }
+  if #menuRes = 4 && !old_menures <> #menuRes
+  {
+    set !old_menures #menuRes
+    GoSub BushMenu
+  }
+  if #menuRes = 5 && !old_menures <> #menuRes
+  {
+    set !old_menures #menuRes
+    GoSub CampMenu
+  }
+  if #menuRes = 6 && !old_menures <> #menuRes
+  {
+    set !old_menures #menuRes
+    GoSub CartMenu
+  }
+  if #menuRes = 7 && !old_menures <> #menuRes
+  {
+    set !old_menures #menuRes
+    GoSub ChivMenu
+  }
+  if #menuRes = 8 && !old_menures <> #menuRes
+  {
+    set !old_menures #menuRes
+    GoSub DeteMenu
+  }
+  if #menuRes = 9 && !old_menures <> #menuRes
+  {
+    set !old_menures #menuRes
+    GoSub DiscMenu
+  }
+  if #menuRes = 10 && !old_menures <> #menuRes
+  {
+    set !old_menures #menuRes
+    GoSub EvalMenu
+  }
+  if #menuRes = 11 && !old_menures <> #menuRes
+  {
+    set !old_menures #menuRes
+    GoSub HealMenu
+  }
+  if #menuRes = 12 && !old_menures <> #menuRes
+  {
+    set !old_menures #menuRes
+    GoSub HerdMenu
+  }
+  if #menuRes = 13 && !old_menures <> #menuRes
+  {
+    set !old_menures #menuRes
+    GoSub HidiMenu
+  }
+  if #menuRes = 14 && !old_menures <> #menuRes
+  {
+    set !old_menures #menuRes
+    GoSub MageMenu
+  }
+  if #menuRes = 15 && !old_menures <> #menuRes
+  {
+    set !old_menures #menuRes
+    GoSub MediMenu
+  }
+  if #menuRes = 16 && !old_menures <> #menuRes
+  {
+    set !old_menures #menuRes
+    GoSub MusiMenu
+  }
+  if #menuRes = 17 && !old_menures <> #menuRes
+  {
+    set !old_menures #menuRes
+    GoSub NecrMenu
+  }
+  if #menuRes = 18 && !old_menures <> #menuRes
+  {
+    set !old_menures #menuRes
+    GoSub NinjMenu
+  }
+  if #menuRes = 19 && !old_menures <> #menuRes
+  {
+    set !old_menures #menuRes
+    GoSub PeacMenu
+  }
+  if #menuRes = 20 && !old_menures <> #menuRes
+  {
+    set !old_menures #menuRes
+    GoSub PoisMenu
+  }
+  if #menuRes = 21 && !old_menures <> #menuRes
+  {
+    set !old_menures #menuRes
+    GoSub ProvMenu
+  }
+;  if #menuRes = 22 && !old_menures <> #menuRes
+;  {
+;    set !old_menures #menuRes
+;    GoSub SnopMenu
+;  }
+  if #menuRes = 22 && !old_menures <> #menuRes
+  {
+    set !old_menures #menuRes
+    GoSub SpirMenu
+  }
+;  if #menuRes = 23 && !old_menures <> #menuRes
+;  {
+;    set !old_menures #menuRes
+;    GoSub SteaMenu
+;  }
+  if #menuRes = 23 && !old_menures <> #menuRes
+  {
+    set !old_menures #menuRes
+    GoSub StltMenu
+  }
+  if #menuRes = 24 && !old_menures <> #menuRes
+  {
+    set !old_menures #menuRes
+    GoSub TracMenu
+  }
+goto mainloop
+Return
+
+; #########################################
+; ############# ANATOMY MENU ##############
+; #########################################
+Sub AnatMenu
+     menu Delete Box
+     menu Delete txt1
+     menu Delete %Image
+     Menu Delete %Start
+     set %Start AnatTraining
+     menu Font Size 14
+     menu Font Color Maroon
+     menu Font Align Center
+     menu Text txt1 100 77 Anatomy:
+     menu Font Color WindowText
+     menu Font BGColor Window
+     menu Font Size 10
+     menu Font BGColor Silver
+     menu Font Color Maroon
+     menu List Create Box 8 100 280 188
+     menu List Add Box Requirements:
+     menu List Add Box * Ghost to Heal
+     menu List Add Box * Bandaids
+     menu List Add Box * Your Time!
+     menu List Add Box
+     menu List Add Box This script trains Anatomy by healing a ghost and
+     menu list add box performs the anatomy skill on mobiles while your
+     menu list add box waiting for your bandage to complete.
+     menu list add box
+     menu List Add Box You do NOT need the Healing Skill to gain.
+     Menu Font Color Black
+     menu image create %Image 0 0 410 300
+     menu image file %Image 310 150 skill_images/Anatomy.gif
+     Menu Button %Start 296 240 103 25 Start
+     Set #menuButton N/A
+Return
+; ###########################################
+; ############# ANIMAL LORE MENU ############
+; ###########################################
+Sub AnilMenu
+     menu Delete Box
+     menu Delete txt1
+     menu Delete %Image
+     Menu Delete %Start
+     set %Start AnilTraining
+     menu Font Size 14
+     menu Font Color Maroon
+     menu Font Align Center
+     menu Text txt1 100 77 Animal Lore:
+     menu Font Color WindowText
+     menu Font BGColor Window
+     menu Font Size 10
+     menu Font BGColor Silver
+     menu Font Color Maroon
+     menu List Create Box 8 100 280 188
+     menu List Add Box Requirements:
+     menu List Add Box * At least one (1) Pet to Lore.
+     menu List Add Box * Your Time!
+     Menu Font Color Black
+     menu image create %Image 0 0 410 300
+     menu image file %Image 310 150 skill_images/AnimalLore.gif
+     Menu Button %Start 296 240 103 25 Start
+Return
+; #########################################
+; ############# ARMS LORE MENU ############
+; #########################################
+Sub ArmsMenu
+     menu Delete Box
+     menu Delete txt1
+     menu Delete %Image
+     Menu Delete %Start
+     set %Start ArmsTraining
+     menu Font Size 14
+     menu Font Color Maroon
+     menu Font Align Center
+     menu Text txt1 100 77 Arms Lore:
+     menu Font Color WindowText
+     menu Font BGColor Window
+     menu Font Size 10
+     menu Font BGColor Silver
+     menu Font Color Maroon
+     menu List Create Box 8 100 280 188
+     menu List Add Box Requirements:
+     menu List Add Box * At least one (1) Item to Lore.
+     menu List Add Box * Item should be in your pack.
+     menu List Add Box * Your Time!
+     menu List Add Box
+     menu List Add Box This script trains Arms Lore at lightening speed!
+     menu List Add Box
+     menu List Add Box Bob will ask you to target an item to Lore, from
+     menu List Add Box that point just sit back and watch the gains fly.
+     Menu Font Color Black
+     menu image create %Image 0 0 410 300
+     menu image file %Image 310 150 skill_images/ArmsLore.gif
+     Menu Button %Start 296 240 103 25 Start
+Return
+; #########################################
+; ############# BUSHIDO MENU ##############
+; #########################################
+Sub BushMenu
+     menu Delete Box
+     menu Delete txt1
+     menu Delete %Image
+     Menu Delete %Start
+     set %Start BushTraining
+     menu Font Size 14
+     menu Font Color Maroon
+     menu Font Align Center
+     menu Text txt1 100 77 Bushido:
+     menu Font Color WindowText
+     menu Font BGColor Window
+     menu Font Size 10
+     menu Font BGColor Silver
+     menu Font Color Maroon
+     menu List Create Box 8 100 280 188
+     menu List Add Box Requirements:
+     menu List Add Box * Quick Weapon (faster the better)
+     menu List Add Box * Unguilded Character (This is a MUST)
+     menu List Add Box * A Ridable Mount (Horse, Llama, Ostard...)
+     menu List Add Box * Your Time
+     menu List Add Box
+     menu List Add Box This script has a anti-log method, so you can
+     menu List Add Box train from the comfort of your own home!  Just be
+     menu List Add Box standing next to the animal your going to train
+     menu List Add Box with and click play, the script will do the rest.
+     menu List Add Box Good Luck!
+     Menu Font Color Black
+     menu image create %Image 0 0 410 300
+     menu image file %Image 310 150 skill_images/Bushido.gif
+     Menu Button %Start 296 240 103 25 Start
+     Set #menuButton N/A
+Return
+; #########################################
+; ############# CAMPING MENU ##############
+; #########################################
+Sub CampMenu
+     menu Delete Box
+     menu Delete txt1
+     menu Delete %Image
+     Menu Delete %Start
+     set %Start CampTraining
+     menu Font Size 14
+     menu Font Color Maroon
+     menu Font Align Center
+     menu Text txt1 100 77 Camping:
+     menu Font Color WindowText
+     menu Font BGColor Window
+     menu Font Size 10
+     menu Font BGColor Silver
+     menu Font Color Maroon
+     menu List Create Box 8 100 280 188
+     menu List Add Box Requirements:
+     menu List Add Box * A Dagger (in your main pack)
+     menu List Add Box * A Tree (not in your pack)
+     menu List Add Box * Your Time
+     menu List Add Box
+     menu List Add Box This script will grab kindling from a tree located
+     menu List Add Box within ONE (1) tile of your location then attempt to
+     menu List Add Box light the kindling over and over!
+     menu List Add Box
+     menu List Add Box Why your training Camping... nobody knows.
+     menu List Add Box
+     menu List Add Box Good luck!
+     Menu Font Color Black
+     menu image create %Image 0 0 410 300
+     menu image file %Image 310 150 skill_images/Camping.gif
+     Menu Button %Start 296 240 103 25 Start
+     Set #menuButton N/A
+Return
+; #########################################
+; ############# CAMPING MENU ##############
+; #########################################
+Sub CartMenu
+     menu Delete Box
+     menu Delete txt1
+     menu Delete %Image
+     Menu Delete %Start
+     set %Start CartTraining
+     menu Font Size 14
+     menu Font Color Maroon
+     menu Font Align Center
+     menu Text txt1 100 77 Cartography:
+     menu Font Color WindowText
+     menu Font BGColor Window
+     menu Font Size 10
+     menu Font BGColor Silver
+     menu Font Color Maroon
+     menu List Create Box 8 100 280 188
+     menu List Add Box Requirements:
+     menu List Add Box * A secure container inside your house
+     menu List Add Box * A tool bag inside your secure container
+     menu List Add Box * A Trash Barrel (All within reach)
+     menu List Add Box * Approx 5000 scrolls and 30 Exceptional pens!
+     menu List Add Box ___________ (Trains from 0 to 99.5) ___________
+     menu List Add Box This script uses blank scrolls and mapmakers pens
+     menu List Add Box from a resource chest and tool bag you select.
+     menu List Add Box Your tool bag needs to be within your resource
+     menu List Add Box chest, this script DOES NOT craft pens!
+     menu List Add Box
+     menu List Add Box Happy Treasure Hunting!
+     Menu Font Color Black
+     menu image create %Image 0 0 410 300
+     menu image file %Image 310 150 skill_images/Cartography.gif
+     Menu Button %Start 296 240 103 25 Start
+     Set #menuButton N/A
+Return
+; #########################################
+; ############# CHIVALRY MENU  ############
+; #########################################
+Sub ChivMenu
+     menu Delete Box
+     menu Delete txt1
+     menu Delete %Image
+     Menu Delete %Start
+     set %Start ChivTraining
+     menu Font Size 14
+     menu Font Color Maroon
+     menu Font Align Center
+     menu Text txt1 100 77 Chivalry:
+     menu Font Color WindowText
+     menu Font BGColor Window
+     menu Font Size 10
+     menu Font BGColor Silver
+     menu Font Color Maroon
+     menu List Create Box 8 100 280 188
+     menu List Add Box Requirements:
+     menu List Add Box * 100% LRC Suit or Lots of Tilthing Points
+     menu List Add Box * Positive Karma
+     menu List Add Box * Your Time!
+     menu List Add Box
+     menu List Add Box This script trains Chivalry at lightening speed!
+     menu List Add Box
+     menu List Add Box Bob will adjust your FC & FCR Speeds
+     menu List Add Box depending on your suits statistics, to give you
+     menu List Add Box the fastest possible casting times.
+     menu List Add Box
+     menu List Add Box If you have low or negative Karma, you will fail
+     menu List Add Box some castings.  This will inhibit your training.
+     Menu Font Color Black
+     menu image create %Image 0 0 410 300
+     menu image file %Image 310 150 skill_images/Chivalry.gif
+     Menu Button %Start 296 240 103 25 Start
+Return
+; ##########################################
+; ##########  DETECT HIDDEN MENU  ##########
+; ##########################################
+Sub DeteMenu
+     menu Delete Box
+     menu Delete txt1
+     menu Delete %Image
+     Menu Delete %Start
+     set %Start DeteTraining
+     menu Font Size 14
+     menu Font Color Maroon
+     menu Font Align Center
+     menu Text txt1 100 77 Detect Hidden:
+     menu Font Color WindowText
+     menu Font BGColor Window
+     menu Font Size 10
+     menu Font BGColor Silver
+     menu Font Color Maroon
+     menu List Create Box 8 100 280 188
+     menu List Add Box Requirements:
+     menu List Add Box * 20 Detect Hidden from the NPC Guildmaster
+     menu List Add Box * Unpicked trapped spawning boxes on the ground.
+     menu List Add Box * Your Time
+     menu List Add Box
+     menu List Add Box You can train this anywhere, where there are
+     menu list add box trapped, unpicked boxes on the ground.
+     menu list Add box i.e. Vesper Bank, Vesper Crypts, Dungeons
+     menu list Add box
+     menu list add box Note:  Dungeons are are not recommended :)
+     Menu Font Color Black
+     menu image create %Image 0 0 410 300
+     menu image file %Image 310 150 skill_images/Detect.gif
+     Menu Button %Start 296 240 103 25 Start
+Return
+; #########################################
+; ############# DISCORD MENU ##############
+; #########################################
+Sub DiscMenu
+     set %targets 0
+     menu Delete Box
+     menu Delete txt1
+     menu Delete %Image
+     Menu Delete %Start
+     set %Start DiscTraining
+     menu Font Size 14
+     menu Font Color Maroon
+     menu Font Align Center
+     menu Text txt1 100 77 Discordance:
+     menu Font Color WindowText
+     menu Font BGColor Window
+     menu Font Size 10
+     menu Font BGColor Silver
+     menu Font Color Maroon
+     menu List Create Box 8 100 280 188
+     menu List Add Box Requirements:
+     menu List Add Box * Skill trained from an NPC
+     menu List Add Box * A TON of Musical Instruments
+     menu List Add Box * Animals in a closed area.
+     menu list add box
+     menu list add box Gather together as many animals in a closed area
+     menu list add box that you can pack in.  Once you are finished
+     menu list add box click start and go to something that is entertaining.
+     menu List Add Box
+     menu List Add Box Good Luck!
+     Menu Font Color Black
+     menu image create %Image 0 0 410 300
+     menu image file %Image 310 150 skill_images/Discord.gif
+     Menu Button %Start 296 240 103 25 Start
+     Set #menuButton N/A
+Return
+; #########################################
+; ############ EVAL INT MENU ##############
+; #########################################
+Sub EvalMenu
+     menu Delete Box
+     menu Delete txt1
+     menu Delete %Image
+     Menu Delete %Start
+     set %Start EvalTraining
+     menu Font Size 14
+     menu Font Color Maroon
+     menu Font Align Center
+     menu Text txt1 70 77 Evaluating Intelligence:
+     menu Font Color WindowText
+     menu Font BGColor Window
+     menu Font Size 10
+     menu Font BGColor Silver
+     menu Font Color Maroon
+     menu List Create Box 8 100 280 188
+     menu List Add Box Requirements:
+     menu List Add Box * 100% LRC Suit
+     menu List Add Box * Your Time!
+     menu List Add Box
+     menu List Add Box This script trains Eval Intel at lightening speed!
+     menu List Add Box
+     menu List Add Box Bob will spam a list of lower spells casted upon
+     menu List Add Box yourself.
+     Menu Font Color Black
+     menu image create %Image 0 0 410 300
+     menu image file %Image 310 150 skill_images/Eval.gif
+     Menu Button %Start 296 240 103 25 Start
+Return
+; #########################################
+; ############# HEALING MENU ##############
+; #########################################
+Sub HealMenu
+     menu Delete Box
+     menu Delete txt1
+     menu Delete %Image
+     Menu Delete %Start
+     set %Start HealTraining
+     menu Font Size 14
+     menu Font Color Maroon
+     menu Font Align Center
+     menu Text txt1 100 77 Healing:
+     menu Font Color WindowText
+     menu Font BGColor Window
+     menu Font Size 10
+     menu Font BGColor Silver
+     menu Font Color Maroon
+     menu List Create Box 8 100 280 188
+     menu List Add Box Requirements:
+     menu List Add Box * 80.0 Chivalry or a Ghost
+     menu List Add Box * Trapped Box
+     menu List Add Box * Bandages
+     menu List Add Box
+     menu List Add Box This script gives you the option to train using
+     menu List Add Box Chivalry, Trapped Boxes or Healing a Ghost.
+     menu List Add Box
+     menu List Add Box More information about Set-up will be viewed
+     menu List Add Box when you click Start.
+     Menu Font Color Black
+     menu image create %Image 0 0 410 300
+     menu image file %Image 310 150 skill_images/Healing.gif
+     Menu Button %Start 296 240 103 25 Start
+Return
+; #########################################
+; ############# HERDING MENU ##############
+; #########################################
+Sub HerdMenu
+     menu Delete Box
+     menu Delete txt1
+     menu Delete %Image
+     Menu Delete %Start
+     set %Start HerdTraining
+     menu Font Size 14
+     menu Font Color Maroon
+     menu Font Align Center
+     menu Text txt1 100 77 Herding:
+     menu Font Color WindowText
+     menu Font BGColor Window
+     menu Font Size 10
+     menu Font BGColor Silver
+     menu Font Color Maroon
+     menu List Create Box 8 100 280 188
+     menu List Add Box Requirements:
+     menu List Add Box * 25.0+ Herding from the NPC
+     menu List Add Box * Shepard Crook
+     menu List Add Box * Your Time
+     menu List Add Box * As many wild animals as you can gather in
+     menu List Add Box a closed space in your house (Pen, Room Whatever)
+     Menu Font Color Black
+     menu image create %Image 0 0 410 300
+     menu image file %Image 310 150 skill_images/Herding.gif
+     Menu Button %Start 296 240 103 25 Start
+     Set #menuButton N/A
+Return
+; #########################################
+; ############# Hiding MENU ##############
+; #########################################
+Sub HidiMenu
+     menu Delete Box
+     menu Delete txt1
+     menu Delete %Image
+     Menu Delete %Start
+     set %Start HidiTraining
+     menu Font Size 14
+     menu Font Color Maroon
+     menu Font Align Center
+     menu Text txt1 100 77 Hiding:
+     menu Font Color WindowText
+     menu Font BGColor Window
+     menu Font Size 10
+     menu Font BGColor Silver
+     menu Font Color Maroon
+     menu List Create Box 8 100 280 188
+     menu List Add Box Requirements:
+     menu List Add Box * 25 Hiding from the Theif Guildmaster
+     menu List Add Box * Your Time
+     menu List Add Box
+     menu List Add Box Good Luck!
+     Menu Font Color Black
+     menu image create %Image 0 0 410 300
+     menu image file %Image 310 150 skill_images/Hiding.gif
+     Menu Button %Start 296 240 103 25 Start
+Return
+; #########################################
+; ############# MAGERY MENU ###############
+; #########################################
+Sub MageMenu
+     menu Delete Box
+     menu Delete txt1
+     menu Delete %Image
+     Menu Delete %Start
+     set %Start MageTraining
+     menu Font Size 14
+     menu Font Color Maroon
+     menu Font Align Center
+     menu Text txt1 100 77 Magery:
+     menu Font Color WindowText
+     menu Font BGColor Window
+     menu Font Size 10
+     menu Font BGColor Silver
+     menu Font Color Maroon
+     menu List Create Box 8 100 280 188
+     menu List Add Box Requirements:
+     menu List Add Box * 100% LRC Suit
+     menu List Add Box * Your Time
+     menu List Add Box
+     menu List Add Box This script trains Magery at the Speed of Light!
+     menu List Add Box
+     Menu Font Color Black
+     menu image create %Image 0 0 410 300
+     menu image file %Image 310 150 skill_images/Magery.gif
+     Menu Button %Start 296 240 103 25 Start
+Return
+; #########################################
+; ########## MEDITATION MENU ##############
+; #########################################
+Sub MediMenu
+     menu Delete Box
+     menu Delete txt1
+     menu Delete %Image
+     Menu Delete %Start
+     set %Start MediTraining
+     menu Font Size 14
+     menu Font Color Maroon
+     menu Font Align Center
+     menu Text txt1 100 77 Meditation:
+     menu Font Color WindowText
+     menu Font BGColor Window
+     menu Font Size 10
+     menu Font BGColor Silver
+     menu Font Color Maroon
+     menu List Create Box 8 100 280 188
+     menu List Add Box Requirements:
+     menu List Add Box * 100% LRC Suit
+     menu List Add Box * Your Time
+     menu List Add Box
+     menu List Add Box This script trains Meditation at the Speed of Light!
+     menu List Add Box
+     menu List Add Box Bob will spam a list of medium level spells, please
+     menu List Add Box note that you must have atleast 80 Magery to train
+     menu List Add Box Meditation properly, or you'll fizzle on your spells.
+     menu List Add Box Active & Passive Meditation is performed.
+     Menu Font Color Black
+     menu image create %Image 0 0 410 300
+     menu image file %Image 310 150 skill_images/Meditation.gif
+     Menu Button %Start 296 240 103 25 Start
+Return
+; ###########################################
+; ########## MUSICIANSHIP MENU ##############
+; ###########################################
+Sub MusiMenu
+     menu Delete Box
+     menu Delete txt1
+     menu Delete %Image
+     Menu Delete %Start
+     set %Start MusiTraining
+     menu Font Size 14
+     menu Font Color Maroon
+     menu Font Align Center
+     menu Text txt1 100 77 Musicianship:
+     menu Font Color WindowText
+     menu Font BGColor Window
+     menu Font Size 10
+     menu Font BGColor Silver
+     menu Font Color Maroon
+     menu List Create Box 8 100 280 188
+     menu List Add Box Requirements:
+     menu List Add Box * At least one (1) Musical Instrument
+     menu List Add Box * 25.0+ Skill trained from an NPC
+     menu List Add Box * Your Time
+     menu List Add Box
+     menu List Add Box This script trains Music at the Speed of Light!
+     menu List Add Box
+     menu List Add Box Repeats playing an instrument over and over.
+     Menu Font Color Black
+     menu image create %Image 0 0 410 300
+     menu image file %Image 310 150 skill_images/Music.gif
+     Menu Button %Start 296 240 103 25 Start
+Return
+; ############################################
+; ############# NECROMANCY MENU ##############
+; ############################################
+Sub NecrMenu
+     menu Delete Box
+     menu Delete txt1
+     menu Delete %Image
+     Menu Delete %Start
+     set %Start NecrTraining
+     menu Font Size 14
+     menu Font Color Maroon
+     menu Font Align Center
+     menu Text txt1 100 77 Necromancy:
+     menu Font Color WindowText
+     menu Font BGColor Window
+     menu Font Size 10
+     menu Font BGColor Silver
+     menu Font Color Maroon
+     menu List Create Box 8 100 280 188
+     menu List Add Box Requirements:
+     menu List Add Box * 100% LRC Suit
+     menu List Add Box * 25.0 Necro from the NPC
+     menu List Add Box * A Weapon for low level training
+     menu List Add Box * Your Time
+     menu List Add Box
+     menu List Add Box Hint:  You can train up to 40.0 in New Haven.
+     menu List Add Box
+     Menu Font Color Black
+     menu image create %Image 0 0 410 300
+     menu image file %Image 310 150 skill_images/Necro.gif
+     Menu Button %Start 296 240 103 25 Start
+     Set #menuButton N/A
+Return
+; ##########################################
+; ############# NINJITSU MENU ##############
+; ##########################################
+Sub NinjMenu
+     menu Delete Box
+     menu Delete txt1
+     menu Delete %Image
+     Menu Delete %Start
+     set %Start NinjTraining
+     menu Font Size 14
+     menu Font Color Maroon
+     menu Font Align Center
+     menu Text txt1 100 77 Ninjitsu:
+     menu Font Color WindowText
+     menu Font BGColor Window
+     menu Font Size 10
+     menu Font BGColor Silver
+     menu Font Color Maroon
+     menu List Create Box 8 100 280 188
+     menu List Add Box Requirements:
+     menu List Add Box * Quick Weapon (faster the better)
+     menu List Add Box * Unguilded Character (This is a MUST)
+     menu List Add Box * A Ridable Mount (Horse, Llama, Ostard...)
+     menu List Add Box * You must be in a TRAMMEL ruleset facet!
+     menu List Add Box * Your Time
+     menu List Add Box
+     menu List Add Box NOTE!
+     menu List Add Box Once you reach 70.0 Ninjitsu, you MUST get
+     menu List Add Box a set of jewelry that will bring you up to 85.0
+     menu List Add Box
+     menu List Add Box Tips:
+     menu List Add Box - You can train to 40.0 in New Haven
+     menu List Add Box - Wear Mana Regen Armor (max out if possible)
+     menu List Add Box
+     menu List Add Box This script has a anti-log method, so you can
+     menu List Add Box train from the comfort of your own home!  Just
+     menu List Add Box stand next to the animal your going to train
+     menu List Add Box with and click play, the script will do the rest.
+     menu List Add Box
+     menu List Add Box Good Luck!
+     Menu Font Color Black
+     menu image create %Image 0 0 410 300
+     menu image file %Image 310 150 skill_images/Ninjitsu.gif
+     Menu Button %Start 296 240 103 25 Start
+     Set #menuButton N/A
+Return
+; ##########################################
+; ########## PEACEMAKING MENU ##############
+; ##########################################
+Sub PeacMenu
+     menu Delete Box
+     menu Delete txt1
+     menu Delete %Image
+     Menu Delete %Start
+     set %Start PeacTraining
+     menu Font Size 14
+     menu Font Color Maroon
+     menu Font Align Center
+     menu Text txt1 100 77 Peacemaking:
+     menu Font Color WindowText
+     menu Font BGColor Window
+     menu Font Size 10
+     menu Font BGColor Silver
+     menu Font Color Maroon
+     menu List Create Box 8 100 280 188
+     menu List Add Box Requirements:
+     menu List Add Box * 25.0+ Skill trained from an NPC
+     menu List Add Box * A TON of Musical Instruments
+     menu List Add Box * Your Time
+     menu List Add Box
+     menu List Add Box Good Luck!
+     Menu Font Color Black
+     menu image create %Image 0 0 410 300
+     menu image file %Image 310 150 skill_images/Peace.gif
+     Menu Button %Start 296 240 103 25 Start
+Return
+; ########################################
+; ########## POISONING MENU ##############
+; ########################################
+Sub PoisMenu
+     menu Delete Box
+     menu Delete txt1
+     menu Delete %Image
+     Menu Delete %Start
+     set %Start PoisTraining
+     menu Font Size 14
+     menu Font Color Maroon
+     menu Font Align Center
+     menu Text txt1 100 77 Provocation:
+     menu Font Color WindowText
+     menu Font BGColor Window
+     menu Font Size 10
+     menu Font BGColor Silver
+     menu Font Color Maroon
+     menu List Create Box 8 100 280 188
+     menu List Add Box Requirements:
+     menu List Add Box * 25.0+ Skill trained from an NPC
+     menu List Add Box * A Ton of Poison Pots, various levels
+     menu List Add Box * Your Time
+     menu List Add Box
+     menu List Add Box You will need to have a ton of poison potions
+     menu List Add Box located in a resources chest.  This script does
+     menu list add box not detect or use kegs.
+     menu List Add Box
+     menu List Add Box This script changes poison levels automatically
+     menu List Add Box as you gain in skill.  It will also cure you if
+     menu List Add Box you are poisoned via multiple techniques.
+     menu List Add Box Magery, Chivalry, Bandages or if you
+     menu List Add Box have none of the above skills, Cure Potions.
+     Menu Font Color Black
+     menu image create %Image 0 0 410 300
+     menu image file %Image 310 150 skill_images/Poison.gif
+     Menu Button %Start 296 240 103 25 Start
+Return
+; ##########################################
+; ########## PROVOCATION MENU ##############
+; ##########################################
+Sub ProvMenu
+     menu Delete Box
+     menu Delete txt1
+     menu Delete %Image
+     Menu Delete %Start
+     set %Start ProvTraining
+     menu Font Size 14
+     menu Font Color Maroon
+     menu Font Align Center
+     menu Text txt1 100 77 Provocation:
+     menu Font Color WindowText
+     menu Font BGColor Window
+     menu Font Size 10
+     menu Font BGColor Silver
+     menu Font Color Maroon
+     menu List Create Box 8 100 280 188
+     menu List Add Box Requirements:
+     menu List Add Box * 25.0+ Skill trained from an NPC
+     menu List Add Box * A TON of Musical Instruments
+     menu List Add box * Two Wild Animals!
+     menu List Add Box * Your Time
+     menu List Add Box
+     menu list add box Make sure you seperate your pets with
+     menu list add box something like a boat, or creating two pens
+     menu list add box inside of a customizable house.  Do not just
+     menu list add box provoke them against each other, unless you
+     menu list add box will be manually using the Vet skill to heal.
+     menu List Add Box
+     menu list add box You will need to use higher level pets for the
+     menu list add box higher level of provocation skill.  Here is a list
+     menu list add box of pets to use at each level:
+     menu list add box
+     menu list add box 0-25 Train from NPC
+     menu list add box 25-40 Horse or Ostards
+     menu list add box 40-55 Swampdragon
+     menu list add box 55-70 Drake
+     menu list add box 70-90 Blue Beetle
+     menu list add box 90-120 Cu'Sidhe
+     Menu Font Color Black
+     menu image create %Image 0 0 410 300
+     menu image file %Image 310 150 skill_images/Provocation.gif
+     Menu Button %Start 296 240 103 25 Start
+Return
+; ##########################################
+; ############# SNOOPING MENU ##############
+; ##########################################
+;Sub SnopMenu
+;     menu Delete Box
+;     menu Delete txt1
+;     menu Delete %Image
+;     Menu Delete %Start
+;     set %Start SnopTraining
+;     menu Font Size 14
+;     menu Font Color Maroon
+;     menu Font Align Center
+;     menu Text txt1 100 77 Snooping:
+;     menu Font Color WindowText
+;     menu Font BGColor Window
+;     menu Font Size 10
+;     menu Font BGColor Silver
+;     menu Font Color Maroon
+;     menu List Create Box 8 100 280 188
+;     menu List Add Box Coming Soon!
+;     Menu Font Color Black
+;     menu image create %Image 0 0 410 300
+;     menu image file %Image 310 150 skill_images/Snooping.gif
+;     Menu Button %Start 296 240 103 25 Start
+;     Set #menuButton N/A
+;Return
+; #########################################
+; ######### SPIRIT SPEAK MENU #############
+; #########################################
+Sub SpirMenu
+     menu Delete Box
+     menu Delete txt1
+     menu Delete %Image
+     Menu Delete %Start
+     set %Start SpirTraining
+     menu Font Size 14
+     menu Font Color Maroon
+     menu Font Align Center
+     menu Text txt1 100 77 Spirit Speak:
+     menu Font Color WindowText
+     menu Font BGColor Window
+     menu Font Size 10
+     menu Font BGColor Silver
+     menu Font Color Maroon
+     menu List Create Box 8 100 280 188
+     menu List Add Box Requirements:
+     menu List Add Box * 25.0 Spirit Speak trained from NPC Guildmaster
+     menu List Add Box
+     menu List Add Box This script trains your Spirit Speak
+     menu List Add Box with repeated attempts at usage of the
+     menu List Add Box Skill & Meditation if required.
+     Menu Font Color Black
+     menu image create %Image 0 0 410 300
+     menu image file %Image 310 150 skill_images/Spirit.gif
+     Menu Button %Start 296 240 103 25 Start
+Return
+; #########################################
+; ############# BEGGING MENU ##############
+; #########################################
+;Sub SteaMenu
+;     menu Delete Box
+;     menu Delete txt1
+;     menu Delete %Image
+;     Menu Delete %Start
+;     set %Start SteaTraining
+;     menu Font Size 14
+;     menu Font Color Maroon
+;     menu Font Align Center
+;     menu Text txt1 100 77 Stealing:
+;     menu Font Color WindowText
+;     menu Font BGColor Window
+;     menu Font Size 10
+;     menu Font BGColor Silver
+;     menu Font Color Maroon
+;     menu List Create Box 8 100 280 188
+;     menu List Add Box Coming Soon!
+;     Menu Font Color Black
+;     menu image create %Image 0 0 410 300
+;     menu image file %Image 310 150 skill_images/Stealing.gif
+;     Menu Button %Start 296 240 103 25 Start
+;     Set #menuButton N/A
+;Return
+; #########################################
+; ############# STEALTH MENU ##############
+; #########################################
+Sub StltMenu
+     menu Delete Box
+     menu Delete txt1
+     menu Delete %Image
+     Menu Delete %Start
+     set %Start StltTraining
+     menu Font Size 14
+     menu Font Color Maroon
+     menu Font Align Center
+     menu Text txt1 100 77 Stealth:
+     menu Font Color WindowText
+     menu Font BGColor Window
+     menu Font Size 10
+     menu Font BGColor Silver
+     menu Font Color Maroon
+     menu List Create Box 8 100 280 188
+     menu List Add Box Requirements:
+     menu List Add Box * 50.0 Hiding Skill
+     menu List Add Box * 25.0 Stealth trained from the Theif Guildmaster
+     menu List Add Box
+     menu List Add Box This script trains Stealth by walking E to W
+     menu List Add Box 3 tiles each way.
+     menu List Add Box
+     menu List Add Box STEALTH TRAINING GUIDE
+     menu List Add Box 00-25 Train from Theif Guildmaster NPC
+     menu List Add Box 25-57 Leather Gorget, Gloves
+     menu List Add Box 65-84 Ringmail Gloves, Ringmail Sleeves,
+     menu List Add Box Leather Gorget
+     menu List Add Box 84-95 Ringmail Legs, Leather Tunic,
+     menu List Add Box Studded Sleeves, Studded Gorget
+     menu List Add Box 95-GM Leather Legs, Leather Cap, Chain Tunic,
+     menu List Add Box Ringmail Sleeves, Studded Gorget
+     menu List Add Box
+     menu List Add Box This will ensure that you fail at your attempts
+     menu List Add Box to stealth, giving you more chances at skill gains.
+     Menu Font Color Black
+     menu image create %Image 0 0 410 300
+     menu image file %Image 310 150 skill_images/Stealth.gif
+     Menu Button %Start 296 240 103 25 Start
+Return
+; ##########################################
+; ############# TRACKING MENU ##############
+; ##########################################
+Sub TracMenu
+     menu Delete Box
+     menu Delete txt1
+     menu Delete %Image
+     Menu Delete %Start
+     set %Start TracTraining
+     menu Font Size 14
+     menu Font Color Maroon
+     menu Font Align Center
+     menu Text txt1 100 77 Tracking:
+     menu Font Color WindowText
+     menu Font BGColor Window
+     menu Font Size 10
+     menu Font BGColor Silver
+     menu Font Color Maroon
+     menu List Create Box 8 100 280 188
+     menu List Add Box Requirements:
+     menu List Add Box * 25 Tracking from the NPC Guildmaster
+     menu List Add Box * Your Time
+     menu List Add Box
+     menu List Add Box Good Luck!
+     Menu Font Color Black
+     menu image create %Image 0 0 410 300
+     menu image file %Image 310 150 skill_images/Tracking.gif
+     Menu Button %Start 296 240 103 25 Start
+Return
+; ##########################################################################
+; ######                                                          ##########
+; ######           THIS SECTION STARTS THE TRAINING SUBS          ##########
+; ######                                                          ##########
+; ##########################################################################
+Sub MenuSetup
+menu clear
+menu delete %Image
+menu Window Color Silver
+menu Window Size 410 300
+menu Font Transparent #true
+menu Font Name Times New Roman
+menu Window Title SuperBob v3.0
+menu Font Name Times New Roman
+menu Font Color Maroon
+menu Window Title SuperBob v3.0
+menu Font BGColor Silver
+menu Font Color Maroon
+Menu Font Align Center
+menu Font Size 22
+menu Text title 140 10 Super Bob
+menu Font Size 14
+Menu Text title 122 40 A Multi-Skill Trainer
+Menu Shape TopGrey 8 8 394 2 4 7 1 White 5 White
+menu Shape WhiteBottom 8 65 394 2 4 7 1 Gray 5 Gray
+Menu Shape LeftSide 8 8 2 59 4 7 1 White 5 White
+Menu Shape LeftSide 400 8 2 59 4 7 1 Gray 5 Gray
+menu Text txt1 100 77 %Skill
+Menu Delete %Start
+Menu Delete Box
+GoSub Set_variables
+Set %start_time #scnt
+Menu Font Transparent #true
+Menu Font Align Right
+; Top Left Skill Tracking Box
+Menu Font Size 13
+Menu Font Color Black
+Menu Text SkillTitle 132 109 Skill Status
+Menu Shape TopGrey 6 128 172 2 4 7 1 Gray 5 Gray
+Menu Shape LeftSide 6 128 2 65 4 7 1 Gray 5 Gray
+menu Shape RightSide 178 130 2 64 4 7 1 White 5 White
+menu Shape WhiteBottom 8 193 171 2 4 7 1 White 5 White
+
+; Status Box
+Menu Font Size 13
+Menu Font Color Black
+Menu Text ScriptTitle 137 205 Script Status
+Menu Font Size 11
+Menu Font Color Maroon
+menu Shape GrayTop 8 223 172 2 4 7 1 Gray 5 Gray
+menu Shape GreyTop2 178 265 112 2 4 7 1 Gray 5 Gray
+Menu Shape WhiteBottom 6 290 283 2 4 7 1 White 5 White
+Menu Shape GreyLeft 6 223 2 69 4 7 1 Gray 5 Gray
+menu Shape RightSideLong 178 223 2 43 4 7 1 White 5 White
+Menu Shape WhiteRightSmall 288 266 2 25 4 7 1 White 5 White
+
+Menu Font Size 11
+Menu Font Color Maroon
+Menu Text txt2 95 133 Starting Skill:
+Menu Text txt2 95 152 Current Skill:
+Menu Text txt2 95 171 Total Gains:
+
+Menu Text txt2 95 226 Total Time:
+Menu Text txt2 95 247 Attempts:
+Menu Text txt2 95 268 Status:
+
+Menu Font Size 11
+Menu Font Color Maroon
+Menu Shape Upper 190 128 200 2 4 7 1 Gray 5 Gray
+menu Shape Lower 190 214 200 2 4 7 1 White 5 White
+Menu Shape Right 390 129 2 86 4 7 1 White 5 White
+menu Shape Left_ 190 130 2 86 4 7 1 Gray 5 Gray
+menu text stattxt 300 195 Last Gain:
+
+menu font align left
+Menu Font Size 11
+  Set %hours 00 , :
+  Set %mins 00 , :
+  Set %secs 00
+  Set %total_time %hours , %mins , %secs
+menu Text TotalTime 110 226 %total_time
+chooseskill %SkillCheck real
+  set %startingskill #skill
+  set %currentskill #skill
+  str len %startingskill
+  str ins %startingskill #dot #strRes
+menu Delete startingskill
+menu Text startingskill 110 133 #strRes
+  str len %currentskill
+  str ins %currentskill #dot #strRes
+menu delete currentskill
+menu text currentskill 110 152 #strRes
+ set %totalgains %currentskill - %startingskill
+ str len %totalgains
+ str ins %totalgains #dot #strRes
+menu Text totalgains 110 171 #strRes
+
+Menu Font Size 10
+Menu Font Color Black
+menu text website 190 235 www.easyuo.com
+Menu Button Pause 296 240 103 25 Pause
+Menu Button Quit  296 268 103 25 Quit
+
+chooseSkill %SkillCheck
+if #skilllock <> up
+ {
+  set %skill_direction #skilllock
+  Display yesno Your %Skill skill is in the %skill_direction position. $
+                + I can correct your error for you.$
+                + Would you like me to do so?$
+  if #dispres = yes
+    exevent skilllock arms up
+  if #dispres = no 2
+    display OK... Script is Halting!!!$
+    Halt
+ }
+if #skill < 200
+    {
+     display Your %Skill is under 20.0!$$
+     + You should really train your %Skill up to most NPC's Train.$
+     + You may find that your skill locks at 25.0,$
+     + If this happens, please train your skill with the$
+     + %Skill NPC and restart the script.$$
+     + Good Luck!$
+    }
+Return
+; ################################################
+; ############ Anatomy Training Sub ##############
+; ################################################
+Sub AnatTraining
+Set %SkillCheck anat
+Set %Skill Anatomy
+Set %bandaids ZLF
+set %training_cost 0
+GoSub MenuSetup
+menu image create anatomy 0 0 410 300
+menu image file anatomy 200 75 skill_images/Anatomy.gif
+; Anatomy Specific Menu
+menu font align right
+menu font color maroon
+Menu Text stattxt 300 135 Aids Remaining:
+menu text stattxt 300 155 Cost of Training:
+Menu Font Align Left
+finditem %bandaids C_ , #backpackid
+if #FINDCNT > 0
+  for #FINDINDEX 1 #FINDCNT
+    set %aid_count %aid_count + #FINDSTACK
+Menu Text aid_count 305 135 %aid_count
+menu text training_cost 305 155 %training_cost , #spc , gp
+  Set %start_time #scnt
+  Set %hours 00
+  Set %mins 00
+  Set %secs 00
+  Set %last_gain %hours , : , %mins , : , %secs , #spc , %ap
+menu Text LastGain 305 195 %last_gain
+
+menu delete scriptstatus
+Menu Font Color Maroon
+Menu Font Size 11
+menu text scriptstatus 110 268 Please Target your Ghost
+Display ok Target your Ghost.
+	Set #targCurs 1
+	SetTarget:
+		if #targCurs = 1
+	goto SetTarget
+	Set %Target #LTargetID
+	set #ltargetkind 1
+menu delete scriptstatus
+Menu Font Color Maroon
+Menu Font Size 11
+menu text scriptstatus 110 268 Training Skill
+AnatTrainingLoop:
+Set %bandage ZLF
+FindItem %bandage C_ , #BackpackID
+if #findkind = -1
+   {
+    Display ok Unable to locate your Bandages.$
+    +Please ensure they are in your MAIN backpack.$
+    +If you are out, please get more, then restart script.$
+    +$
+    +Script has Halted!$
+    Halt
+   }
+Set #LOBJECTID #FINDID
+ Event Macro 17 0     ; Finds and uses Bandage
+  Target
+ Event Macro 22 0     ; Targets Ghost
+GoSub AddAttempts
+GoSub Update_Bandage_Count
+GoSub Anatomy_Training_Cost
+GoSub CheckPause
+GoSub Calc_Time
+gosub TM_AdvJournalSync resurrection 100
+GoSub waiting_for_bandage
+GoSub SkillCheck
+goto AnatTrainingLoop
+Return
+
+Sub waiting_for_bandage
+gosub TM_AdvJournalScan resurrection VALID You_are_unable You_are_able You_finish_applying
+if #RESULT = #FALSE
+   {
+   event macro 13 1
+    target
+   event macro 22 0
+    wait 30
+   GoSub Calc_Time
+   gosub waiting_for_bandage
+   }
+Return
+
+Sub Update_Bandage_Count
+menu delete aid_count
+set %aid_count 0
+finditem ZLF C_ , #backpackid
+if #FINDCNT > 0
+  for #FINDINDEX 1 #FINDCNT
+    set %aid_count %aid_count + #FINDSTACK
+Menu Text aid_count 305 135 %aid_count
+Return
+
+Sub Anatomy_Training_Cost
+Menu Delete training_cost
+Set %training_cost %training_cost + 2
+menu text training_cost 305 155 %training_cost , #spc , gp
+Return
+; ####################################################
+; ############ Animal Lore Training Sub ##############
+; ####################################################
+Sub AnilTraining
+Set %SkillCheck anil
+Set %Skill Animal , #spc , Lore
+GoSub MenuSetup
+menu font align right
+menu font color maroon
+menu font size 11
+Menu Text stattxt 300 135 Loring Item:
+menu font align left
+menu image create AnimalLore 0 0 410 300
+menu image file AnimalLore 200 75 skill_images/AnimalLore.gif
+menu delete scriptstatus
+menu font color maroon
+menu text scriptstatus 110 268 Target your Animal.
+
+
+display ok Target the Animal you wish to Lore.
+set #targCurs 1
+ repeat
+  until #targcurs <> 1
+Set %target #ltargetid
+Set #ltargetkind 1
+finditem %target G_
+event property #findid
+  str pos #property $
+	str left #property #strres
+menu text stattxt 305 135 #strres
+menu delete scriptstatus
+menu text scriptstatus 110 268 Training Skill
+AnilTrainingLoop:
+event macro 13 2        ; Animal Lore
+ target
+event macro 22 0        ; Target Last
+GoSub SkillCheck
+GoSub CheckPause
+GoSub Calc_Time
+GoSub AddAttempts
+wait 30
+goto AnilTrainingLoop
+Return
+; #########################################
+; ############ Arms Lore Sub ##############
+; #########################################
+Sub ArmsTraining
+Set %SkillCheck arms
+Set %Skill Arms , #spc , Lore
+GoSub MenuSetup
+menu font align right
+menu font color maroon
+menu font size 11
+Menu Text stattxt 300 135 Loring Item:
+menu font align left
+menu image create ArmsLore 0 0 410 300
+menu image file ArmsLore 200 75 skill_images/ArmsLore.gif
+menu delete scriptstatus
+menu font color maroon
+menu text scriptstatus 110 268 Target your Item.
+Display ok Target the item to Lore.
+set #targCurs 1
+ repeat
+  until #targcurs <> 1
+Set %target #ltargetid
+finditem %target C_ , #backpackid
+event property #findid
+  str pos #property $
+	str left #property #strres
+menu text stattxt 305 135 #strres
+ArmsTrainingLoop:
+FindItem %target C_ , #backpackid
+if #findkind = -1
+   {
+    Display ok Unable to locate your Item.$
+    +Please ensure it is in your MAIN backpack.$
+    +Then Click Resume$
+    GoSub CheckPause
+   }
+set #ltargetid #findid
+set #ltargetkind 1
+menu delete scriptstatus
+Menu Font Color Maroon
+menu text scriptstatus 110 268 Training Skill
+event macro 13 4
+target
+event macro 22
+wait 20
+GoSub AddAttempts
+GoSub CheckPause
+GoSub Calc_Time
+GoSub SkillCheck
+GoTo ArmsTrainingLoop
+Return
+; ##############################################
+; ######### BUSHIDO TRAINING SECTION ###########
+; ##############################################
+Sub BushTraining
+Set %SkillCheck bush
+Set %Skill Bushido
+GoSub MenuSetup
+menu image create Bushido 0 0 410 300
+menu image file Bushido 200 75 skill_images/Bushido.gif
+menu font align right
+menu font color maroon
+menu font size 11
+Menu Text stattxt 300 135 Training on:
+Menu Text stattxt 300 155 LMC:
+menu text stattxt 300 175 Stamina:
+GoSub ChooseBushSpell
+menu font align left
+gosub suit_properties Lower Mana Cost
+set %user_lmc #result
+Menu Text user_lmc 305 155 %user_lmc %
+menu text user_stam 305 175 #stamina
+menu delete scriptstatus
+menu font color maroon
+menu text scriptstatus 110 268 Target your Animal...
+set #LObjectID #CharID
+    event macro 17 0    ; Dismount Horse
+     wait 5
+    event macro 3 0 All Follow Me
+     wait 5
+Display ok Target the Animal you wish to Train with.
+Set #targCurs 1
+  repeat
+    until #targcurs <> 1
+	Set %Mount #LTargetID
+  set #ltargetkind 1
+finditem %Mount G_
+event property #findid
+  str pos #property $
+	str left #property #strres
+menu text stattxt 305 135 #strres
+  Event Macro 3 0 All Kill     ; Whispers All Kill
+   target
+  Event Macro 23 0             ; Targets Self
+  
+GoSub CheckPause
+GoSub TrainBushido
+Return
+
+Sub ChooseBushSpell
+chooseskill bush
+  if #skill > 500
+     {
+     set %spell 149   ; Lightning Strike
+     Return
+     }
+  if #skill < 500
+     {
+     display ok Your skill is to low to perform Lightning Strike.$
+             +You need at least 50.0 Bushido to use Lightning Strike.$
+             +Find a Jewelry to raise your Bushido to at least 50.0$
+             +After you complete this, restart the script.$
+             +$
+             +Script has Halted!$
+     halt
+     }
+Return
+
+Sub TrainBushido
+menu delete scriptstatus
+Menu Font Color Maroon
+menu text scriptstatus 110 268 Training Bushido
+BushTrainingLoop:
+gosub TM_AdvJournalSync bushido 100
+GoSub ChooseBushSpell
+  Event Macro 15 %spell        ; Uses Bushido Ability
+   set %timeout #scnt + 5
+   repeat
+   GoSub Calc_Time
+   GoSub CheckPause
+   gosub TM_AdvJournalScan bushido VALID You_attack_with_lightning_precision
+    until #RESULT = #TRUE || ( #scnt > %timeout )
+  Event Macro 8 7                     ; Opens Backpack to prevent Logout
+GoSub AddAttempts
+GoSub SkillCheck
+GoSub CheckPause
+GoSub Calc_Time
+chooseskill medi
+BushManaWait:
+ if #mana < 10
+    {
+    menu delete scriptstatus
+    menu Font Color Maroon
+    menu text scriptstatus 110 268 Waiting for Mana...
+    goto BushManaWait
+    }
+Goto BushTrainingLoop
+Return
+; ################################################
+; ############ CAMPING TRAINING SUB ##############
+; ################################################
+Sub CampTraining
+tile init
+Set %SkillCheck Camp
+Set %Skill Camping
+GoSub MenuSetup
+menu image create Camping 0 0 410 300
+menu image file Camping 200 75 skill_images/Camping.gif
+GoSub Calc_Time
+
+Set %Kindling PEF
+Set %Dagger TSF
+CampTrainingLoop:
+GoSub Calc_Time
+menu delete scriptstatus
+Menu Font Color Maroon
+menu text scriptstatus 110 268 Training Camping
+GoSub find_tree
+GoSub GetTreeTarget
+
+FindItem %Dagger C_ , #BackpackID
+set #lobjectid #findid
+event macro 17    ; Last Object
+target 2s
+Event Macro 22    ; Last Target
+wait 10
+FindItem %Kindling C_ , #BackpackID
+set #lobjectid #findid
+if #findkind = -1
+   {
+    GoSub CampTraining
+   }
+Event Macro 17 0
+wait 5
+GoSub Calc_Time
+GoSub SkillCheck
+Until #FindKind <> -1
+
+GoSub AddAttempts
+GoSub CheckPause
+GoSub SkillCheck
+goto CampTrainingLoop
+return
+;XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+;XXXXXXXX SUB TO FIND A TREE XXXXXXXXX
+;XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+sub find_tree
+namespace push
+namespace local scantree
+
+set #lpc 1000
+set !start_x #charposx - 1
+set !start_y #charposy - 1
+set !end_x #charposx + 1
+set !end_y #charposy + 1
+for !x !start_x !end_x
+    {
+    for !y !start_y !end_y
+        {
+        tile cnt !x !y #curskind
+        for !tilekind 0 #tilecnt
+            {
+            tile get !x !y !tilekind #curskind
+            if TREE in #tilename || PALM in #tilename
+               {
+               set !treex !x
+               set !treey !y
+               set !treez #tilez
+               set !treetile #tiletype
+               set !treekind 3
+               set #lpc 100
+               namespace pop
+               return #true
+               }
+            }
+        }
+    }
+set #lpc 100
+namespace pop
+return #false
+
+Sub GetTreeTarget
+	namespace push
+	namespace local scantree
+  set #ltargetx !treex
+  set #ltargety !treey
+  set #ltargetz !treez
+  set #ltargettile !treetile
+  set #ltargetkind !treekind
+  namespace pop
+return
+; ###############################################
+; ####  CARTOGRAPHY TRAINING SECTION  ###########
+; ###############################################
+Sub CartTraining
+tile init
+Set %SkillCheck Cart
+Set %Skill Cartography
+gosub MenuSetup
+gosub Calc_Time
+menu image create Cartography 0 0 410 300
+menu image file Cartography 200 75 skill_images/Cartography.gif
+menu font align right
+menu font color maroon
+menu text stattxt 300 135 Resource Chest:
+menu text stattxt 300 155 Tool Bag:
+menu text stattxt 300 175 Trash Barrel:
+
+set %cart_tool CXF
+set %blank_scroll DPF
+set %crafted_map XVH
+set %catposx 30
+set %catposy_map 90
+set %selposx 230
+set %cartography cart
+
+display ok Target Resource Chest.
+set #targCurs 1
+	 set_resource_chest:
+    if #targCurs = 1
+     goto set_resource_chest
+   set %resource_chest #ltargetid
+   set #lobjectid %resource_chest
+   event macro 17 0
+    wait 10
+   contpos 630 400
+    wait 10
+display ok Target Tool Bag.
+set #targCurs 1
+	 set_tool_bag:
+    if #targCurs = 1
+     goto set_tool_bag
+   set %tool_bag #ltargetid
+   set #lobjectid %tool_bag
+   event macro 17 0
+    wait 10
+   contpos 400 430
+    wait 10
+display ok Target Trash Barrel.
+set #targCurs 1
+	 set_trash_barrel:
+    if #targCurs = 1
+     goto set_trash_barrel
+   set %trash_barrel #ltargetid
+   set #lobjectid %trash_barrel
+   event macro 17 0
+    wait 10
+   contpos 610 40
+    wait 10
+
+ menu font align left
+ menu font color black
+ menu text stattxt 305 135 %resource_chest
+ menu text stattxt 305 155 %tool_bag
+ menu text stattxt 305 175 %trash_barrel
+
+gosub Calc_Time
+gosub clear_pack %blank_scroll %resource_chest
+gosub check_tool %cart_tool
+gosub check_cart_skill %cartography
+gosub cart_skill_training
+return
+
+; CLEAR BACKPACK OF ALL RESOURCES
+sub clear_pack
+menu delete scriptstatus
+menu text scriptstatus 110 268 Clearing Pack
+finditem %1 C_ , #backpackid
+if #findcnt < 1
+   return
+for %i 1 #findcnt
+    {
+    finditem %1 C_ , #backpackid
+    exevent drag #findid #findstack
+     wait 10
+    exevent dropc %2
+     wait 15
+    }
+return
+
+; CHECK SKILL SECTION
+sub check_cart_skill
+chooseskill cart
+  if #skill <= 300
+  {
+    set %craft_selection 70 ; Local Maps
+    set %skill_goal 301
+    ; these next three lines will clear the backpack of any remaining Maps
+    finditem %crafted_map C_ , #backpackid
+        if #findcnt >= 1
+           gosub clear_pack %crafted_map %trash_barrel
+    set %scriptstatus Local
+    gosub cart_skill_training
+  }
+  if #skill <= 400
+  {
+    set %craft_selection 90 ; City Maps
+    set %skill_goal 401
+    ; these next three lines will clear the backpack of any remaining Maps
+    finditem %crafted_map C_ , #backpackid
+        if #findcnt >= 1
+           gosub clear_pack %crafted_map %trash_barrel
+    set %scriptstatus City
+    gosub cart_skill_training
+  }
+  if #skill <= 550
+  {
+    set %craft_selection 110 ; Sea Maps
+    set %skill_goal 551
+    ; these next three lines will clear the backpack of any remaining Maps
+    finditem %crafted_map C_ , #backpackid
+        if #findcnt >= 1
+           gosub clear_pack %crafted_map %trash_barrel
+    set %scriptstatus Sea
+    gosub cart_skill_training
+  }
+  if #skill <= 994
+  {
+    set %craft_selection 130 ; World Maps
+    set %skill_goal 995
+    ; these next three lines will clear the backpack of any remaining Maps
+    finditem %crafted_map C_ , #backpackid
+        if #findcnt >= 1
+           gosub clear_pack %crafted_map %trash_barrel
+    set %scriptstatus World
+    gosub cart_skill_training
+  }
+  if #skill >= 995
+  {
+     display OK All Finished!$
+     Thank you for using Guadah's Multi-Skill Trainer.$
+     +$
+     +Script is Halting$
+return
+
+; CHECKING BACKPACK FOR # OF TOOLS
+sub check_tool
+finditem %1 C_ , #backpackid
+if #findcnt >= 1
+   return
+if #findcnt < 1
+  {
+  finditem %1 C_ , %tool_bag
+  set #lobjectid #findid
+  exevent drag #findid 1
+    wait 10
+  exevent dropc #backpackid
+    wait 15
+  }
+return
+
+; GRAB RESOURCES SECTION
+sub grab_resources
+finditem %blank_scroll C_ , %resource_chest
+if #findstack < 100
+   {
+   display ok You have less then 100 blank scrolls.$
+           +Please get more and resetart script.
+   gosub clear_pack %blank_scrolls
+   halt
+   }
+if #findstack >= 100
+   {
+   exevent drag #findid 100
+    wait 10
+   exevent dropc #backpackid
+    wait 15
+   }
+return
+
+; SKILL TRAINING SECTION
+sub cart_skill_training
+menu delete scriptstatus
+menu text scriptstatus 110 268 Crafting %scriptstatus Maps
+finditem %blank_scroll C_ , #backpackid
+if #findstack < 10
+   gosub grab_resources
+
+finditem %cart_tool C_ , #backpackid
+if #findcnt < 1
+   gosub check_tools %cart_tool
+
+finditem %cart_tool C_ , #backpackid
+set #lobjectid #findid
+event macro 17 0
+  gosub gumpwait
+ set %x #contposx + %catposx
+ set %y #contposy + %catposy_map
+ click %x %y ; Selects Category 'Maps'
+  gosub gumpwait
+ set %x #contposx + %selposx
+ set %y #contposy + %craft_selection
+ click %x %y ; Selects type of Map
+  gosub gumpwait
+
+cart_skill_training_loop:
+menu delete scriptstatus
+menu text scriptstatus 110 268 Crafting %scriptstatus Maps
+gosub Calc_Time
+gosub SkillCheck
+gosub AddAttempts
+finditem %cart_tool C_ , #backpackid
+set #lobjectid #findid
+
+ set %x #contposx + 280
+ set %y #contposy + 455
+ click %x %y ; Selects 'Make Last'
+  gosub gumpwait
+
+chooseskill cart
+if #skill >= %skill_goal
+  gosub check_cart_skill
+
+finditem %blank_scroll C_ , #backpackid
+if #findstack < 10
+   gosub grab_resources
+   
+finditem %crafted_map C_ , #backpackid
+if #findcnt >= 80
+   gosub clear_pack %crafted_map %trash_barrel
+
+finditem %cart_tool C_ , #backpackid
+if #findcnt < 1
+   gosub check_tool %cart_tool
+goto cart_skill_training_loop
+
+return
+; ###############################################
+; ######### CHIVALRY TRAINING SECTION ###########
+; ###############################################
+Sub ChivTraining
+Set %SkillCheck chiv
+Set %Skill Chivalry
+GoSub MenuSetup
+menu image create Chivalry 0 0 410 300
+menu image file Chivalry 200 75 skill_images/Chivalry.gif
+menu font align right
+menu font color maroon
+Menu Text stattxt 250 135 LRC:
+menu text stattxt 250 155 LMC:
+Menu Text stattxt 345 135 FC:
+menu text stattxt 345 155 FCR:
+menu font align left
+menu delete scriptstatus
+menu font color maroon
+menu text scriptstatus 110 268 Calculating Suit Properties
+
+gosub suit_properties Lower Reagent Cost
+set %user_lrc #result
+Menu Text user_lrc 255 135 %user_lrc %
+
+gosub suit_properties Lower Mana Cost
+set %user_lmc #result
+Menu Text user_lmc 255 155 %user_lmc %
+
+gosub suit_properties Faster Casting
+set %user_fc #result
+Menu Text user_fc 350 135 %user_fc
+
+gosub suit_properties Faster Cast Recovery
+set %user_fcr #result
+Menu Text user_fcr 350 155 %user_fcr
+
+GoSub Set_FCR_Delay
+GoSub CastChivSpell
+Return
+
+Sub CastChivSpell
+CastChivSpellLoop:
+GoSub Calc_Time
+GoSub CheckPause
+GoSub SkillCheck
+GoSub ChooseChivSpell
+menu delete scriptstatus
+Menu Font Color Maroon
+menu text scriptstatus 110 268 Casting Spell
+
+  Event Macro 15 %spell
+   Target
+  Event Macro 23 0
+   wait %FCR_Delay
+  Event Macro 8 7
+  
+  gosub TM_FindTextNoAdvance You_must_have_at_least
+    if #RESULT = #TRUE ; successful application
+    {
+     gosub TM_SyncTextScan ; make your copy of #jindex current
+     GoSub ChivManaWait
+    }
+GoSub AddAttempts
+Goto CastChivSpellLoop
+Return
+
+Sub ChooseChivSpell
+chooseskill %SkillCheck
+set %skill #skill
+
+  if %skill > 849
+  {
+    set %spell 208  ; Noble Sacrifice
+  }
+  if %skill < 850 && > 749
+  {
+    set %spell 207  ; Holy Light
+  }
+  if %skill < 750 && > 649
+  {
+    set %spell 206  ; Enemy of One
+  }
+  if %skill < 650 && > 549
+  {
+    set %spell 204  ; Dispel Evil
+  }
+  if %skill < 550 && > 449
+  {
+    set %spell 205  ; Divine Fury
+  }
+  if %skill < 450 && > 349
+  {
+    set %spell 203  ; Consecrate Weapon
+  }
+  if %skill < 350
+  {
+    set %spell 209  ; Remove Curse
+  }
+Return
+
+Sub ChivManaWait
+menu delete scriptstatus
+Menu Font Color Maroon
+menu text scriptstatus 110 268 Waiting for Mana
+wait 20
+chooseskill medi
+If #mana < #maxmana && #skill > 250
+   {
+    GoSub CheckPause
+    GoSub Meditate
+   }
+If #mana < #maxmana
+   {
+    GoSub CheckPause
+		GoSub ChivManaWait
+	 }
+Return
+; #####################################################
+; #############   DETECT HIDDEN SUB   #################
+; #####################################################
+Sub DeteTraining
+Set %SkillCheck dete
+Set %Skill Detect , #spc , Hidden
+GoSub MenuSetup
+menu image create detect 0 0 410 300
+menu image file detect 200 75 skill_images/Detect.gif
+menu font align right
+menu font color maroon
+menu font size 11
+Menu Text stattxt 300 135 Detecting Item:
+menu font align left
+
+DeteTrainingLoop:
+Set %chest_or_crate CUD_KKF_BUD_VMF_JIF_IIF_ZTD_UMF_KIF_IKF_WMF
+finditem %chest_or_crate G_5
+for #findindex 1 #findkind
+    {
+    if stones in #property
+     ignoreitem #findid
+    }
+if #findkind <> 1
+   {
+   Display ok Can not find any crates or chests to detect.$
+              +When you are ready, please restart script$
+              +Script has halted$
+              Halt
+   }
+set %chest_or_crate #ltargetid
+set #ltargetkind 1
+menu delete itemname
+event property #findid
+  str pos #property $
+	str left #property #strres
+menu text itemname 305 135 #strres
+
+menu delete scriptstatus
+Menu Font Color Maroon
+menu text scriptstatus 110 268 Training Detect Hidden
+
+Event macro 13 14  ; Performs Detect Hidden
+ Target
+Event Macro 22 0   ; Selects Last Target
+GoSub AddAttempts
+GoSub SkillCheck
+set %timer #SCNT + 11
+repeat
+wait 20
+gosub Calc_Time
+gosub Check_Pause
+until #scnt > %timer
+Goto DeteTrainingLoop
+Return
+; ####################################################
+; ############ Discordance Training Sub ##############
+; ####################################################
+Sub DiscTraining
+Set %SkillCheck Disc
+Set %Skill Discordance
+GoSub MenuSetup
+menu font align right
+menu font color maroon
+menu font size 11
+Menu Text stattxt 300 135 Discording:
+menu text stattxt 300 155 Using Instrument:
+menu font align left
+Set %Instruments QRF_NRF_MQF_PRF_LQF_OQF_QRF_RGP_KRF
+set %targets ZF_PF_NF_NG_YG_AH_PF_PG_TG
+
+DiscTrainingLoop:
+menu delete scriptstatus
+menu font color maroon
+menu text scriptstatus 110 268 Training Discordance
+FindItem %Instruments C_ , #BackpackID
+set #lobjectid #findid
+Set %CurrentInstrument #findid
+event property #findid
+  str pos #property $
+	str left #property #strres
+menu delete instrument
+menu text instrument 305 155 #strres
+event macro 17 0    ; Last Object
+if #findkind = -1
+   {
+    Display ok Unable to locate your Instruments.$
+    +Please ensure they are in your MAIN backpack.$
+    +If you are out, please get more, then restart script.$
+    Halt
+   }
+; Looks for Targets to Discord, if none are available,
+; Script will hide and let animals time out from discord.
+gosub TM_AdvJournalSync alreadydisc 100
+gosub TM_AdvJournalSync mustwait 100
+gosub TM_AdvJournalSync discord3 100
+
+finditem %targets G_8
+set #ltargetid #findid
+set %target #ltargetid
+set #ltargetkind 1
+event property #findid
+  str pos #property $
+	str left #property #strres
+menu delete discord
+menu text discord 305 135 #strres
+if #findcnt <> 0
+   {
+   event macro 13 15       ; Use Skill Discordance
+    target
+   event macro 22 0        ; Last Target
+    ignoreItem %target
+   gosub AddAttempts
+   gosub CheckPause
+   gosub SkillCheck
+   gosub Calc_Time
+   gosub TM_AdvJournalScan alreadydisc VALID That_creature_is_already
+   if #RESULT = #TRUE
+      {
+      menu delete scriptstatus
+      menu text scriptstatus 110 268 Already Discorded, ignoring
+       wait 10
+      ignoreItem %target 1
+      }
+   gosub TM_AdvJournalScan mustwait VALID You_must_wait_a_few
+   if #RESULT = #TRUE
+	    {
+	    menu delete scriptstatus
+      menu text scriptstatus 110 268 You must wait...
+      set %waittimer #scnt + 3
+      repeat
+       wait 20
+       gosub CheckPause
+       gosub Calc_Time
+      until #scnt > %waittimer
+      }
+   gosub TM_AdvJournalScan discord VALID You_play_jarring_music
+   if #RESULT = #TRUE
+	    {
+	    menu delete scriptstatus
+      menu text scriptstatus 110 268 Success! Waiting skill timer
+      set %waittimer #scnt + 11
+      repeat
+       wait 20
+       gosub CheckPause
+       gosub Calc_Time
+      until #scnt > %waittimer
+      }
+   goto DiscTrainingLoop
+   }
+menu delete scriptstatus
+menu text scriptstatus 110 268 All Pets are Discorded
+ wait 20
+
+event macro 13 21           ; Use Skill Hiding
+menu delete scriptstatus
+menu text scriptstatus 110 268 Hiding. Waiting out discord
+set %waittimer #scnt + 15
+repeat
+ wait 20
+ gosub CheckPause
+ gosub Calc_Time
+until #scnt > %waittimer
+ignoreItem reset
+goto DiscTrainingLoop
+return
+; ###################################################
+; ############ Eval Intel Training Sub ##############
+; ###################################################
+Sub EvalTraining
+Set %SkillCheck eval
+Set %Skill Evaluating , #spc , Intelligence
+GoSub MenuSetup
+menu image create Eval 0 0 410 300
+menu image file Eval 290 75 skill_images/Eval.gif
+menu font align right
+menu font color maroon
+Menu Text stattxt 250 135 LRC:
+menu text stattxt 250 155 LMC:
+Menu Text stattxt 345 135 FC:
+menu text stattxt 345 155 FCR:
+menu font align left
+menu delete scriptstatus
+menu font color maroon
+menu text scriptstatus 110 268 Calculating Suit Properties
+gosub suit_properties Lower Reagent Cost
+set %user_lrc #result
+Menu Text user_lrc 255 135 %user_lrc %
+gosub suit_properties Lower Mana Cost
+set %user_lmc #result
+Menu Text user_lmc 255 155 %user_lmc %
+gosub suit_properties Faster Casting
+set %user_fc #result
+Menu Text user_fc 350 135 %user_fc
+gosub suit_properties Faster Cast Recovery
+set %user_fcr #result
+Menu Text user_fcr 350 155 %user_fcr
+GoSub Set_FCR_Delay
+
+evaltrainingloop:
+menu delete scriptstatus
+menu font color maroon
+menu text scriptstatus 110 268 Casting Spell
+
+  event macro 15 0
+    gosub evalstuff
+  event macro 15 2
+    gosub evalstuff
+  event macro 15 5
+    gosub evalstuff
+  event macro 15 7
+    gosub evalstuff
+  event macro 15 8
+    gosub evalstuff
+  event macro 15 9
+    gosub evalstuff
+  event macro 15 15
+    gosub evalstuff
+
+goto evaltrainingloop
+return
+    
+sub evalstuff
+   wait 20
+    repeat
+      until ( #TargCurs = 1 ) || ( #scnt > %timeout )
+  Event Macro 23 0
+   wait %FCR_Delay
+  GoSub CheckPause
+  GoSub SkillCheck
+  GoSub Calc_Time
+  GoSub AddAttempts
+  if #mana < 20
+    GoSub Meditate
+return
+
+; ################################################
+; ############ Healing Training Sub ##############
+; ################################################
+Sub HealTraining
+
+GoSub ChooseTechnique
+Set #menuButton N/A
+HealingMenuLoop:
+if #menubutton = Trapbox
+{
+  GoSub TrapboxHealTraining
+}
+if #menubutton = Chivalry
+{
+  GoSub ChivHealTraining
+}
+if #menuButton = Ghost
+{
+  GoSub GhostHealTraining
+}
+GoTo HealingMenuLoop
+Return
+
+Sub ChooseTechnique
+Menu Clear
+Set %SkillCheck heal
+Set %Skill Healing
+Menu Window Title Guadah's Healing Trainer
+Menu Window Color Silver
+Menu Window Size 280 195
+
+Menu Font BGColor Silver
+Menu Font Color Maroon
+Menu Font Size 12
+Menu Text Title 16 10 How would you like to train Healing?
+menu Font Size 10
+menu Font BGColor Silver
+menu Font Color Maroon
+menu List Create Box 10 35 260 120
+menu List Add Box TRAP BOX:
+menu List Add Box Items Needed:
+menu List Add Box * Trapped Box
+menu List Add Box * Lockpicks
+menu List Add Box * Bandages
+menu List Add Box
+menu List Add Box Make sure you have a Trapped Box in
+menu List Add Box your main pack. Trapped Boxes tend
+menu list add box to do quite a bit of damage, so I suggest
+menu list add box you wear a set of DC Platemail armor.
+menu List Add Box
+menu List Add Box CHIVALRY:
+menu List Add Box 85.0 Chivalry Required & a person to
+menu List Add Box cast next to.  Without the person, you
+menu List Add Box will cast Noble Sacrafice but the spell
+menu List Add Box will not take your hitpoints away to heal.
+menu List Add Box This script is designed to cast Noble
+menu List Add Box Sacrafice until succeeded, then it will
+menu List Add Box heal you until you are at full health.
+menu List Add Box Rinse and Repeat.  Good Luck!
+menu List Add Box
+menu List Add Box GHOST:
+menu List Add Box You must have a ghost to heal.. duh.
+menu List Add Box Once you select this option, the script
+menu List Add Box will ask that you target your Ghost,
+menu List Add Box from there just sit back and enjoy the
+menu List Add Box gains.  Good Luck!
+Menu Font Size 10
+Menu Font Color Black
+menu Button Trapbox 10 165 80 25 Trapbox
+menu Button Chivalry 100 165 80 25 Chivalry
+menu Button Ghost 190 165 80 25 Ghost
+Menu show
+Return
+
+; ##### GHOST HEALING TRAINING SECTION
+Sub GhostHealTraining
+Set %SkillCheck heal
+Set %Skill Healing
+GoSub MenuSetup
+menu image create healing 0 0 410 300
+menu image file healing 200 75 skill_images/Healing.gif
+; Anatomy Specific Menu
+menu font align right
+menu font color maroon
+Menu Text stattxt 300 135 Aids Remaining:
+menu text stattxt 300 155 Cost of Training:
+Menu Font Align Left
+finditem ZLF C_ , #backpackid
+if #FINDCNT > 0
+  for #FINDINDEX 1 #FINDCNT
+    set %aid_count %aid_count + #FINDSTACK
+Menu Text aid_count 305 135 %aid_count
+menu text training_cost 305 155 %training_cost , #spc , gp
+
+GoSub CheckPause
+GoSub Calc_Time
+Menu Font Color Maroon
+menu delete scriptstatus
+menu text scriptstatus 110 268 Target your Ghost
+
+Set %Bandage ZLF
+event ExMsg #charID 3 0 Please Target your Ghost.
+	Set #targCurs 1
+	HealingSetTarget:
+		if #targCurs = 1
+	goto HealingSetTarget
+	Set %Target #LTargetID
+	Set #LObjectID %Target
+GhostHealing:
+Menu Font Color Maroon
+menu delete scriptstatus
+menu text scriptstatus 110 268 Bandaging Ghost
+FindItem %Bandage C_ , #BackpackID
+Set #LObjectID #FindID
+Event Macro 17 0        ; Use Last Object (Bandages)
+Event Macro 25 0        ; Wait for Target
+  wait 10
+Event Macro 22 0        ; Last Target (Ghost)
+gosub AddAttempts
+gosub Update_Bandage_Count
+gosub Healing_Training_Cost2
+gosub TM_AdvJournalSync ghosthealing 100
+gosub wait_for_bandage_ghost
+GoTo GhostHealing
+Return
+
+Sub Healing_Training_Cost2
+Menu Delete training_cost
+Set %training_cost %training_cost + 2
+menu text training_cost 305 155 %training_cost , #spc , gp
+Return
+
+Sub wait_for_bandage_ghost
+menu delete scriptstatus
+menu text scriptstatus 110 268 Waiting Bandage Timer...
+gosub TM_AdvJournalScan ghosthealing VALID You_are_unable You_are_able You_finish_applying
+if #RESULT = #FALSE
+   {
+   wait 20
+   gosub CheckPause
+   GoSub Calc_Time
+   gosub wait_for_bandage_ghost
+   }
+GoSub SkillCheck
+Return
+
+; ##### CHIVALRY HEAL TRAINING SECTION
+Sub ChivHealTraining
+Set %SkillCheck heal
+Set %Skill Healing
+GoSub MenuSetup
+menu image create healing 0 0 410 300
+menu image file healing 200 75 skill_images/Healing.gif
+; Anatomy Specific Menu
+menu font align right
+menu font color maroon
+Menu Text stattxt 300 135 Aids Remaining:
+menu text stattxt 300 155 Cost of Training:
+Menu Font Align Left
+finditem ZLF C_ , #backpackid
+if #FINDCNT > 0
+  for #FINDINDEX 1 #FINDCNT
+    set %aid_count %aid_count + #FINDSTACK
+Menu Text aid_count 305 135 %aid_count
+menu text training_cost 305 155 %training_cost , #spc , gp
+
+GoSub CheckPause
+GoSub Calc_Time
+Menu Font Color Maroon
+menu delete scriptstatus
+menu text scriptstatus 110 268 Checking Chiv Skill
+
+Set %Skill chiv
+Set %Bandage ZLF
+chooseskill chiv
+set %skill #skill
+  if %skill < 700
+    {
+      Display ok Your Chivalry is not high enough to train Healing$
+            + this way, please raise Chivalry and try again.$
+            +$
+            +Script is Halting$
+            Halt
+    }
+
+ChivCastingLoop:
+menu delete scriptstatus
+menu text scriptstatus 110 268 Casting Noble Sacrafice
+Event Macro 15 208
+wait 35
+GoSub SkillCheck
+GoSub Calc_Time
+GoSub CheckPause
+If #hits < #maxhits
+    {
+		GoSub Bandage_Patient
+	  }
+WaitingForManaLoop:
+If #mana <= 17
+   {
+   Menu Font Color Maroon
+   menu delete scriptstatus
+   menu text scriptstatus 110 268 Waiting for Mana
+   GoSub SkillCheck
+   GoSub Calc_Time
+   GoSub CheckPause
+   goto WaitingForManaLoop
+   }
+Goto ChivCastingLoop
+Return
+
+Sub Bandage_Patient
+Menu Font Color Maroon
+menu delete scriptstatus
+menu text scriptstatus 110 268 Healing Patient...
+chivhealtrainingloop:
+if #hits = #maxhits
+   {
+   return
+   }
+FindItem ZLF C_ , #BackpackID
+  if #findkind = -1
+    {
+      Display ok You have run out of bandages.$
+            + Please get more and restart the script.$
+            +$
+            +Script is Halting$
+            Halt
+    }
+Set #LObjectID #FindID
+Event Macro 17 0        ; Use Last Object (Bandages)
+Event Macro 25 0        ; Wait for Target
+  wait 10
+Event Macro 23 0        ; Target Self
+gosub AddAttempts
+gosub Update_Bandage_Count
+gosub Healing_Training_Cost3
+gosub wait_for_bandage_chiv
+goto chivhealtrainingloop
+Return
+
+Sub wait_for_bandage_chiv
+menu delete scriptstatus
+menu text scriptstatus 110 268 Waiting Bandage Timer...
+gosub TM_AdvJournalSync chivheal 100
+wait_for_bandage_chiv_loop:
+gosub TM_AdvJournalScan chivheal VALID You_are_unable You_are_able You_finish_applying You_apply
+if #RESULT = #TRUE
+   {
+   gosub SkillCheck
+   Return
+   }
+wait 10
+gosub CheckPause
+GoSub Calc_Time
+if #hits = #maxhits
+   {
+   return
+   }
+goto wait_for_bandage_chiv_loop
+Return
+
+Sub Healing_Training_Cost3
+Menu Delete training_cost
+Set %training_cost %training_cost + 2
+menu text training_cost 305 155 %training_cost , #spc , gp
+Return
+
+Sub CheckChivMana
+Menu Font Color Maroon
+menu delete scriptstatus
+menu text scriptstatus 110 268 Waiting for Mana
+WaitingForChivMana:
+If #mana >= 18
+   {
+   Return
+   }
+GoSub SkillCheck
+GoSub Calc_Time
+GoSub CheckPause
+Goto WaitingForChivMana
+Return
+
+; ##### TRAPPED BOX HEALING SECTION
+Sub TrapboxHealTraining
+Set %SkillCheck heal
+Set %Skill Healing
+GoSub MenuSetup
+menu image create anatomy 0 0 410 300
+menu image file anatomy 200 75 skill_images/Anatomy.gif
+; Anatomy Specific Menu
+menu font align right
+menu font color maroon
+Menu Text stattxt 300 135 Aids Remaining:
+menu text stattxt 300 155 Cost of Training:
+Menu Font Align Left
+finditem ZLF C_ , #backpackid
+if #FINDCNT > 0
+  for #FINDINDEX 1 #FINDCNT
+    set %aid_count %aid_count + #FINDSTACK
+Menu Text aid_count 305 135 %aid_count
+menu text training_cost 305 155 %training_cost , #spc , gp
+
+GoSub CheckPause
+GoSub Calc_Time
+Menu Font Color Maroon
+menu delete scriptstatus
+menu text scriptstatus 110 268 Target your Trapped Box
+
+event ExMsg #charID 3 0 Please Target your Trapped box.
+Set #targCurs 1
+  repeat
+    until #targcurs <> 1
+	Set %target #LTargetID
+	set %ltargetkind 1
+  wait 20
+  
+TrapBoxTrainingLoop:
+menu delete scriptstatus
+menu text scriptstatus 110 268 Poping Box!
+set #lobjectid %target
+if #hits = #maxhits
+   {
+   event macro 17 0     ; Last Object (Trap Box)
+    wait 20
+   }
+FindItem ZLF C_ , #BackpackID
+  if #findkind = -1
+    {
+      Display ok You have run out of bandages.$
+            + Please get more and restart the script.$
+            +$
+            +Script is Halting$
+            Halt
+    }
+Set #LObjectID #FindID
+
+menu delete scriptstatus
+menu text scriptstatus 110 268 Using Bandage
+Event Macro 17 0        ; Use Last Object (Bandages)
+ Target
+Event Macro 23 0        ; Target Self
+
+gosub AddAttempts
+gosub Update_Bandage_Count
+gosub heal_training_cost
+gosub TM_AdvJournalSync trapbox 100
+gosub wait_for_bandage
+goto TrapBoxTrainingLoop
+Return
+
+sub heal_training_cost
+menu delete training_cost
+set %training_cost %training_cost + 2
+menu text training_cost 305 155 %training_cost , #spc , gp
+return
+
+Sub wait_for_bandage
+menu delete scriptstatus
+menu text scriptstatus 110 268 Waiting Bandage Timer...
+gosub TM_AdvJournalScan trapbox VALID You_are_unable You_are_able You_finish_applying You_apply
+if #hits = #maxhits
+   return
+if #RESULT = #FALSE
+   {
+   wait 20
+   gosub CheckPause
+   GoSub Calc_Time
+   gosub wait_for_bandage
+   }
+GoSub SkillCheck
+Return
+; ###################################################
+; ############  HERDING TRAINING SUB   ##############
+; ###################################################
+Sub HerdTraining
+Set %SkillCheck Herd
+Set %Skill Herding
+GoSub MenuSetup
+menu image create herd 0 0 410 300
+menu image file herd 200 75 skill_images/Herding.gif
+GoSub Calc_Time
+Set %Crook RPF
+FindItem %Crook C_
+set #lobjectid #findid
+Set %Crook #findid
+if #findkind = -1
+   {
+    Display ok Unable to locate your Shepards Crook.$
+    +Please ensure it are in your MAIN backpack.$
+    +If you dont have one, please get one,
+    +then Click Resume$
+    GoSub CheckPause
+   }
+HerdTrainingLoop:
+event macro 17 0        ; Last Object
+wait 10
+event macro 52 5        ; Select Nearest
+HerdTargetLoop:
+event macro 22 0        ; Target Last
+  If #targcurs = 1
+     GoTo HerdTargetLoop
+wait 5
+GoSub AddAttempts
+GoSub CheckPause
+GoSub SkillCheck
+goto HerdTrainingLoop
+return
+; #########################################################
+; #################    HIDING SUB    ######################
+; #########################################################
+Sub HidiTraining
+Set %SkillCheck hidi
+Set %Skill Hiding
+GoSub MenuSetup
+menu image create hide 0 0 410 300
+menu image file hide 200 75 skill_images/Hiding.gif
+
+HidiTrainingLoop:
+GoSub Calc_Time
+menu delete scriptstatus
+Menu Font Color Maroon
+menu text scriptstatus 110 268 Training Hiding
+
+Event macro 13 21  ; Performs Hiding Skill
+  wait 10s
+GoSub AddAttempts
+GoSub SkillCheck
+GoSub CheckPause
+GoTo HidiTrainingLoop
+Return
+; ###############################################
+; ########### MAGERY TRAINING SECTION ###########
+; ###############################################
+Sub MageTraining
+Set %SkillCheck mage
+Set %Skill Magery
+GoSub MenuSetup
+menu image create Magery 0 0 410 300
+menu image file Magery 200 75 skill_images/Magery.gif
+menu font align right
+menu font color maroon
+Menu Text stattxt 250 135 LRC:
+menu text stattxt 250 155 LMC:
+Menu Text stattxt 345 135 FC:
+menu text stattxt 345 155 FCR:
+menu font align left
+menu delete scriptstatus
+menu font color maroon
+menu text scriptstatus 110 268 Calculating Suit Properties
+
+gosub suit_properties Lower Reagent Cost
+set %user_lrc #result
+Menu Text user_lrc 255 135 %user_lrc %
+
+gosub suit_properties Lower Mana Cost
+set %user_lmc #result
+Menu Text user_lmc 255 155 %user_lmc %
+
+gosub suit_properties Faster Casting
+set %user_fc #result
+Menu Text user_fc 350 135 %user_fc
+
+gosub suit_properties Faster Cast Recovery
+set %user_fcr #result
+Menu Text user_fcr 350 155 %user_fcr
+
+GoSub Set_FCR_Delay
+
+GoSub ChooseMagerySpell
+GoSub CastMagerySpell
+Return
+
+Sub ChooseMagerySpell
+chooseskill mage real
+  if #skill <= 1200
+  {
+    set %spell 56  ; Earthquake
+    set %spell_name Earthquake
+    set %mana_required 50 - ( ( 50 * %user_lmc ) / 100 )
+  }
+  if #skill <= 950
+  {
+    set %spell 53  ; Mass Dispel
+    set %spell_name Mass , #spc , Dispel
+    set %mana_required 40 - ( ( 40 * %user_lmc ) / 100 )
+  }
+  if #skill <= 820
+  {
+    set %spell 43  ; Invisibility
+    set %spell_name Invisibility
+    set %mana_required 20 - ( ( 20 * %user_lmc ) / 100 )
+  }
+  if #skill <= 680
+  {
+    set %spell 33  ; Dispel Field
+    set %spell_name Dispel , #spc , Field
+    set %mana_required 14 - ( ( 14 * %user_lmc ) / 100 )
+  }
+  if #skill <= 550
+  {
+    set %spell 28  ; Greater Heal
+    set %spell_name Greater , #spc , Heal
+    set %mana_required 11 - ( ( 11 * %user_lmc ) / 100 )
+  }
+  if #skill <= 400
+  {
+    set %spell 16  ; Bless
+    set %spell_name Bless
+    set %mana_required 9 - ( ( 9 * %user_lmc ) / 100 )
+  }
+Return
+
+; This is the Training setion
+Sub CastMagerySpell
+
+MageryCastSpellLoop:
+menu delete scriptstatus
+Menu Font Color Maroon
+menu text scriptstatus 110 268 Casting Spell: %spell_name
+
+set %timeout #scnt + 5
+event macro 15 %spell
+ repeat
+  until ( #TargCurs = 1 ) || ( #scnt > %timeout )
+event macro 23 0  ; Target Self
+ wait %FCR_Delay
+event macro 8 7   ; Opens backpack to prevent logout
+GoSub AddAttempts
+GoSub CheckPause
+GoSub SkillCheck
+GoSub Calc_Time
+if #mana < %mana_required
+	{
+    GoSub Meditate
+	}
+GoSub ChooseMagerySpell
+Goto MageryCastSpellLoop
+Return
+; ###################################################
+; ############ Meditation Training Sub ##############
+; ###################################################
+Sub MediTraining
+Set %SkillCheck medi
+Set %Skill Meditation
+GoSub MenuSetup
+menu image create Meditation 0 0 410 300
+menu image file Meditation 200 75 skill_images/Meditation.gif
+menu font align right
+menu font color maroon
+Menu Text stattxt 250 135 LRC:
+menu text stattxt 250 155 LMC:
+Menu Text stattxt 345 135 FC:
+menu text stattxt 345 155 FCR:
+menu font align left
+menu delete scriptstatus
+menu font color maroon
+menu text scriptstatus 110 268 Calculating Suit Properties
+
+gosub suit_properties Lower Reagent Cost
+set %user_lrc #result
+Menu Text user_lrc 255 135 %user_lrc %
+
+gosub suit_properties Lower Mana Cost
+set %user_lmc #result
+Menu Text user_lmc 255 155 %user_lmc %
+
+gosub suit_properties Faster Casting
+set %user_fc #result
+Menu Text user_fc 350 135 %user_fc
+
+gosub suit_properties Faster Cast Recovery
+set %user_fcr #result
+Menu Text user_fcr 350 155 %user_fcr
+
+GoSub Set_FCR_Delay
+
+MediTrainingLoop:
+GoSub Calc_Time
+GoSub CheckPause
+menu delete scriptstatus
+Menu Font Color Maroon
+menu text scriptstatus 110 268 Casting Spell
+
+event macro 15 %spell
+ target
+event macro 23 0
+ wait %FCR_Delay
+  
+  gosub TM_FindTextNoAdvance You_have_not_yet_recovered_from
+    if #RESULT = #TRUE ; successful application
+    {
+     gosub TM_SyncTextScan ; make your copy of #jindex current
+     GoSub CastingDelay
+    }
+  gosub TM_FindTextNoAdvance Insufficient_mana
+    if #RESULT = #TRUE ; successful application
+    {
+     gosub TM_SyncTextScan ; make your copy of #jindex current
+     GoSub Meditate
+    }
+GoSub CheckPause
+  GoSub SkillCheck
+  GoSub Calc_Time
+  GoSub AddAttempts
+Goto MediTrainingLoop
+Return
+; #####################################################
+; ############ Musicianship Training Sub ##############
+; #####################################################
+Sub MusiTraining
+Set %SkillCheck musi
+Set %Skill Musicianship
+GoSub MenuSetup
+menu image create music 0 0 410 300
+menu image file music 200 75 skill_images/Music.gif
+
+menu delete scriptstatus
+Menu Font Color Maroon
+menu text scriptstatus 110 268 Training Skill
+MusicTrainingLoop1:
+Set %Instruments QRF_NRF_MQF_PRF_LQF_OQF_QRF_RGP_KRF
+FindItem %Instruments C_ , #BackpackID
+if #findkind = -1
+   {
+    Display ok Unable to locate your Instruments.$
+    +Please ensure they are in your MAIN backpack.$
+    +If you are out, please get more,
+    +then Click Resume$
+    GoSub CheckPause
+   }
+Set #LOBJECTID #FINDID
+ Event Macro 17 0
+  wait 20
+GoSub SkillCheck
+GoSub Calc_Time
+
+GoSub AddAttempts
+GoSub CheckPause
+Goto MusicTrainingLoop1
+Return
+; ###################################################
+; ########### NECROMANCY TRAINING SECTION ###########
+; ###################################################
+Sub NecrTraining
+Set %SkillCheck necr
+Set %Skill Necromancy
+GoSub MenuSetup
+menu image create Necromancy 0 0 410 300
+menu image file Necromancy 200 75 skill_images/Necro.gif
+menu font align right
+menu font color maroon
+Menu Text stattxt 250 135 LRC:
+menu text stattxt 250 155 LMC:
+Menu Text stattxt 345 135 FC:
+menu text stattxt 345 155 FCR:
+menu font align left
+menu delete scriptstatus
+menu font color maroon
+menu text scriptstatus 110 268 Calculating Suit Properties
+
+gosub suit_properties Lower Reagent Cost
+set %user_lrc #result
+Menu Text user_lrc 255 135 %user_lrc %
+
+gosub suit_properties Lower Mana Cost
+set %user_lmc #result
+Menu Text user_lmc 255 155 %user_lmc %
+
+gosub suit_properties Faster Casting
+set %user_fc #result
+Menu Text user_fc 350 135 %user_fc
+
+gosub suit_properties Faster Cast Recovery
+set %user_fcr #result
+Menu Text user_fcr 350 155 %user_fcr
+
+GoSub Set_FCR_Delay
+
+GoSub ChooseNecrSpell
+GoSub CastNecrSpell
+Return
+
+Sub ChooseNecrSpell
+chooseskill necr real
+  if #skill < 1200
+  {
+    set %spell 113    ; Vampiric Embrace 105-120
+    set %necro_spell Vampiric , #spc , Embrace
+  }
+  if #skill < 1050
+  {
+    set %spell 107    ; Lich Form 81-105
+    set %necro_spell Lich , #spc , Form
+  }
+if %currentskill < 810
+  {
+    set %spell 115    ; Wither 71-81
+    set %necro_spell Wither
+  }
+if %currentskill > 809
+  {
+    while E in #charStatus
+      {
+        event macro 15 106
+        wait 1s
+      }
+  }
+if %currentskill < 711
+  {
+    set %spell 106    ; Horrific Beast 50-71
+    set %necro_spell Horrific , #spc , Beast
+  }
+  if #skill < 500
+  {
+    set %spell 116    ; Wraith Form 30-50
+    set %necro_spell Wraith , #spc , Form
+  }
+  if #skill < 300
+  {
+    set %spell 104    ; Curse Weapon 0-30
+    set %necro_spell Curse , #spc , Weapon
+  }
+Return
+
+Sub CastNecrSpell
+CastNecrLoop:
+menu delete scriptstatus
+Menu Font Color Maroon
+menu text scriptstatus 110 268 Casting Spell: %necro_spell
+
+set %timeout #scnt + 3
+event macro 15 %spell
+ repeat
+  until ( #TargCurs = 1 ) || ( #scnt > %timeout )
+event macro 23 0  ; Target Self
+  gosub TM_FindTextNoAdvance Insufficient_mana
+    if #RESULT = #TRUE ; successful application
+    {
+     gosub TM_SyncTextScan ; make your copy of #jindex current
+     GoSub Meditate
+    }
+Event Macro 8 7  ; Opens Backpack to prevent Logout
+GoSub SkillCheck
+GoSub AddAttempts
+GoSub CheckPause
+GoSub Calc_Time
+GoSub ChooseNecrSpell
+Goto CastNecrLoop
+Return
+; ###############################################
+; ######### NINJITSU TRAINING SECTION ###########
+; ###############################################
+Sub NinjTraining
+Set %SkillCheck ninj
+Set %Skill Ninjitsu
+GoSub MenuSetup
+GoSub Set_user_armor
+GoSub Check_lmc
+menu image create ninj 0 0 410 300
+menu image file ninj 200 75 skill_images/Ninjitsu.gif
+menu font align right
+menu font size 11
+Menu Text stattxt 300 135 LMC:
+menu text stattxt 300 155 Stamina:
+Menu Font Align Left
+Menu Text user_lmc 305 135 %user_lmc %
+menu text user_stam 305 155 #stamina
+GoSub Calc_Time
+menu delete scriptstatus
+Menu Font Color Maroon
+menu text scriptstatus 110 268 Target your training pet.
+set #LObjectID #CharID
+    event macro 17 0
+     wait 5
+    event macro 3 0 All Follow Me  ; Whispers "All Follow Me"
+     wait 5
+Display ok Target the Animal you wish to Train with.
+Set #targCurs 1
+  repeat
+    until #targcurs <> 1
+	Set %Mount #LTargetID
+	Set #LObjectID %Mount
+	Event Macro 3 0 All Kill     ; Whispers "All Kill"
+   wait 10
+  Event Macro 23 0             ; Targets Self
+   wait 5
+GoSub CheckPause
+GoSub ChooseNinjSpell
+GoSub TrainNinjitsu
+Return
+
+Sub ChooseNinjSpell
+chooseskill ninj
+  if #skill < 700
+     {
+     set %spell 245   ; Focus Attack
+     return
+     }
+  if #skill < 850
+     {
+     Display OK You can not gain Ninjitsu from 70.0 to 85.0$
+             +with Lightening Strike.  So your going to need$
+             +to use Jewelry to get raise your skill up to at$
+             +least 85.0 before training any further.$
+             +Grab your Jewelry and restart the script.$
+             +Script has Halted!$
+             +~ Guadah ~
+             Halt
+     }
+  if #skill >= 850
+     {
+     set %spell 246   ; Deathstrike
+     }
+Return
+
+Sub TrainNinjitsu
+menu delete scriptstatus
+Menu Font Color Maroon
+menu text scriptstatus 110 268 Training Ninjitsu
+NinjTrainingLoop:
+gosub TM_AdvJournalSync ninjitsu 100
+  Event Macro 15 %spell               ; Uses Ninjitsu Ability
+   set %timeout #scnt + 5
+   repeat
+   GoSub Calc_Time
+   GoSub CheckPause
+   gosub TM_AdvJournalScan ninjitsu VALID You_focus_all_of_your_abilities
+    until #RESULT = #TRUE || ( #scnt > %timeout )
+  Event Macro 8 7                     ; Opens Backpack to prevent Logout
+   wait 10
+GoSub SkillCheck
+GoSub CheckPause
+GoSub Calc_Time
+gosub AddAttempts
+chooseskill medi
+NinjManaWait:
+ if #mana < 10
+    {
+    menu delete scriptstatus
+    menu Font Color Maroon
+    menu text scriptstatus 110 268 Waiting for Mana...
+    goto NinjManaWait
+    }
+GoSub ChooseNinjSpell
+Goto NinjTrainingLoop
+Return
+; ####################################################
+; ############ Peacemaking Training Sub ##############
+; ####################################################
+Sub PeacTraining
+Set %SkillCheck peac
+Set %Skill Peacemaking
+GoSub MenuSetup
+menu image create peace 0 0 410 300
+menu image file peace 200 75 skill_images/Peace.gif
+
+Set %Instruments QRF_NRF_MQF_PRF_LQF_OQF_QRF_RGP_KRF
+FindItem %Instruments C_ , #BackpackID
+set #lobjectid #findid
+Set %CurrentInstrument #findid
+event macro 17 0    ; Last Object
+if #findkind = -1
+   {
+    Display ok Unable to locate your Instruments.$
+    +Please ensure they are in your MAIN backpack.$
+    +If you are out, please get more,
+    +then Click Resume$
+    GoSub CheckPause
+   }
+
+MusicTrainingLoop2:
+menu delete scriptstatus
+Menu Font Color Maroon
+Menu Font Size 12
+menu text scriptstatus 110 268 Training Skill
+
+GoSub SkillCheck
+GoSub CheckPause
+GoSub Calc_Time
+
+event macro 13 9
+target
+event macro 23 0
+ wait 11s
+finditem %CurrentInstrument C_ , #backpackid
+  if #findkind = -1
+    {
+     FindItem %Instruments C_ , #BackpackID
+     set #lobjectid #findid
+     Set %CurrentInstrument #findid
+     event macro 17 0    ; Last Object
+    }
+
+GoSub AddAttempts
+Goto MusicTrainingLoop2
+Return
+; ##################################################
+; ############ Poisoning Training Sub ##############
+; ##################################################
+Sub PoisTraining
+Set %SkillCheck pois
+Set %Skill Poisoning
+GoSub MenuSetup
+menu font align right
+menu font color maroon
+Menu Text stattxt 280 135 Poisoning Item:
+Menu Text stattxt 280 155 Using Poison:
+menu font align left
+menu image create poison 0 0 410 300
+menu image file poison 200 75 skill_images/Poison.gif
+; Loop to target and set your Resources Container
+Display ok Target your Resources Container
+menu delete scriptstatus
+Menu Font Color Maroon
+menu text scriptstatus 110 268 Target resources container
+set #targCurs 1
+ repeat
+  until #targcurs <> 1
+set %resources_chest #ltargetid
+set #ltargetkind 1
+set #lobjectid %resources_chest
+event macro 17 0
+   wait 20
+  contpos 630 365
+   wait 20
+gosub IDPoison
+; Loop to target and set your weapon or item to Poison
+menu delete scriptstatus
+Menu Font Color Maroon
+menu text scriptstatus 110 268 Target item to poison
+Display ok Target the item to poison.
+set #targCurs 1
+ repeat
+  until #targcurs <> 1
+Set %item_to_poison #ltargetid
+set #ltargetkind 1
+finditem %item_to_poison C_ , #backpackid
+event property #findid
+  str pos #property $
+	str left #property #strres
+menu text stattxt 285 135 #strres
+
+GoSub PoisonLevel
+PoisonTrainingLoop:
+menu delete scriptstatus
+Menu Font Color Maroon
+menu text scriptstatus 110 268 Poisoning...
+finditem %poison C_ , %resources_chest
+if #findstack < 1
+  {
+    display ok Your out of %poison_name poison potions.
+    Halt
+  }
+set #ltargetid #findid
+set #ltargetkind 1
+  event macro 13 30   ; Use Skill Poisoning
+   target
+  event macro 22 0    ; Last Target (Poison Type)
+finditem %item_to_poison C_ , #backpackid
+set #ltargetid #findid
+set #ltargetkind 1
+   target
+  event macro 22 0    ; Last Target (Dagger)
+gosub SkillCheck
+gosub AddAttempts
+if C in #charstatus   ; Checks to see if your Poisoned
+  {
+    menu delete scriptstatus
+    Menu Font Color Maroon
+    menu text scriptstatus 110 268 OMG Your Poisoned!
+     wait 20
+    GoSub CurePoison
+  }
+set %timer #SCNT + 10
+repeat
+wait 20
+gosub Calc_Time
+gosub CheckPause
+until #scnt > %timer
+Goto PoisonTrainingLoop
+Return
+
+; DETERMINE POISON TYPE
+Sub IDPoison
+menu delete scriptstatus
+Menu Font Color Maroon
+menu text scriptstatus 110 268 Identifing Poison Potions
+FindItem AVF C_ , %resources_chest
+for #findindex 1 #findcnt
+    {
+    event property #findid
+    if Lesser in #property
+       set %lesser #findid
+    if Lesser notin #property && Greater notin #property && Deadly notin #property
+       set %normal #findid
+    if Greater in #property
+       set %greater #findid
+    if Deadly in #property
+       set %deadly #findid
+    }
+Return
+
+; DETERMINE POISON TO USE
+Sub PoisonLevel
+chooseSkill Pois
+if #skill >= 950
+{
+  Set %poison %deadly
+  set %poison_name Deadly
+  menu delete poison
+  menu text poison 285 155 Deadly Poison
+  return
+}
+if #skill < 950
+{
+  Set %poison %greater
+  set %poison_name Greater
+  menu delete poison
+  menu text poison 285 155 Greater Poison
+  return
+}
+if #skill < 700
+{
+  Set %poison %normal
+  set %poison_name Normal
+  menu delete poison
+  menu text poison 285 155 Normal Poison
+  return
+}
+if #skill < 450
+{
+  Set %poison %lesser
+  set %poison_name Lesser
+  menu text poison 285 155 Lesser Poison
+  return
+}
+return
+
+; CURE SUB
+Sub CurePoison
+menu delete scriptstatus
+Menu Font Color Maroon
+Menu Font Size 12
+menu text scriptstatus 110 268 Curing Poison!
+chooseskill chiv
+set %chiv #skill
+If #skill > 600
+   {
+    Event Macro 15 201
+    Target
+    PoisonCureChivLoop:
+    event macro 23 0        ; Target Self
+        If #targcurs = 1
+           GoTo PoisonCureChivLoop
+    GoSub CheckPause
+    GoSub Calc_Time
+   }
+chooseskill mage
+set %mage #skill
+If #skill > 600
+   {
+    Event Macro 15 10
+    Target
+    PoisonCureMageLoop:
+    event macro 23 0        ; Target Self
+        If #targcurs = 1
+           GoTo PoisonCureMageLoop
+    GoSub CheckPause
+    GoSub Calc_Time
+   }
+FindItem NUF C_ , %resources_chest
+   set #LTargetID #FINDID
+   set #LTargetKind 1
+   event macro 22 0         ; Last Target (Cure Pot)
+
+If C in #charStatus
+   GoSub CurePoison
+Return
+
+; ####################################################
+; ############ Provocation Training Sub ##############
+; ####################################################
+Sub ProvTraining
+Set %SkillCheck prov
+Set %Skill Provoking
+GoSub MenuSetup
+menu image create stealth 0 0 410 300
+menu image file stealth 200 75 skill_images/Stealth.gif
+menu font align right
+menu font color maroon
+Menu Text stattxt 300 135 Pet 1:
+Menu Text stattxt 300 155 Pet 2:
+menu font align left
+
+Display ok Target your First Animal.
+	Set #targCurs 1
+	SetProvTarget1:
+		if #targCurs = 1
+	goto SetProvTarget1
+	Set %Animal1 #LTargetID
+	set #ltargetkind 1
+	menu delete itemname
+  event property #findid
+   str pos #property $
+	 str left #property #strres
+  menu text pet1 305 135 #strres
+wait 20
+Display ok Target your Second Animal.
+	Set #targCurs 1
+	SetProvTarget2:
+		if #targCurs = 1
+	goto SetProvTarget2
+	Set %Animal2 #LTargetID
+	set #ltargetkind 1
+	menu delete itemname
+  event property #findid
+    str pos #property $
+	  str left #property #strres
+  menu text pet2 305 155 #strres
+wait 20
+
+Set %Instruments QRF_NRF_MQF_PRF_LQF_OQF_QRF_RGP_KRF
+FindItem %Instruments C_ , #BackpackID
+set #lobjectid #findid
+Set %CurrentInstrument #findid
+event macro 17 0    ; Last Object
+if #findkind = -1
+   {
+    Display ok Unable to locate your Instruments.$
+    +Please ensure they are in your MAIN backpack.$
+    +If you are out, please get more,
+    +then Click Resume$
+    GoSub CheckPause
+   }
+menu delete scriptstatus
+Menu Font Color Maroon
+Menu Font Size 12
+menu text scriptstatus 110 268 Training Skill
+ProvTrainingLoop:
+GoSub SkillCheck
+GoSub CheckPause
+GoSub Calc_Time
+
+Event Macro 13 22  ; Use Skill Provocation
+set #LTargetID %Animal1
+target
+event macro 22 0
+set #LTargetID %Animal2
+target
+event macro 22 0
+wait 11s
+
+  finditem %CurrentInstrument C_ , #backpackid
+  if #findkind = -1
+    {
+     FindItem %Instruments C_ , #BackpackID
+     set #lobjectid #findid
+     Set %CurrentInstrument #findid
+     event macro 17 0    ; Last Object
+    }
+
+GoSub AddAttempts
+Goto ProvTrainingLoop
+Return
+; #########################################################
+; ################## SPIRIT SPEAK SUB #####################
+; #########################################################
+Sub SpirTraining
+Set %SkillCheck spir
+Set %Skill Spirit , #spc , Speak
+GoSub MenuSetup
+menu image create spirit 0 0 410 300
+menu image file spirit 200 75 skill_images/Spirit.gif
+
+menu delete scriptstatus
+Menu Font Color Maroon
+Menu Font Size 12
+menu text scriptstatus 110 268 Training Spirit Speak
+gosub TM_AdvJournalSync spirit 100
+SpirTrainingLoop:
+Event macro 13 32  ; Performs Spirit Speak
+gosub AddAttempts
+gosub SkillCheck
+set %timer #SCNT + 6
+repeat
+wait 20
+gosub Calc_Time
+gosub Check_Pause
+until #scnt > %timer
+gosub TM_AdvJournalScan spirit VALID Insufficient_mana
+if #RESULT = #TRUE
+     {
+     GoSub Meditate
+     }
+GoTo SpirTrainingLoop
+Return
+
+; ####################################################
+; #################  STEALTH SUB #####################
+; ####################################################
+Sub StltTraining
+Set %SkillCheck stlt
+Set %Skill Stealth
+GoSub MenuSetup
+menu image create stealth 0 0 410 300
+menu image file stealth 200 75 skill_images/Stealth.gif
+
+chooseskill Hidi real
+if #skill < 500
+   {
+   display yesno Your hiding skill is not high
+         + enough.  Would you like to train hiding instead?
+       if #dispres = NO
+       {
+          display You cannot use stealth with hiding below 50.0.
+            + $Script is halting.
+          halt
+       }
+       GoSub HidiTraining
+  }
+
+set %X #CHARPOSX
+set %XX #CHARPOSX + 3
+set %Y #CHARPOSY
+
+menu delete scriptstatus
+Menu Font Color Maroon
+menu text scriptstatus 110 268 Training Stealth
+StltTrainingLoop:
+Event macro 13 21      ; Performs Hiding Skill
+   {
+   move %X %Y 0 3s
+   GoSub CheckPause
+   GoSub AddAttempts
+   GoSub SkillCheck
+   GoSub Calc_Time
+   GoSub CheckHidden
+
+   move %XX %Y 0 3s
+   GoSub CheckPause
+   GoSub AddAttempts
+   GoSub SkillCheck
+   GoSub Calc_Time
+   GoSub CheckHidden
+   }
+Goto StltTrainingLoop
+Return
+
+Sub CheckHidden
+CheckHiddenLoop:
+menu delete scriptstatus
+Menu Font Color Maroon
+menu text scriptstatus 110 268 Rehiding Character
+If H in #charStatus
+   {
+   Return
+   }
+Event macro 13 21      ; Performs Hiding Skill
+Goto CheckHiddenLoop
+Return
+; #####################################################
+; ################## TRACKING SUB #####################
+; #####################################################
+Sub TracTraining
+Set %SkillCheck trac
+Set %Skill Tracking
+GoSub MenuSetup
+menu image create tracking 0 0 410 300
+menu image file tracking 200 75 skill_images/Tracking.gif
+menu delete scriptstatus
+Menu Font Color Maroon
+menu text scriptstatus 110 268 Training Tracking
+TracTrainingLoop:
+Event macro 13 38  ; Performs Tracking Skill
+GoSub AddAttempts
+GoSub SkillCheck
+set %timer #SCNT + 10
+repeat
+wait 20
+gosub Calc_Time
+gosub Check_Pause
+until #scnt > %timer
+Goto TracTrainingLoop
+Return
+
+; XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+; XXXX GUMP WAIT SUB, ENSURES GUMP IS UP XXXX
+; XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+sub gumpwait
+set %timer #SCNT + 5
+ repeat
+  until #CONTNAME = generic_gump || #SCNT > %timer
+if #contname <> generic_gump
+   {
+   event macro 17 0
+   wait 1s
+   }
+Return
+; #########################################
+; ########### CASTING DELAY ###############
+; #########################################
+Sub Set_FCR_Delay
+ If %user_fcr = 6
+    {
+     Set %FCR_Delay 1
+    }
+ If %user_fcr = 5
+    {
+     Set %FCR_Delay 2
+    }
+ If %user_fcr = 4
+    {
+     Set %FCR_Delay 3
+    }
+ If %user_fcr = 3
+    {
+     Set %FCR_Delay 5
+    }
+ If %user_fcr = 2
+    {
+     Set %FCR_Delay 10
+    }
+ If %user_fcr = 1
+    {
+     Set %FCR_Delay 15
+    }
+ If %user_fcr = 0
+    {
+     Set %FCR_Delay 20
+    }
+Return
+
+; #########################################################
+; ########## CALCULATING RUNNING TIME SUB #################
+; #########################################################
+Sub Calc_Time
+Set %TT #Scnt - %start_time
+Set %hours %TT / 3600
+Set %mins ( %TT / 60 ) - ( %hours * 60 )
+Set %secs %TT % 60
+If %hours =< 9
+   Set %hours 0 , %hours
+If %mins =< 9
+   Set %mins 0 , %mins
+If %secs =< 9
+   Set %secs 0 , %secs
+Set %total_time %hours , : , %mins , : , %secs
+Menu Delete TotalTime
+Menu Font Color Maroon
+Menu Font Size 11
+Menu Text TotalTime 110 226 %total_time
+Return
+; XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+; XXXXXXXX CALCULATING LAST GAIN TIME SUB XXXXXXXXX
+; XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+sub last_gain
+set %ap AM
+set %time #time
+str right %time 2
+set %sec #StrRes
+str left %time 2
+set %hr #StrRes
+str mid %time 3 2
+set %min #StrRes
+if %hr > 11 && %hr < 24
+  set %ap PM
+if %hr > 12
+  set %hr ( %hr - 12 )
+if %hr = 00
+  set %hr 12
+set %last_gain %hr , : , %min , : , %sec , #spc , %ap
+Menu Delete LastGain
+Menu Text LastGain 305 195 %last_gain
+return
+; #########################################
+; ########### CASTING DELAY ###############
+; #########################################
+Sub SetCastDelay
+menu delete scriptstatus
+Menu Font Color Maroon
+menu text scriptstatus 110 268 Setting Casting Speed Delay
+wait 1s
+; CHECKING FASTER CASTING SPEED
+Sub Set_FCR_Delay
+ If %user_fcr = 6
+    {
+     Set %FCR_Delay 1
+    }
+ If %user_fcr = 5
+    {
+     Set %FCR_Delay 2
+    }
+ If %user_fcr = 4
+    {
+     Set %FCR_Delay 3
+    }
+ If %user_fcr = 3
+    {
+     Set %FCR_Delay 5
+    }
+ If %user_fcr = 2
+    {
+     Set %FCR_Delay 12
+    }
+ If %user_fcr = 1
+    {
+     Set %FCR_Delay 19
+    }
+ If %user_fcr = 0
+    {
+     Set %FCR_Delay 28
+    }
+Return
+; #########################################
+; ########### CHECKING MANA ###############
+; #########################################
+Sub Meditate
+GoSub CheckPause
+GoSub Calc_Time
+menu delete scriptstatus
+Menu Font Color Maroon
+menu text scriptstatus 110 268 Attempting to Med
+event macro 13 46
+wait 1s
+scanJournal 1
+If You_cannot_focus_your in #journal
+		  {
+			   deleteJournal
+			   wait 11s
+         GoSub Meditate
+		  }
+
+menu delete scriptstatus
+Menu Font Color Maroon
+menu text scriptstatus 110 268 Meditating
+CheckManaWait:
+GoSub CheckPause
+GoSub Calc_Time
+If #mana < #maxmana
+   {
+		goto CheckManaWait
+	 }
+Return
+
+; #################################################
+; ########        ADD ATTEMPTS SUB         ########
+; #################################################
+Sub AddAttempts
+Menu Font Size 11
+Menu Font Color Maroon
+Set %attempts %attempts + 1
+Menu Delete Attempts
+Menu Text Attempts 110 247 %Attempts
+Return
+
+; #################################################
+; ########            PAUSE SUB            ########
+; #################################################
+Sub CheckPause
+if #menubutton = Pause
+{
+  set #menubutton N/A
+  Menu Delete Pause
+  Menu Font Color Maroon
+  Menu Button Resume 296 240 103 25 Resume
+  menu delete scriptstatus
+  Menu Font Color Red
+  menu text scriptstatus 110 268 Paused
+  GoSub PauseLoop
+}
+if #menubutton = Quit
+{
+  Display ok Thank you for using Guadah's Multi-Skill Trainer.$
+          +$
+          +Script is Halting$
+  Menu Hide
+  Halt
+}
+return
+
+Sub PauseLoop
+Pause_Loop:
+  If #menubutton = Resume
+  {
+    set #menubutton N/A
+    Menu Delete Resume
+    Menu Font Color Black
+    Menu Button Pause 296 240 103 25 Pause
+    Return
+  }
+  if #menuButton = Quit
+  {
+    Display ok Thank you for using Guadah's Multi-Skill Trainer.$
+            +$
+            +Script is Halting$
+    Menu Hide
+    Halt
+  }
+  Goto Pause_Loop
+Return
+; ############################
+; ##### SKILL CHECK SUB  #####
+; ############################
+Sub SkillCheck
+  chooseskill %SkillCheck real
+  if #skill = #skillcap
+  {
+    set %currentskill #skill
+    menu set current %currentskill
+    wait 10
+    display You have reached your skill cap.$
+            +Thank you for using Guadah's Multi-Skill Trainer$
+            +$
+            +Script is Halting$
+            menu hide
+    halt
+  }
+  if #skill > %currentskill
+  {
+    Set %currentskill #skill
+    str len %currentskill
+    str ins %currentskill #dot #strRes
+    Menu Font Size 11
+    Menu delete currentskill
+    Menu Font Color Maroon
+    Menu text currentskill 110 152 #strRes
+
+    Set %totalgains %currentskill - %startingskill
+    str len %totalgains
+    str ins %totalgains #dot #strRes
+    Menu delete totalgains
+    Menu text totalgains 110 171 + #strRes
+    gosub last_gain
+  }
+Return
+
+; XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+; XXXXXXXX SUIT PROPERTY SUB XXXXXXX
+; XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+sub suit_properties
+if %0 > 0 && %1 <> N/A
+   {
+   finditem * C_ , #charid
+   if #findkind = -1
+      return %total
+   set %oldlpc #LPC
+   set #LPC 10000
+   set %total 0
+   set %line % . %0
+   goto L , %0
+   L5:
+   set %line %4 , #spc , %line
+   L4:
+   set %line %3 , #spc , %line
+   L3:
+   set %line %2 , #spc , %line
+   L2:
+   set %line %1 , #spc , %line
+   L1:
+   set %line $ , %line , #spc
+   str len %line
+   set %len #strRes
+   for #findindex 1 #findcnt
+       {
+       event property #findid
+       if %line in #property
+          {
+          str pos #property %line
+          set %pos #strRes + %len
+          str mid #property %pos 5
+          set %prop #strRes
+          str pos %prop $
+          set %pos #strRes - 1
+          str left %prop %pos
+          set %tempval #strRes
+          str pos %tempval %
+          if #strRes > 1
+             {
+             set %pos #strRes - 1
+             str left %tempval %pos
+             set %tempval #strRes
+             }
+          set %total %total + %tempval
+          }
+       }
+       set #LPC %oldlpc
+       return %total
+   }
+return 0
+;-------------------------------------------------------------------------------
+; Brings !_jindex up to the most recent #journal entry
+sub TM_SyncTextScan
+  namespace push
+  namespace local text
+  set !_jindex #jindex + 1
+  namespace pop
+return
+;-------------------------------------------------------------------------------
+; %1, %2, %3, etc strings to match
+; returns #TRUE for match, #FALSE for no match
+;  Will not advance !_jindex pointer to allow for scanning journal history for more than one search.
+;  Also searches for : , #SPC in journal entry to be sure someone isn't spamming the text
+sub TM_FindValidTextNoAdvance
+  namespace push
+  namespace local text
+  set !temp_lpc #LPC
+  set #LPC 1000
+  set !num_args %0
+  set !first_arg 1
+  if !_jindex = N/A
+    set !_jindex #jindex
+  set !index !first_arg
+  repeat
+    set !temp_jindex !_jindex
+    set !text % . !index
+    while !temp_jindex <= #jindex
+    {
+      scanjournal !temp_jindex
+      str pos #JOURNAL %charname 1
+      set !namepos #STRRES
+      str count #JOURNAL %charname
+      set !namecnt #STRRES
+      str pos #JOURNAL :_ 1
+      set !smcpos #STRRES
+      str pos #JOURNAL !text 1
+      set !textpos #STRRES
+      if !textpos < !smcpos && !smcpos <> 0 || !smcpos = 1 || :_ notin #JOURNAL
+        set !pass #TRUE
+      else
+        set !pass #FALSE
+      if ( !text in #journal && ( ( !namepos = 1 && !namecnt <= 1 ) || !pass ) )
+      {
+        set !temp_jindex !temp_jindex + 1
+        set #LPC !temp_lpc
+        namespace pop
+        return #TRUE
+      }
+      set !temp_jindex !temp_jindex + 1
+    }
+    set !index !index + 1
+  until !index - !first_arg >= !num_args
+  set #LPC !temp_lpc
+  namespace pop
+return #FALSE
+;-------------------------------------------------------------------------------
+; %1, %2, %3, etc strings to match
+; returns #TRUE for match, #FALSE for no match
+;  Will not advance !_jindex pointer to allow for scanning journal history for more than one search.
+;  Also searches for : , #SPC in journal entry to be sure someone isn't spamming the text
+sub TM_FindValidText
+  namespace push
+  namespace local text
+  set !temp_lpc #LPC
+  set #LPC 1000
+  set !num_args %0
+  set !first_arg 1
+  if !_jindex = N/A
+    set !_jindex #jindex
+  set !index !first_arg
+  repeat
+    set !text % . !index
+    while !_jindex <= #jindex
+    {
+      scanjournal !_jindex
+      str pos #JOURNAL %charname 1
+      set !namepos #STRRES
+      str count #JOURNAL %charname
+      set !namecnt #STRRES
+      str pos #JOURNAL :_ 1
+      set !smcpos #STRRES
+      str pos #JOURNAL !text 1
+      set !textpos #STRRES
+      if !textpos < !smcpos && !smcpos <> 0 || !smcpos = 1 || :_ notin #JOURNAL
+        set !pass #TRUE
+      else
+        set !pass #FALSE
+      if ( !text in #journal && ( ( !namepos = 1 && !namecnt <= 1 ) || !pass ) )
+      {
+        set !_jindex !_jindex + 1
+        set #LPC !temp_lpc
+        namespace pop
+        return #TRUE
+      }
+      set !_jindex !_jindex + 1
+    }
+    set !index !index + 1
+  until !index - !first_arg >= !num_args
+  set #LPC !temp_lpc
+  namespace pop
+return #FALSE
+;-------------------------------------------------------------------------------
+; %1, %2, %3, etc strings to match
+; returns #TRUE for match, #FALSE for no match
+;  Will not advance %_jindex pointer to allow for scanning journal history for more than one search.
+sub TM_FindTextNoAdvance
+  namespace push
+  namespace local text
+  set !temp_lpc #LPC
+  set #LPC 1000
+  set !num_args %0
+  set !first_arg 1
+  if !_jindex = N/A
+    set !_jindex #jindex
+  set !index !first_arg
+  repeat
+    set !temp_jindex !_jindex
+    set !text % . !index
+    while !temp_jindex <= #jindex
+    {
+      scanjournal !temp_jindex
+      if !text in #journal
+      {
+        set !temp_jindex !temp_jindex + 1
+        set #LPC !temp_lpc
+        namespace pop
+        return #TRUE
+      }
+      set !temp_jindex !temp_jindex + 1
+    }
+    set !index !index + 1
+  until !index - !first_arg >= !num_args
+  set #LPC !temp_lpc
+  namespace pop
+return #FALSE
+;-------------------------------------------------------------------------------
+; %1, %2, %3, etc strings to match
+; returns #TRUE for match, #FALSE for no match
+;  Advances !_jindex so that you won't scan for past journal entries.
+sub TM_FindText
+  namespace push
+  namespace local text
+  set !temp_lpc #LPC
+  set #LPC 1000
+  set !num_args %0
+  set !first_arg 1
+  if !_jindex = N/A
+    set !_jindex #jindex
+  set !index !first_arg
+  repeat
+    set !text % . !index
+    while !_jindex <= #jindex
+    {
+      scanjournal !_jindex
+      if !text in #journal
+      {
+        set !_jindex !_jindex + 1
+        set #LPC !temp_lpc
+        namespace pop
+        return #TRUE
+      }
+      set !_jindex !_jindex + 1
+    }
+    set !index !index + 1
+  until !index - !first_arg >= !num_args
+  set #LPC !temp_lpc
+  namespace pop
+return #FALSE
+;-------------------------------------------------------------------------------
+; %1 - string to mung
+sub TM_AddUnderscore
+  namespace push
+  namespace local AU
+  set !tempstring %1
+  AddUnderscore_loop1:
+    str pos !tempstring #SPC
+    if #STRRES <> 0
+    {
+      set !val #STRRES - 1
+      str left !tempstring !val
+      set !left #STRRES
+      set !val !val + 1
+      str del !tempstring 1 !val
+      set !tempstring !left , _ , #STRRES
+      goto AddUnderscore_loop1
+    }
+  set #RESULT !tempstring
+  namespace pop
+return #RESULT
+; XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+; XXX TM's Advanced Journal Subs XXX
+; XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+sub TM_AdvJournalSync
+  namespace push
+  namespace local TM_AdvJS_ , %1
+  set !_jindex #jindex + 1
+  if %0 > 1
+    set !lpc_set %2
+  namespace pop
+  set !TM_FunctionCalled #TRUE
+return
+sub TM_AdvJournalScan
+  namespace push
+  namespace local TM_AdvJS_ , %1
+  set !args %2
+  set !temp_lpc #LPC
+  if !lpc_set = N/A
+    set #LPC 1000
+  else
+    set #LPC !lpc_set
+  set !num_args %0
+  set !first_arg 3
+  if !_jindex = N/A
+    set !_jindex #jindex
+  if !charname = N/A
+  {
+    set !charname #CHARNAME
+    AdvJournalScan_loop1:
+      str pos !charname #SPC
+      if #STRRES <> 0
+      {
+        set !val #STRRES - 1
+        str left !charname !val
+        set !left #STRRES
+        set !val !val + 1
+        str del !charname 1 !val
+        set !charname !left , _ , #STRRES
+        goto AdvJournalScan_loop1
+      }
+  }
+  set !index !first_arg
+  repeat
+    set !temp_jindex !_jindex
+    set !text % . !index
+    while !temp_jindex <= #jindex
+    {
+      scanjournal !temp_jindex
+      str pos #JOURNAL !charname 1
+      set !namepos #STRRES
+      str count #JOURNAL !charname
+      set !namecnt #STRRES
+      str pos #JOURNAL :_ 1
+      set !smcpos #STRRES
+      str pos #JOURNAL !text 1
+      set !textpos #STRRES
+      if !textpos < !smcpos && !smcpos <> 0 || !smcpos = 1 || :_ notin #JOURNAL || VALID notin !args
+        set !pass #TRUE
+      else
+        set !pass #FALSE
+      if ( !text in #journal && ( ( !namepos = 1 && !namecnt <= 1 ) || !pass ) )
+      {
+        set !temp_jindex !temp_jindex + 1
+        if ADVANCE in !args
+          set !_jindex !temp_jindex
+        set #LPC !temp_lpc
+        namespace pop
+        set !TM_FunctionCalled #TRUE
+        return #TRUE
+      }
+      set !temp_jindex !temp_jindex + 1
+    }
+    set !index !index + 1
+  until !index - !first_arg > !num_args - !first_arg
+  set #LPC !temp_lpc
+  namespace pop
+  set !TM_FunctionCalled #TRUE
+return #FALSE
+
+; Fin

@@ -3,6 +3,12 @@ Below are scripts archived from the EasyUO website. These are stored in the even
 
 ## Scripts
 
+### [Bardic](https://github.com/davidadas/easyuo/tree/main/Bardic) (7)
+* [Discord](https://github.com/davidadas/easyuo/tree/main/Bardic/Discord) (2)
+* [Music](https://github.com/davidadas/easyuo/tree/main/Bardic/Music) (2)
+* [Peacemaking](https://github.com/davidadas/easyuo/tree/main/Bardic/Peacemaking) (2)
+* [Provocation](https://github.com/davidadas/easyuo/tree/main/Bardic/Provocation) (1)
+
 ### [Combat](https://github.com/davidadas/easyuo/tree/main/Combat) (17)
 * [Archery](https://github.com/davidadas/easyuo/tree/main/Combat/Archery) (2)
 * [Bushido](https://github.com/davidadas/easyuo/tree/main/Combat/Bushido) (4)
@@ -14,8 +20,8 @@ Below are scripts archived from the EasyUO website. These are stored in the even
 * [Mining](https://github.com/davidadas/easyuo/tree/main/Resource%20Gathering/Mining) (3)
 
 ### [Magic](https://github.com/davidadas/easyuo/tree/main/Magic) (16)
-* [Magery](https://github.com/davidadas/easyuo/tree/main/Magery) (14)
-* [Spellweaving](https://github.com/davidadas/easyuo/tree/main/Spellweaving) (2)
+* [Magery](https://github.com/davidadas/easyuo/tree/main/Magic/Magery) (14)
+* [Spellweaving](https://github.com/davidadas/easyuo/tree/main/Magic/Spellweaving) (2)
 
 ### [Craft Related Scripts](https://github.com/davidadas/easyuo/tree/main/Craft%20Related%20Scripts) (18)
 * [Alchemy](https://github.com/davidadas/easyuo/tree/main/Craft%20Related%20Scripts/Alchemy) (5)
