@@ -1,0 +1,608 @@
+;================================== 
+; Script Name: NaborStats
+; Author: coden55
+; Version: 2.21
+; Client Tested with: 4.0.5b 
+; EUO version tested with: V1.42.00B4
+; Shard OSI / FS: OSI, RunUO tested
+; Public Release: 07/13/04 
+; Revision Date: 30/10/05 
+; Global Variables Used: *NaborStatsPL
+; Purpose: Makes list with properties of targetted player/container. 
+;==================================
+;== Nothing to change below!
+restart:
+set %separator @
+set #LPC 100
+set %ALERT 1
+set %DIGITS 1_2_3_4_5_6_7_8_9_0_-
+set %EMPTY
+if *NaborStatsPL = N/A
+{
+	set *NaborStatsPL
+	gosub AddP Defense , #spc , Chance , #spc , Increase
+	gosub AddP Damage , #spc , Increase
+	gosub AddP Swing , #spc , Speed , #spc , Increase
+	gosub AddP Hit , #spc , Chance , #spc , Increase
+	gosub AddP Hit , #spc , Fire , #spc , Area
+	gosub AddP Hit , #spc , Cold , #spc , Area
+	gosub AddP Hit , #spc , Poison , #spc , Area
+	gosub AddP Hit , #spc , Energy , #spc , Area
+	gosub AddP Hit , #spc , Physical , #spc , Area
+	gosub AddP Hit , #spc , Dispel
+	gosub AddP Hit , #spc , Fireball
+	gosub AddP Hit , #spc , Harm
+	gosub AddP Hit , #spc , Lightning
+	gosub AddP Hit , #spc , Magic , #spc , Arrow
+	gosub AddP Hit , #spc , Life , #spc , Leech
+	gosub AddP Hit , #spc , Mana , #spc , Leech
+	gosub AddP Hit , #spc , Stamina , #spc , Leech
+	gosub AddP Hit , #spc , Lower , #spc , Attack
+	gosub AddP Hit , #spc , Lower , #spc , Defense
+
+	gosub AddP Mage , #spc , Armor
+	gosub AddP Lower , #spc , Reagent , #spc , Cost
+	gosub AddP Lower , #spc , Mana , #spc , Cost
+	gosub AddP Faster , #spc , Casting
+	gosub AddP Faster , #spc , Cast , #spc , Recovery
+	gosub AddP Spell , #spc , Damage , #spc , Increase
+
+	gosub AddP Physical , #spc , Resist
+	gosub AddP Fire , #spc , Resist
+	gosub AddP Cold , #spc , Resist
+	gosub AddP Poison , #spc , Resist
+	gosub AddP Energy , #spc , Resist
+
+	gosub AddP Dexterity , #spc , Bonus
+	gosub AddP Strength , #spc , Bonus
+	gosub AddP Intelligence , #spc , Bonus
+
+	gosub AddP Hit , #spc , Point , #spc , Regeneration
+	gosub AddP Stamina , #spc , Regeneration
+	gosub AddP Mana , #spc , Regeneration
+
+	gosub AddP Hit , #spc , Point , #spc , Increase
+	gosub AddP Stamina , #spc , Increase
+	gosub AddP Mana , #spc ,  Increase
+
+	gosub AddP Self , #spc , Repair
+	gosub AddP Enhance , #spc , Potions
+	gosub AddP Insured
+	gosub AddP Luck
+	gosub AddP Spell , #spc , Channeling
+	gosub AddP Reflect , #spc , Physical , #spc , Damage
+}
+gosub PropExecuter
+gosub showResultsmenu
+menu hideeuo
+gosub WFMB
+start:
+set %propertyCNT2 %propertyCNT
+menu List add text Click at some container/player to receive info
+set #TARGCURS 1
+loop:
+wait 2
+if #TARGCURS = 1
+	goto loop:
+set %CONT #LTARGETID
+if %CONT = #CHARID
+{
+	finditem * C_ , #CHARID
+	if #findkind = -1
+		event macro 8 1
+}
+if %CONT <> #CHARID
+{
+	set #LOBJECTID %CONT
+	event macro 17
+	set #SCNT 0
+	WFCTO:
+	wait 2
+	if #SCNT > 2
+	{
+		menu List add text Unable to open container. Script stopped
+		gosub WFMB
+	}
+	if #CONTID <> %CONT
+		goto WFCTO
+	set #CONTPOSX 1
+	set #CONTPOSY 600
+}
+menu List add text %CONT , #dot Getting info...
+finditem * C_ , %CONT
+if #FINDKIND = -1
+{
+	gosub showResultsmenu
+	menu List add text Unable to find container. Script stopped
+	gosub WFMB
+}
+set %FINDCNT #FINDCNT
+set %ALERTCNT %ALERT
+for %CNT 1 %FINDCNT
+{
+	finditem * %CNT C_ , %CONT
+	if #FINDKIND <> -1
+	{
+		set %ALERTCNT %ALERTCNT + 1
+		if %ALERTCNT >= %ALERT
+		{
+			menu List add text Item %CNT , / , %FINDCNT
+			set %ALERTCNT 0
+		}
+		event property #FINDID
+		for %paramCNT 1 %propertyCNT
+		{
+			set #RESULT
+			gosub GetProperty #PROPERTY %property . %paramCNT
+			gosub SumProperty %property . %paramCNT #RESULT %paramCNT
+		}
+		gosub GPMethod2 #PROPERTY Bonus
+	}
+	if #FINDKIND = -1
+	{
+		menu List add text Item %CNT , / , %FINDCNT , : Unable to find, skipped.
+		wait 10
+	}
+}
+if #CHARID <> %CONT
+	click 50 650 r
+gosub showResultsmenu
+set %ToFileData
+for %CNT 1 %propertyCNT2
+{
+
+	if %PROP . %CNT <> N/A
+	{
+		set %REALPARAM %PROP . %CNT
+		set %PARAM %REALPARAM
+		PrepProp2:
+		str pos %PARAM #spc
+		if #STRRES > 0
+		{
+			str del %PARAM #STRRES 1
+			set %PARAM #STRRES
+			goto PrepProp2
+
+		}
+		menu List add text %REALPARAM , : , #spc , % . %PARAM
+		set %ToFileData %ToFileData , %REALPARAM , %separator , % . %PARAM , %separator
+		set %PROP . %CNT N/A
+		set % . %PARAM N/A
+	}
+
+}
+if EXEC in #opts
+	gosub AddSTFMenu
+else
+	menu Button helpexec 108 252 15 17 ?
+gosub WFMB
+
+sub GetProperty
+str pos %1 $ , %2
+if #STRRES = 0
+	return 0
+set #strres #strres + 1
+set %3
+set #STRRES #STRRES - 1
+str del %1 1 #STRRES
+set %1 #STRRES
+str len %1
+set %PROPLEN #STRRES
+str pos %1 $
+str del %1 #STRRES %PROPLEN
+set %1 #STRRES
+str right %1 1
+if #STRRES = %
+{
+	str len %1
+	str del %1 #STRRES 1
+	set %1 #STRRES
+	set %3 1
+}
+set %VALUE
+set %ZERO 0
+getvalue:
+str right %1 1
+if #STRRES in %DIGITS
+{
+	if #STRRES = 0
+	{
+		set %ZERO %ZERO + 1
+		str len %1
+		str del %1 #STRRES 1
+		set %1 #STRRES
+		goto getvalue
+	}
+	if %ZERO <> 0
+	{
+		for %CNT2 1 %ZERO
+		{
+			set #STRRES #STRRES , 0
+		}
+		set %ZERO 0
+	}
+	str ins %VALUE #STRRES 0
+	set %VALUE #STRRES
+	str len %1
+	str del %1 #STRRES 1
+	set %1 #STRRES
+	goto getvalue
+}
+if %3 = 1
+	set %VALUE %VALUE , %
+if %VALUE = %EMPTY
+	set %VALUE 1
+return %VALUE
+
+sub SumProperty
+if %2 = 0
+	return
+set %realpropname %1
+PrepProp:
+str pos %1 #spc
+if #STRRES > 0
+{
+	str del %1 #STRRES 1
+	set %1 #STRRES
+	goto PrepProp
+}
+if % . %1 = N/A
+{
+	if %3 = N/A
+	{
+		set %propertyCNT2 %propertyCNT2 + 1
+		set %PROP . %propertyCNT2 %realpropname
+	}
+	else
+	{
+		set %PROP . %3 %realpropname
+	}
+	set % . %1
+}
+str pos %2 %
+if #STRRES > 0
+{
+	set %3 1
+	set #STRRES #STRRES - 1
+	str left %2 #STRRES
+	set %2 #STRRES
+}
+str pos % . %1 %
+if #STRRES > 0
+{
+	set #STRRES #STRRES - 1
+	str left % . %1 #STRRES
+	set % . %1 #STRRES
+}
+set % . %1 % . %1 + %2
+if %3 = 1
+	set % . %1 % . %1 , %
+return % . %1
+
+sub WFMB
+set #menubutton
+WFMB:
+wait 2
+if #menubutton = back
+	gosub showResultsmenu
+if #menubutton = start
+{
+	gosub showResultsmenu
+	goto start
+}
+if #menubutton = closed
+	halt
+if #menubutton = setup
+	gosub showSetupmenu
+if #menubutton = add
+{
+	set #menubutton
+	menu get property
+	gosub AddP #menures
+	if #result = #true
+	{
+		set %PropertyCNT %PropertyCNT + 1
+		set %Property . %PropertyCNT #menures
+		menu List add properties %PropertyCNT , : %property . %PropertyCNT
+		menu set text [ Successfully added
+	}
+	else
+		menu set text [ Cannot be added
+}
+if #menubutton = remove
+{
+	set #menubutton
+	menu get property
+	gosub DeleteP #menures
+	if #result = #true
+	{
+		gosub PropExecuter
+		gosub ShowProps
+		menu set text [ Successfully removed
+	}
+	else
+		menu set text [ Cannot be removed
+}
+if #menubutton = help
+{
+	set #menubutton
+	display ok To add property in list, it is necessary to write in the field "Property" a name$
++and then to press the button "add". Property can not be added in the list for two reasons:$
++the property's name contains a symbol "separator", or already exists in the list.
+	display ok To remove property from the list, it is necessary to write to a field "Property" a name or number of property$
++and then to press the button "remove". Property can not be deleted from the list for two reasons:$
++the property's name contains a symbol "separator", or does not exist in the list.
+	display ok What is the sign "separator" ( , %separator , )? All names of properties are stored$
++in one global variable as one string. To separate properties from each other there is a sign "separator".$
++The sign "separator" cannot be used in names of properties.
+}
+if #menubutton = reset
+{
+	set #menubutton
+	set #dispres
+	display okcancel You really want to remove all properties$
++from the list and to restore base properties?
+	if #dispres = ok
+	{
+		set *NaborStatsPL N/A
+		goto restart
+	}
+}
+if #menubutton = save
+{
+	set #menubutton
+	set %ToFileData2 %ToFileData
+	gosub SaveToFile
+	menu Text textSaved 170 276 SAVED
+	set %ToFileData %ToFileData2
+	set %ToFileData2 N/A
+}
+if #menubutton = helpexec
+{
+	set #menubutton
+	display ok If you want to have an ability to save results in a file,$
++You need to enable Execute in your EasyUO options.
+}
+goto WFMB
+return
+
+sub AddP
+str pos %1 %separator
+if #STRRES > 0
+{
+	return #false
+}
+str pos *NaborStatsPL %1 , %separator
+if #STRRES > 0
+{
+	if #STRRES = 1
+		return #false
+	str pos *NaborStatsPL %separator , %1 , %separator
+	if #STRRES > 0
+		return #false
+}
+set *NaborStatsPL *NaborStatsPL , %1 , %separator
+return #true
+
+sub DeleteP
+if %1 > 0
+	set %1 %property . %1
+str pos %1 %separator
+if #STRRES > 0
+{
+	return #false
+}
+str pos *NaborStatsPL %1 , %separator
+if #STRRES = 1
+{
+	goto DeleteP
+}
+str pos *NaborStatsPL %separator , %1 , %separator
+if #STRRES > 0
+{
+	set #STRRES #STRRES + 1
+	goto DeleteP
+}
+return #false
+DeleteP:
+set %pos #STRRES
+str len %1
+set #strres #strres + 1
+str del *NaborStatsPL %pos #STRRES
+set *NaborStatsPL #STRRES
+return #true
+
+sub PropExecuter
+set %NaborStatsPL *NaborStatsPL
+set %i 0
+getpropnum:
+str pos %NaborStatsPL %separator
+if #STRRES > 0
+{
+	set %i %i + 1
+	set %pos #STRRES
+	set #STRRES #STRRES - 1
+	str left %NaborStatsPL #STRRES
+	set %property . %i #STRRES
+	str del %NaborStatsPL 1 %pos
+	set %NaborStatsPL #STRRES
+	goto getpropnum
+}
+set %propertyCNT %i
+return
+
+sub showResultsmenu
+set #menubutton
+menu Clear
+menu Window Title NaborStats (coden)
+menu Window Color Black
+menu Window Size 229 270
+menu Font Name MS Sans Serif
+menu Font Size 8
+menu Font Style
+menu Font Color WindowText
+menu Font BGColor Window
+menu List Create text 0 0 230 250
+menu Font BGColor BtnFace
+menu Button start 0 250 101 21 Start script
+menu Button setup 130 250 101 21 Setup
+menu Show 10 10
+return
+
+sub showSetupmenu
+set #menubutton
+menu Clear
+menu Window Title Setup
+menu Window Color Black
+menu Window Size 440 250
+menu Font Name Times New Roman
+menu Font Size 28
+menu Font Style i
+menu Font Color $0007003C
+menu Font BGColor Black
+menu Text EUOLabel1 60 0 SetUp
+menu Font Name Arial
+menu Font Size 11
+menu Font Style
+menu Font Color Silver
+menu Font Transparent #true
+menu Text EUOLabel2 10 30 P r o p e r t y:
+menu Font Name MS Sans Serif
+menu Font Size 8
+menu Font Color White
+menu Text text 10 200 [
+menu Font Color Black
+menu Font BGColor White
+menu Edit property 10 50 160
+menu Font Color Green
+menu Font BGColor BtnFace
+menu Button add 70 80 100 20 Add >>>
+menu Font Color Maroon
+menu Button remove 70 105 100 20 Remove <<<
+menu Font Style b
+menu Font Color White
+menu Font BGColor Black
+menu Button reset 30 220 41 21 Reset
+menu Button back 80 220 41 21 Back
+menu Button help 130 220 41 21 Help
+gosub ShowProps
+menu Show 10 10
+return
+
+sub ShowProps
+menu Delete properties
+menu List Create properties 180 10 250 230
+for %i 1 %PropertyCNT
+{
+	menu List add properties %i , : %property . %i
+}
+return
+
+sub GPMethod2
+set %GMP2Prop %1
+set %GMP2SearchWord %2
+GPM2Again:
+str pos %GMP2Prop %GMP2SearchWord
+if #STRRES = 0
+	return
+set %GPM2Pos #STRRES
+GPM2getSep:
+set %GPM2Pos %GPM2Pos - 1
+str mid %GMP2Prop %GPM2Pos 1
+if %GPM2Pos = 0
+	set #STRRES $
+if #STRRES <> $
+	goto GPM2getSep
+str del %GMP2Prop 1 %GPM2Pos
+set %GMP2Prop #STRRES
+str pos %GMP2Prop %GMP2SearchWord
+set %GPM2Pos #STRRES - 1
+str len %GMP2SearchWord
+set %GPM2Pos %GPM2Pos + #STRRES
+str left %GMP2Prop %GPM2Pos
+set %GPM2Pos #STRRES
+if %GPM2Pos notin *NaborStatsPL
+{
+	gosub GetProperty %GMP2Prop %GPM2Pos
+	gosub SumProperty %GPM2Pos #RESULT N/A
+}
+str pos %GMP2Prop $
+if #STRRES = 0
+	return
+str del %GMP2Prop 1 #STRRES
+set %GMP2Prop #STRRES
+goto GPM2Again
+return
+
+sub AddSTFMenu
+str left #OSVER 1
+if #STRRES = 1
+	set %FCMD command.com
+else
+	set %FCMD cmd.exe
+menu Font Name Arial
+menu Font Size 10
+menu Font Style b
+menu Font Color Silver
+menu Font BGColor Black
+menu Text textTitle 4 272 Title:
+menu Text textFilename 4 295 Filename:
+menu Font BGColor Window
+menu Font Color Black
+menu Edit TITLE 40 272 117
+menu Edit FILENAME 72 296 85
+menu Font Name MS Sans Serif
+menu Font Size 8
+menu Font Style
+menu Font Color WindowText
+menu Font BGColor Window
+menu Button save 164 296 65 23 Save to file
+menu Font Color Silver
+menu Window Size 229 320
+return
+
+sub SaveToFile
+menu get FILENAME
+set %FILENAME #MENURES , .txt
+menu get TITLE
+if %FCMD = cmd.exe
+{
+	set %string * , * , * , #spc , #MENURES
+	GP:
+	gosub GetParamFSDBS
+	if #result = #false
+	{
+		execute %FCMD /c echo %string >> %FILENAME
+		return
+	}
+	set %string %string , #SPC , >> , #SPC , %FILENAME ,  #SPC , && , #SPC , echo , #SPC , #result
+	gosub GetParamFSDBS
+	set %string %string , : , #SPC , #result
+	goto GP
+}
+execute %FCMD /c echo * , * , * #MENURES >> %FILENAME
+wait 5
+GP2:
+gosub GetParamFSDBS
+if #result = #false
+	return
+set %string #result
+gosub GetParamFSDBS
+execute %FCMD /c echo %string , : #result >> %FILENAME
+wait 5
+goto GP2
+return
+
+sub GetParamFSDBS
+set %1 #false
+str pos %ToFileData %separator
+if #STRRES > 0
+{
+	set %pos #STRRES - 1
+	str left %ToFileData %pos
+	set %1 #STRRES
+	set %pos %pos + 1
+	str del %ToFileData 1 %pos
+	set %ToFileData #STRRES
+}
+return %1

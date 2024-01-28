@@ -1,0 +1,66 @@
+;==================================
+; Script Name:  Rage's PvP/Duelers Pot Chugger
+; Author: Rage
+; Version: 1.0
+; Client Tested with: 4.04b
+; EUO version tested with: 1.42.0098
+; Shard OSI / FS: OSI
+; Revision Date:
+; Public Release: 10-15-04
+; Global Variables Used:
+; Purpose: Cures for what ales ya
+;==================================
+initevents
+event macro 9 7
+wait 5
+event macro 8 7
+wait 5
+set %backpackID #contid
+loop:
+if #charstatus = c
+{
+set %pot nuf
+               gosub usepot
+}    
+if #hits < 80 ; add to number for greater health
+{
+    set %pot uuf
+                   gosub usepot
+}  
+goto loop            
+ 
+sub usepot
+        {
+        set %nowx #cursorx
+        set %nowy #cursory
+        finditem %pot C_ , %backpackID
+        if #findkind = 0
+                {
+                        event macro 24 1
+                        wait 5
+                                set %deltax #findx + 30
+                set %deltay #findy + 11
+                wait 20
+                click %deltax %deltay d
+                wait 20
+                click %nowx %nowy n
+                wait 1s                  
+                                event macro 24 1                  
+                                return
+                                }
+                                 if %pot = nuf
+                                {
+                                event macro 15 10
+                                wait 9
+                                event macro 23 0
+                                wait 5
+                                event macro 13 32
+                                wait 5
+                        return
+                        }
+                                event macro 13 32
+                                wait 3s
+                                event macro 23 0
+                                wait 5
+                                return
+                               }  // end sub

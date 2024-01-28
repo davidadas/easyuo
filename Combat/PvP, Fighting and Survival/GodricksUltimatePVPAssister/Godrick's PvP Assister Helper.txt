@@ -1,0 +1,125 @@
+;========================================
+; Script Name: GodricksPvPHelper.txt
+; Author: Godrick
+; Version: 5.0
+; Client Tested with: 7.0.15.1
+; EUO version tested with: 1_5_196
+; Shard OSI / FS: FS (Alexandria) Samurai Empire , (Pandora) Stygian Abyss.
+; Revision Date: 050712
+; Public Release: 091209
+; Purpose: Provide Info for GodricksPVPAssister.
+;========================================
+set %jrnl #jindex
+set %NameList *NameList
+set *Mortalled #false
+set %Partied #false
+set *Bandaging #false
+set *Poisoned #false
+set #lpc 50
+str Count %Namelist @
+	if #strres > 0
+  {
+   set %PersonNum #strres
+   set %String %NameList
+	 for %i 1 %PersonNum
+	 {
+    str Pos %String @
+    set %Position1 #strres - 1
+    set %Position2 #strres
+    str Left %String %Position1
+      set %Name , %i #strres
+    str Del %String 1 %Position2
+    set %String #strres
+   }
+  }
+Loop:
+if *NameList <> %NameList
+{
+  set %NameList *NameList
+  str Count %Namelist @
+	if #strres > 0
+  {
+   set %PersonNum #strres
+   set %String %NameList
+	 for %i 1 %PersonNum
+	 {
+    str Pos %String @
+    set %Position1 #strres - 1
+    set %Position2 #strres
+    str Left %String %Position1
+      set %Name , %PersonNum #strres
+    str Del %String 1 %Position2
+    set %String #strres
+   }
+  }
+}
+gosub ScanJournal
+if *Mortalled && #Scnt2 >= %Mortaltime
+   set *Mortalled #false
+for %W 1 10
+{
+ onhotkey *WSHotkey . %W *AltCTRLShift . %W
+  {
+    set *W %W
+    set *Swap #true
+  }
+}
+goto Loop
+
+sub ScanJournal
+set #lpc 500
+for %m %jrnl #jindex
+{
+ scanjournal %m
+  if %PersonNum > 0 && ! %Partied && ! *Chugging
+  {
+   for %i 1 %PersonNum
+   {
+    if %Name . %i , _:_You_are_invited_to_join in #journal
+    {
+      set %Partied #true
+      msg $/accept$
+    }
+   }
+  }
+  if ( You_feel_a_bit_nauseous in #journal || You_feel_disoriented in #journal || You_begin_to_feel_pain in #journal || You_feel_extremely_weak in #journal || You_are_in_extreme_pain in #journal ) && : notin #journal
+  {
+     set *Poisoned #True
+     break
+  }
+  if You_begin_applying_the_bandages in #journal && : notin #journal
+  {
+     set *Bandaging #true
+     break
+  }
+  if ( You_finish_applying_the_bandages in #journal || You_heal_what_little_damage in #journal || You_have_been_cured in #journal || That_being_is_not_damaged in #journal ) && : notin #journal && *Bandaging
+  {
+     set *Bandaging #false
+     set *Poisoned #false
+     break
+  }
+  if You_have_cured in #journal && : notin #journal
+     set *Poisoned #false
+  if You_have_been_removed_from_the in #journal && : notin #journal && %Partied
+     set %Partied #false
+  if You_must_have_a_free_hand in #journal && : notin #journal && *Chugging
+  {
+   set *ForceDisarm #true
+   break
+  }
+  if You_have_been_mortally_wounded in #journal && : notin #journal
+  {
+     set *Mortalled #true
+     set %Mortaltime ( #Scnt2 + 65 )
+     break
+  }
+  if ( You_are_no_longer_mortally_wounded in #journal || A_tasty_bite_of_the_enchanted in #journal ) && : notin #journal
+  {
+     set *Mortalled #false
+     break
+  }
+}
+set %jrnl #jindex + 1
+set #lpc 200
+return
+

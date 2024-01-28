@@ -1,0 +1,54 @@
+
+;=========================================
+; Script Name: Raziel's Attack Script
+; Author: Raziel, Tecmo
+; Version: 1.20a
+; Client Tested with: 5.0.1a
+; EUO version tested with: 1.50.0060
+; Shard OSI / FS: OSI and FS (Alexandria Tested Only)
+; Revision Date: 2005-Nov-22
+; Public Release: 2003-Aug-19
+; Global Variables Used: None
+; Purpose: Makes your warrior's hunting life all that much easier
+; by Auto attacking preset creature when nearby.
+;=========================================
+ 
+;USER VARIABLES
+;Set !_creature to the type of creatures you wish to auto attack
+ 
+SET !_creature ED_NG_IG_ZF_
+SET !_AutoMoveToTarget #TRUE ;#TRUE or #FALSE
+SET !_lowHits 55
+SET !_maxRange 10
+; =====================================
+IGNOREITEM reset
+ 
+enemyloop:
+FOR !_range 1 !_maxrange
+{
+   FINDITEM !_creature G_ , !_range
+   IF #FINDKIND <> -1
+   {
+     SET #LTARGETID #FINDID
+     SET !_enemy #FINDID
+     GOSUB attack
+   }
+   WAIT 10
+}
+SET !_range 0
+goto enemyLoop
+ 
+; ================
+SUB attack
+attack_loop:
+EVENT macro 27
+FINDITEM !_enemy G_
+IF #FINDKIND = 1
+{
+   IF #HITS > !_lowHits && !_AutoMoveToTarget = #TRUE && #FINDDIST > 1
+      MOVE #FINDX #FINDY a
+   WAIT 20
+         GOTO attack_loop
+}
+RETURN
+; ================

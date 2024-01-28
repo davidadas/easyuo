@@ -1,0 +1,139 @@
+;=================================== 
+; Script Name: Ambrosia's Bag Of Sending Script 
+; Author: Ambrosia 
+; Version: 1.4
+; Client Tested With: 5.0.0a [patch18]
+; EUO version tested with: V1.42.00B0 
+; OSI / FS :  OSI 
+; Public Release 5/27/2004 
+; Edit Release 8/28/05
+; Purpose: Automates Sending gold to bank via Bag of Sending.
+;=================================== 
+initevents
+set %loot POF
+set %userweight 400
+event macro 8 7
+wait 1s
+set %backpackID #contid
+set %mainpack #contid
+wait 1s
+event macro 8 2
+display ok This script is currently set to drop at a max weight of #maxweight $ Or a userweight of %userweight $
++  To change this, please stop the script and edit these in the main script.
+if %loot = POF
+  {
+  display ok The Script is currently set to send only gold. $ To change this, edit the loot variable in the main script.
+  }
+display yesno Are you using your main backpack as your loot bag?
+if #dispres = no
+{
+set %mainpack %backpackid
+display ok Target your LOOT BAG now! $ If this is your main pack, target it in your paperdoll
+set #targcurs 1
+lootbagpause:
+wait 1s
+if #targcurs = 1
+goto lootbagpause
+set %backpackid #ltargetid
+set #lobjectid %backpackid 
+event macro 17
+wait 1s
+contpos 600 450
+}
+set %chargesused 0
+set %goldsent 0
+gosub menu
+loop:
+; This stops the script if you die. 
+if #charghost = yes
+  {
+     halt
+  }
+; This checks your weight to see if you need to drop gold 
+if #weight > #maxweight || #weight > %userweight
+  {
+             gosub bagofsending
+  }
+if %wait = FALSE
+  {
+   set %wait TRUE
+   goto loop
+   }
+wait 15s
+goto loop
+
+sub bagofsending
+findbag:
+finditem  CKF C_ , %mainpack
+event property #findid
+if sending notin #property
+   {
+   ignoreitem #findid
+   goto findbag
+   }
+if #findkind = -1
+  {
+      display ok You must have a Bag of Sending on you. $
+      halt
+  }
+set %bagofsending #findid
+finditem %loot C_ , %backpackID
+set %gold #findid
+if #findkind = -1
+ {
+        display ok You are overloaded, but dont have any gold. $
+        display ok Please unload your pack and restart $
+        halt
+ }
+set %findstack #findstack
+set #lobjectid %bagofsending
+set #ltargetid %gold
+set #ltargetkind 1
+event macro 17
+target 2s
+event macro 22
+scanJournal 1
+if out_of_charges in #journal
+ {
+  gosub refill
+  set %findstack 0
+ }
+set %goldsent %goldsent + %findstack
+set %findstack 0
+set %chargesused %chargesused + 1
+gosub menu
+return
+
+sub refill
+finditem EUO
+if #findkind = -1
+ {
+ display ok You are out of charges and have no powder. You need to restock. $
+ halt
+ }
+set #lobjectid #findid
+event macro 17
+wait 1s
+set #ltargetid %bagofsending
+set #ltargetkind 1
+event macro 22
+set %wait FALSE
+return
+
+sub menu
+menu clear
+menu show 0 0
+menu window size 130 60
+menu window title BOS
+menu window color black
+menu font color red
+menu font bgcolor black
+menu font style u
+menu text stats 5 5 Bag of Sending Stats
+menu font style n
+menu text gold 5 25 Gold Sent:
+menu text charges 5 40 Charges Used:
+menu font align right
+menu text sent 125 25 %goldsent
+menu text used 125 40 %chargesused
+return

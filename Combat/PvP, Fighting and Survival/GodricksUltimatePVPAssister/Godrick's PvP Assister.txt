@@ -1,0 +1,1739 @@
+;========================================
+; Script Name: GodricksPvPAssister.txt
+; Author: Godrick
+; Version: 5.0
+; Client Tested with: 7.0.15.1
+; EUO version tested with: 1_5_196
+; Shard OSI / FS: FS (Alexandria) Samurai Empire , (Pandora) Stygian Abyss.
+; Revision Date: 050712
+; Public Release: 091209
+; Purpose: Automatically applies bandages, can manually/automatically
+; use cure, heal, refresh, agility, and strength potions, provides weapon swapping assistance,
+; and automatically re-arms weapon when disarmed. Easily the fastest, most stable, and most all-encompassing pot
+; chugging script in the PSL. Perfect for PvP.
+;========================================
+; Settings
+; Does your shard support the [bs (BandageSelf) command?
+set %BandageQuestion #false ; #True if Yes, #False if No
+set %RazorBandageKey No ; If Yes, Set to the key with your bandageself macro on it. Set to No if you don't use a Razor hotkey for bandages.
+;========================================
+; Lag Calibration
+;========================================
+set %PotLag 0
+;====================
+; System Variables
+;====================
+set %ResourceBag #BackpackID
+set %WeaponsetNum 1
+set %Bandages ZLF
+set %Petals RFG
+set %Apples CBS
+set %Strength 0
+set %Dexterity 0
+set %Pot2Delay #sCnt2
+set %Pot4Delay #sCnt
+set %Pot5Delay #sCnt
+set %Bandagewait #sCnt2
+set %RearmTimer #sCnt
+set %Petaltimer Ready
+set %Appletimer Ready
+set %Dexterity 100000
+set %Strength 100000
+;====================
+; Lists
+;====================
+set %Pottype1 NUF ;Cure
+set %Pottype2 UUF ;Heal
+set %Pottype3 ZUF ;Refresh
+set %Pottype4 YUF ;Agility
+set %Pottype5 XUF ;Strength
+set %Potname1 Cure
+set %Potname2 Heal
+set %Potname3 Refresh
+set %Potname4 Agility
+set %Potname5 Strength
+set %Counttype1 NUF ;Cure
+set %Counttype2 UUF ;Heal
+set %Counttype3 ZUF ;Refresh
+set %Counttype4 YUF ;Agility
+set %Counttype5 XUF ;Strength
+set %Counttype6 ZLF ;Bandaids
+set %Counttype7 CBS ;Apples
+set %DefaultPotSettings1 70
+set %DefaultPotSettings2 80
+set %DefaultPotSettings3 5
+set %DefaultPotSettings4 10
+set %winsize2 175
+set %winsize1 275
+set *Chugging #false
+set *Bandaging #false
+set *Poisoned #false
+;====================
+; Variable Clearing
+;====================
+for %P 1 5
+{
+ set %Chug . %P #false
+}
+;====================
+; LoadVariables
+;====================
+gosub LoadStuff
+set *Swap #false
+;====================
+chooseskill heal
+if #Skill > 50
+   set %UseBandages #true
+else
+    set %UseBandages #false
+gosub PvPMenu
+gosub CountStuff
+;====================
+set %Disarm #true
+set %DisarmItem %ShieldID1
+if %WeaponID1 = N/A || %ShieldID1 = N/A || %ShieldID1 = Balanced
+   set %Disarm #false
+if %ShieldID1 = TwoHanded
+{
+   set %Disarm #true
+   set %DisarmItem %WeaponID1
+}
+set %CurWep %WeaponID1
+set %CurShield %ShieldID1
+    
+Mainloop:
+if H notin #charstatus && #charghost = no
+{
+ if %UseBandages && ! *Mortalled
+    gosub Bandages
+ if #targcurs <> 1
+    gosub Potions
+}
+if *Swap
+{
+   gosub WeaponSwap %WeaponID . *W %ShieldID . *W *W
+   set *Swap #false
+}
+if %Miscbutton6 = On
+   gosub Trinsicpetals
+if %Miscbutton7 = On && %Enough7
+   gosub Apples
+if %Miscbutton8 = On
+   gosub AutoRearmHands
+gosub CountStuff
+gosub MenuStuff
+goto MainLoop
+
+sub Apples
+finditem %Apples C_ , #BackpackID
+if #findcnt < 1
+{
+ set %Applestatus Out!
+ menu set EUOLabel17 %Applestatus
+ menu set EUOLabel7 0
+ return
+}
+else
+{
+ if ! *Mortalled
+    return
+ if %Appletimer = Ready && #hits < #maxhits / 2 + 20 && *Mortalled
+ {
+  set #LObjectID #findid
+  event macro 17 0
+  set %Appletimer 121
+ }
+ if %AppleOffset = N/A
+    set %Appletimer %Appletimer - 1
+ else
+    set %Appletimer %Appletimer + %AppleOffset - #sCnt
+ menu set EUOLabel17 %Appletimer
+ set %AppleOffset #Scnt
+ if %Appletimer <= 0
+    set %Appletimer Ready
+}
+return
+
+sub Trinsicpetals
+finditem %Petals C_ , #BackpackID
+if #findcnt < 1
+{
+ menu set EUOLabel15 Out!
+ return
+}
+else
+{
+ if %Petaltimer = Ready
+ {
+  set #LObjectID #findid
+  event macro 17 0
+  set %Petaltimer 305
+ }
+ if %PetalOffset = N/A
+    set %Petaltimer %Petaltimer - 1
+ else
+    set %Petaltimer %Petaltimer + %PetalOffset - #sCnt
+ menu set EUOLabel15 %Petaltimer
+ set %PetalOffset #Scnt
+ if %Petaltimer <= 0
+    set %Petaltimer Ready
+}
+return
+
+sub AutoRearmHands
+if %ShieldID . %WeaponsetNum <> TwoHanded && %ShieldID . %WeaponsetNum <> Balanced && %ShieldID . %WeaponsetNum <> N/A
+  finditem %CurWep , _ , %CurShield C_ , #BackpackID
+else
+    finditem %CurWep C_ , #BackpackID
+ if #findcnt < 1 || ( %WeaponID . %WeaponsetNum = N/A && %ShieldID . %WeaponsetNum = N/A )
+    return
+ else
+     {
+      set %Rearmthis1 N/A
+      set %Rearmthis2 N/A
+      if %RearmTimer < #sCnt
+      {
+       for #findindex 1 #findcnt
+          set %Rearmthis , #findindex #findid
+       if %Rearmthis1 <> N/A
+         gosub MoveObject %Rearmthis1 droppd #charid %Rearmthis1
+       if %Rearmthis2 <> N/A
+         gosub MoveObject %Rearmthis2 droppd #charid %Rearmthis2
+         set %RearmTimer 5 + #sCnt
+       }
+      }
+     }
+return
+
+sub WeaponSwap
+set #lpc 100
+set %CurWep %1
+set %CurShield %2
+set %NextWeaponSet %3
+menu set StatusChange Checking Handset
+set %CheckA #false
+set %CheckB #false
+if %WeaponID . %WeaponsetNum = N/A
+     set %CheckA #true
+  else
+  {
+   finditem %WeaponID . %WeaponsetNum C_ , #CharID
+   if #findcnt > 0 && %WeaponID . %WeaponsetNum <> %WeaponID . %NextWeaponSet
+      set %CheckA #true
+  }
+  if %ShieldID . %WeaponsetNum = TwoHanded || %ShieldID . %WeaponsetNum = Balanced  || %ShieldID . %WeaponsetNum = N/A
+      set %CheckB #true
+  else
+  {
+   finditem %ShieldID . %WeaponsetNum C_ , #CharID
+   if #findcnt > 0 && %ShieldID . %WeaponsetNum <> %ShieldID . %NextWeaponSet
+      set %CheckB #true
+  }
+  if %CheckA || %CheckB
+   {
+    menu set StatusChange Swapping to Set %NextWeaponSet
+    gosub ModifyLPC
+     if %WeaponID . %WeaponsetNum <> N/A && %CheckA
+        gosub MoveObject %WeaponID . %WeaponsetNum dropc #BackpackID %WeaponID . %WeaponsetNum
+     if %ShieldID . %WeaponsetNum <> TwoHanded && %ShieldID . %WeaponsetNum <> Balanced && %ShieldID . %WeaponsetNum <> N/A && %CheckB
+        gosub MoveObject %ShieldID . %WeaponsetNum dropc #BackpackID %ShieldID . %WeaponsetNum
+   }
+  else
+  {
+   menu set StatusChange Idle
+   gosub ModifyLPC
+   event sysmessage Unidentified Weaponset In Hands.
+   event exmsg #charid 3 33 Unidentified Weaponset In Hands.
+   return
+  }
+}
+if %CurWep <> N/A && %WeaponID . %WeaponsetNum <> %WeaponID . %NextWeaponSet
+{
+   gosub MoveObject %CurWep droppd #CharID %CurWep
+   set %Disarm #true
+   set %RearmItem %CurWep
+   set %DisarmItem %CurWep
+}
+else
+{
+  set %RearmItem None
+  set %Disarm #false
+}
+if %CurShield <> TwoHanded && %CurShield <> Balanced && %CurShield <> N/A && %ShieldID . %WeaponsetNum <> %ShieldID . %NextWeaponSet
+{
+   gosub MoveObject %CurShield droppd #CharID %CurShield
+   if %Disarm <> #false
+   {
+      set %Disarm #true
+      set %DisarmItem %CurShield
+   }
+}
+if %CurShield = N/A || %CurShield = Balanced
+     set %Disarm #false
+set %WeaponsetNum %NextWeaponSet
+menu set WSNum %WeaponsetNum
+menu set StatusChange Idle
+return
+
+sub MenuStuff
+if #menubutton = PotionBagSet
+   gosub ResourceConfig
+if #menubutton = PotionButton
+   gosub ConfigPots
+if #menubutton = WeaponSet
+   gosub WeaponSetup
+set #lpc 100
+for %B 1 8
+{
+ ;if ( #sCnt2 > %Bandagewait && ( C in #charstatus || #hits < #maxhits ) ) || ( #hits < %PTrigger1 && #SCnt2 > %Pot2Delay && %Enough2 && %PotStatus1 = On && ! *Mortalled ) || ( C in #charstatus && #hits < %PTrigger2 && %Enough1 && %PotStatus2 = On && ! *Mortalled ) || ( #stamina < %PTrigger3 && %Enough3 && %PotStatus5 = On )
+  ;  return #true
+ if #menubutton = Button , %B
+ {
+  if %B < 6
+  {
+   if %PotStatus . %B = On
+   {
+    set %PotStatus , %B Off
+    set %PotFontColor , %B White
+    set %PotBGColor , %B Maroon
+   }
+   else
+   {
+    set %PotStatus , %B On
+    set %PotFontColor , %B Black
+    set %PotBGColor , %B 74112139
+   }
+    menu Delete Button , %B
+    set %Y 71 + ( %B * 16 )
+    menu Font Color %PotFontColor . %B
+	  menu Font BGColor %PotBGColor . %B
+	  menu Button Button , %B 100 %Y 30 15 %PotStatus . %B
+	  set #menubutton Nothing
+  }
+  else
+  {
+   if %Miscbutton . %B = On
+   {
+    set %Miscbutton , %B Off
+    set %PotFontColor , %B White
+    set %PotBGColor , %B Maroon
+   }
+   else
+   {
+    set %Miscbutton , %B On
+    set %PotFontColor , %B Black
+    set %PotBGColor , %B 74112139
+   }
+    set %Bnum %B - 5
+    set %Y 154 + ( %Bnum * 20 )
+    menu Font Color %PotFontColor . %B
+	  menu Font BGColor %PotBGColor . %B
+	  menu Button Button , %B 100 %Y 30 15 %Miscbutton . %B
+	  set #menubutton Nothing
+   }
+  }
+ }
+}
+if #menubutton = Save2
+  gosub SaveMainMenu
+if #menubutton = Pause
+{
+  menu delete Pause
+  menu Font Color White
+	menu Font BGColor Maroon
+  menu Button Resume 125 6 45 17 Resume
+  set #menubutton Nothing
+  repeat
+  wait 1
+  until #menubutton = Resume
+  menu delete Resume
+  menu Font Color Black
+	menu Font BGColor 10690205
+	menu Button Pause 125 6 45 17 Pause
+}
+if #menubutton = AddName
+{
+  menu get Name
+  set %test test , #menures
+  if %test <> test
+  {
+   set %String #menures
+   str Count %String #spc
+   if #strres > 0
+   {
+    for %i 1 #strres
+    {
+     str Pos %String #spc
+     str Ins %String _ #strres
+     set %String #strres
+    }
+   }
+   str Len %String
+   set %Len 1 + #strres
+   str Ins %String @ %Len
+   set %NameList %NameList , #strres
+   set *NameList %NameList
+   ;display ok %Namelist
+   set %PersonNum %PersonNum + 1
+   menu Combo Add PartyList #menures
+   menu Combo Select PartyList %PersonNum
+   menu delete Name
+   menu Font BGColor Window
+   menu Font Color Black
+	 menu Edit Name 185 78 85
+	}
+  set #menubutton Nothing
+}
+if #menubutton = RemoveName
+{
+  set %String %NameList
+  menu get PartyList
+  for %i 1 #menures
+	 {
+    str Pos %String @
+    set %Position1 #strres - 1
+    set %Position2 #strres
+    str Left %String %Position1
+      if %i = #menures
+         break
+    str Del %String 1 %Position2
+    set %String #strres
+   }
+  set %Edit #strres
+  str Pos %NameList %Edit
+  set %DeleteHere #strres
+  str Len %Edit
+  set %Length #strres + 1
+  str Del %NameList %DeleteHere %Length
+  set %Namelist #strres
+  menu delete Partylist
+  menu Font BGColor Window
+  menu Font Color Black
+	menu Combo Create Partylist 185 48 85
+	str Count %Namelist @
+	if #strres > 0
+  {
+   set %PersonNum #strres
+   set %String %NameList
+	 for %i 1 %PersonNum
+	 {
+    str Pos %String @
+    set %Position1 #strres - 1
+    set %Position2 #strres
+    str Left %String %Position1
+     menu Combo Add Partylist #strres
+    str Del %String 1 %Position2
+    set %String #strres
+   }
+  }
+  set *NameList %NameList
+  set #menubutton Nothing
+}
+if #menubutton = Mini || ( #menubutton = Party && %Maximize )
+{
+for %m 1 50
+ {
+  set %winsize1 %winsize1 - 2
+  menu Window Size %winsize1 275
+ }
+ set %Maximize #false
+ set %winsize1 275
+ set #menubutton Nothing
+}
+if #menubutton = Party && ! %Maximize
+{
+ for %m 1 50
+ {
+  set %winsize2 %winsize2 + 2
+  menu Window Size %winsize2 275
+ }
+ set %Maximize #true
+ set %winsize2 175
+ set #menubutton Nothing
+}
+set #lpc 10
+return #false
+
+sub ResourceConfig
+menu delete PotionBagSet
+menu Font Color Black
+menu Font BGColor Yellow
+menu Button PotionBagSet 141 120 20 10 S
+event sysmessage Target Potion Bag!
+event exmsg #charid 3 33 Target Potion Bag!
+set #targcurs 1
+repeat
+wait 5
+onhotkey ESC
+{
+ set #targcurs 0
+ event sysmessage Cancelling Bag Setting!
+ event exmsg #charid 3 33 Cancelling Bag Setting!
+ set %ResourceBag #BackpackID
+ goto ResetButton
+}
+until #targcurs <> 1
+set %ResourceBag #LTargetID
+event sysmessage Bag Set!
+event exmsg #charid 3 33 Bag Set!
+ResetButton:
+menu Font Color White
+menu Font BGColor Green
+menu Button PotionBagSet 141 120 20 10 O
+set #menubutton Nothing
+return
+
+sub SaveMainMenu
+menu set StatusChange Saving.
+gosub putGlobalVar 42 GPvP #charid PotStatus1 NOLOCK
+menu set StatusChange Saving..
+gosub putGlobalVar 42 GPvP #charid PotStatus2 NOLOCK
+menu set StatusChange Saving...
+gosub putGlobalVar 42 GPvP #charid PotStatus3 NOLOCK
+menu set StatusChange Saving....
+gosub putGlobalVar 42 GPvP #charid PotStatus4 NOLOCK
+menu set StatusChange Saving.
+gosub putGlobalVar 42 GPvP #charid PotStatus5 NOLOCK
+menu set StatusChange Saving..
+gosub putGlobalVar 42 GPvP #charid Miscbutton6 NOLOCK
+menu set StatusChange Saving...
+gosub putGlobalVar 42 GPvP #charid Miscbutton7 NOLOCK
+menu set StatusChange Saving....
+gosub putGlobalVar 42 GPvP #charid Miscbutton8 NOLOCK
+gosub putGlobalVar 42 GPvP #charid NameList NOLOCK
+menu set StatusChange Idle
+set #menubutton Nothing
+return
+
+sub CountStuff
+set #lpc 100
+for %C 1 7
+{
+ set %CurNum 0
+ if %C > 5
+    finditem %Counttype . %C C_ , #BackpackID
+    else
+        finditem %Counttype . %C C_ , %ResourceBag
+ if #findcnt > 0
+ {
+  if %Applestatus = Out! && %C = 7
+    menu set EUOLabel17 Ready
+  for #findindex 1 #findcnt
+  {
+   set %CurNum #findstack + %CurNum
+  }
+    menu set EUOLabel , %C %CurNum
+    set %Enough , %C #true
+ }
+ else
+  {
+    if %C = 7
+     {
+       set %Applestatus Out!
+       menu set EUOLabel17 %Applestatus
+     }
+    menu set EUOLabel , %C 0
+    set %Enough , %C #false
+  }
+}
+if #charghost = no
+   menu set StatusChange Idle
+if #charghost = yes
+   menu set StatusChange Dead
+set #lpc 10
+return #false
+
+sub ModifyMenu
+set #lpc 100
+for %i 1 5
+{
+if %1 = %Pottype . %P ;Cure
+  menu set StatusChange Chugging %Potname . %P
+}
+if %1 = Idle
+  menu set StatusChange Idle
+set #lpc 10
+return
+
+sub Bandages
+gosub ModifyLPC ; LPC 10
+if ( ! *Bandaging || #sCnt2 > %Bandagewait ) && ( ( ( ( C in #charstatus || #hits < #maxhits ) && ! *Mortalled ) ) || ( C in #charstatus && *Poisoned ) )
+ {
+  finditem %Bandages C_ , #BackpackID
+  if #findcnt > 0
+  {
+  set *Bandaging #false
+  set #LObjectID #FindID
+  if %RazorBandageKey <> NO
+     key %RazorBandageKey
+  if %BandageQuestion
+   event macro 1 0 [bs
+  if ! %BandageQuestion && %RazorBandageKey = NO
+  {
+   event macro 17 0
+   target
+   event macro 23 0
+  }
+  ;set %wait ( #sCnt2 + ( 110 - ( #dex / 20 ) * 10 ) ) + %BandageLag
+  set %Bandagewait ( #sCnt2 + ( 100 - ( ( #dex - 10 ) / 20 ) * 10 ) ) + 40
+  }
+ }
+gosub ModifyLPC ; LPC 100
+return
+
+sub Potions
+gosub ModifyLPC ; Speeds up LPC to 100
+if #sCnt > %DexteritySafety
+   set %Dexterity 10000
+if #sCnt > %StrengthSafety
+   set %Strength 10000
+for %P 1 5
+{
+ set %Potion . %P #false
+}
+if C in #charstatus && #hits < %PTrigger2 && %Enough1 && %PotStatus2 = On && ! *Mortalled
+   set %Potion1 #true
+if #hits < %PTrigger1 && #SCnt2 > %Pot2Delay && %Enough2 && %PotStatus1 = On && ! *Mortalled
+   set %Potion2 #true
+if #stamina < %PTrigger3 && %Enough3 && %PotStatus5 = On
+   set %Potion3 #true
+if #SCnt > %Pot4Delay && %Dexterity > #dex && %Enough4 && %PotStatus4 = On && #targcurs <> 1
+   set %Potion4 #true
+if #SCnt > %Pot5Delay && %Strength > #str && %Enough5 && %PotStatus3 = On && #targcurs <> 1
+   set %Potion5 #true
+if %Potion1 || %Potion2 || %Potion3 || %Potion4 || %Potion5
+{ ; ^ if any triggers were set to true
+ set %PotionIndex 1
+ for %P 1 5 ; Queue up the necessary potions
+ {
+  if %Potion . %P
+  {
+     set %Chug . %PotionIndex %Pottype . %P
+     set %test %Chug . %PotionIndex
+     set %PotionIndex %PotionIndex + 1
+  }
+ }
+ set %PotionIndex %PotionIndex - 1
+ gosub ModifyLPC ; Slows down LPC to 10
+ if %Disarm ; If Disarm true
+   gosub DisarmHand Disarm ; Disarm
+ gosub ChugPot ; Chug through potions set by "for" loop
+ if %Disarm
+   gosub DisarmHand Rearm ; Rearm
+}
+gosub ModifyLPC ; LPC back to 100
+return
+
+sub ModifyLPC
+if %LPC = 100
+   set %LPC 10
+else
+    set %LPC 100
+return
+
+sub ChugPot
+set *Chugging #true
+for %P 1 %PotionIndex ; Cycle through queued up potions
+{
+  set %CurPot %Chug . %P
+  if %CurPot = %Pottype2 && C in #charstatus
+     goto SkipPot
+  CureAgain:
+  finditem %CurPot C_ , %ResourceBag
+  if #findcnt > 0
+  {
+   Chugthis:
+   gosub ModifyMenu %CurPot
+   set #LObjectID #findid
+   event macro 17 0
+   wait 10
+   if %CurPot = %Pottype4 || %CurPot = %Pottype5
+      wait 10
+   if *ForceDisarm
+     {
+      set *ForceDisarm #false
+      gosub DisarmHand Disarm
+     }
+   gosub CalcPotWaits
+   if C in #charstatus && %CurPot = %Pottype1 ; If Cure Potion failed. Chug again
+   {
+    if %UseBandages && ! *Mortalled
+      gosub Bandages
+    goto CureAgain
+   }
+  }
+  SkipPot:
+}
+if C in #charstatus && %CurPot = %Pottype1 ; If after all potions, player poisoned again.
+{
+ set %CurPot %Pottype1
+ finditem %CurPot C_ , %ResourceBag
+ if #findcnt > 0
+    goto Chugthis
+}
+set *Chugging #false
+gosub ModifyMenu Idle
+return
+
+sub CalcPotWaits
+if %CurPot = %Pottype2
+   set %Pot2Delay ( #sCnt2 + 106 + %PotLag )
+if %CurPot = %Pottype4
+{
+ set %DexteritySafety #sCnt + 125
+ set %Dexterity #dex
+ set %Pot4Delay ( #sCnt + %PTrigger4 )
+}
+if %CurPot = %Pottype5
+{
+ set %StrengthSafety #sCnt + 125
+ set %Strength #str
+ set %Pot5Delay ( #sCnt + %PTrigger4 )
+}
+return
+
+sub DisarmHand
+goto %1 ; %1 is either Disarm or Rearm
+Disarm:
+finditem %DisarmItem C_ , #CharID
+if #findcnt > 0
+{
+ gosub MoveObject #findid dropc #BackpackID %DisarmItem
+ return
+}
+Rearm:
+finditem %DisarmItem C_ , #BackpackID
+if #findcnt > 0
+{
+ gosub MoveObject #findid droppd #CharID %DisarmItem
+ return
+}
+return
+
+sub MoveObject
+set %Move_TimeOut #sCnt + 3
+MoveAgain:
+if #Charghost = yes
+   return
+exevent Drag %1
+wait 1
+if %2 = droppd ; Drop in Paperdoll
+   exevent %2
+if %2 = dropc ; Drop in called container
+   exevent %2 %3
+wait 9
+finditem %4 C_ , %3
+if #findcnt < 1
+{
+ if %Move_TimeOut > #sCnt
+   goto MoveAgain
+}
+return
+
+sub PvPMenu
+set #lpc 100
+	menu Clear
+	;menu hide
+	menu Window Title PvP Assister
+	menu Window Color Black
+	menu Window Size 175 275
+	;menu Window Size 275 275
+	menu Font Transparent #true
+	menu Font Align	left
+	menu Font Name Arial
+	menu Font Size 12
+	menu Font Style i
+	menu Font Color 10690205
+	menu Text Title 5 5 Assister
+	menu Font Size 9
+	menu Font Color 74112139
+	menu Text Status 12 42 Status :
+	menu Text StatusChange 57 42 Idle
+	menu Font Name MS Sans Serif
+	menu Font Size 8
+	menu Font Style
+	menu Font Color Black
+	menu Font BGColor 10690205
+	menu Button Pause 125 6 45 17 Pause
+	menu Button Save2 80 6 40 17 Save
+  menu Shape EUOShape0 5 25 165 3 3 7 1 Black 7 White
+	menu Shape EUOShape1 5 29 100 3 3 7 1 Black 7 White
+	menu Shape EUOShape2 5 33 75 3 3 7 1 Black 7 White
+	menu Shape EUOShape3 5 37 50 3 3 7 1 Black 7 White
+	;menu Shape EUOShape4 5 88 3 80 3 7 1 Black 7 White
+	menu Shape EUOShape5 50 88 3 80 3 7 1 Black 7 White
+	menu Shape EUOShape6 95 88 3 80 3 7 1 Black 7 White
+	menu Shape EUOShape7 130 88 3 80 3 7 1 Black 7 White
+	;menu Shape EUOShape8 165 88 3 80 3 7 1 Black 7 White
+	set %X 136
+	set %Y 94
+	set %Length 30
+	for %Design 1 16
+	{
+	 menu Shape Design %X %Y %Length 3 3 7 1 Black 7 White
+	 set %X %X + 2
+	 set %Y %Y + 4
+	 set %Length %Length - 4
+  }
+  menu Shape EUOShape9 5 80 163 3 3 7 1 Black 7 White
+  menu Shape EUOShape10 5 169 163 3 3 7 1 Black 7 White
+  menu Shape EUOShape11 5 59 163 3 3 7 1 Black 7 White
+  menu Shape EUOShape12 50 66 3 12  3 7 1 Black 7 White
+  menu Shape EUOShape13 95 66 3 12  3 7 1 Black 7 White
+  ;menu Shape EUOShape14 130 66 3 12  3 7 1 Black 7 White
+  menu Shape EUOShape15 130 176 3 12  3 7 1 Black 7 White
+  menu Shape EUOShape16 95 176 3 12  3 7 1 Black 7 White
+  menu Shape EUOShape17 5 189 163 3 3 7 1 Black 7 White
+  menu Shape EUOShape18 50 195 3 12  3 7 1 Black 7 White
+  menu Shape EUOShape19 95 195 3 12  3 7 1 Black 7 White
+  menu Shape EUOShape20 130 195 3 12  3 7 1 Black 7 White
+  menu Shape EUOShape17 5 209 163 3 3 7 1 Black 7 White
+	menu Font BGColor Black
+	menu Font Color Green
+	menu Text Aids 12 65 Aids
+	menu Text EUOLabel6 55 65 0
+	menu Font Color Yellow
+	menu Text Hpot 12 88 H-Pot
+	menu Text EUOLabel2 55 88 0
+	menu Font Color 2055151
+	menu Text Cpot 12 104 C-Pot
+	menu Text EUOLabel1 55 104 0
+	menu Font Color White
+	menu Text Spot 12 120 S-Pot
+	menu Text EUOLabel5 55 120 0
+	menu Font Color 82139139
+	menu Text Apot 12 136 A-Pot
+	menu Text EUOLabel4 55 136 0
+	menu Font Color Red
+	menu Text Rpot 12 152 R-Pot
+	menu Text EUOLabel3 55 152 0
+	menu Font Color 10690205
+	menu Text Petals 12 175 Trinsic Petals
+	menu Text EUOLabel15 135 175 Ready
+	menu Font Color Red
+	menu Text Apples 12 194 Apples
+	menu Text EUOLabel17 135 194 Ready
+	menu Text EUOLabel7 55 194 0
+	menu Font Color 0255127
+	menu Text Rearm 12 213 Auto - Rearm
+	menu Text Rearm 12 230 Weapon Set # :
+	menu Text WSNum 110 230 %WeaponsetNum
+	menu Shape EUOShape23 5 245 163 3 3 7 1 Black 7 White
+  menu Shape EUOShape21 95 214 3 15  3 7 1 Black 7 White
+  menu Shape EUOShape22 130 214 3 15  3 7 1 Black 7 White
+  menu Font Color White
+  menu Font BGColor Green
+  menu Button PotionBagSet 141 120 20 10 O
+	menu Font Color White
+  menu Font BGColor 82139139
+	menu Button PotionButton 100 64 65 15 PotionInfo
+	for %B 1 5
+  {
+   set %Y 71 + ( %B * 16 )
+   menu Font Color %PotFontColor . %B
+	 menu Font BGColor %PotBGColor . %B
+	 menu Button Button , %B 100 %Y 30 15 %PotStatus . %B
+  }
+  for %B 6 8
+  {
+   set %Bnum %B - 5
+   set %Y 154 + ( %Bnum * 20 )
+   menu Font Color %PotFontColor . %B
+   menu Font BGColor %PotBGColor . %B
+	 menu Button Button , %B 100 %Y 30 15 %MiscButton . %B
+  }
+  menu Font Color White
+	menu Font BGColor 82139139
+	menu Button WeaponSet 10 255 75 17 Weapon Sets
+  ;===== Extended Menu =====
+  menu Font BGColor 10690205
+  menu Font Color 10690205
+  menu Text PartyNames 190 32 Auto-Party List
+  menu Font Color White
+  for %m 0 3
+  {
+   set %1 250 + ( %m * 5 )
+   set %2 40 - ( %m * 10 )
+   menu shape Design 200 %1 40 %2 1 7 2 10690205 7 1
+   set %1 195 + ( %m * 5 )
+   set %2 30 - ( %m * 10 )
+   menu shape Design 245 %1 40 %2 1 7 2 10690205 7 1
+   set %1 170 + ( %m * 5 )
+   set %2 20 - ( %m * 10 )
+   menu shape Design 180 %1 40 %2 1 7 2 10690205 7 1
+  }
+  menu Button Party 90 255 75 17 Party Info
+  menu Button AddName 186 108 85 17 Add Name
+  menu Button RemoveName 186 128 85 17 Remove Name
+  menu Button Mini 255 6 17 17 <-
+	menu Shape EUOShape4 175 5 3 265 3 7 1 Black 7 White
+	menu Shape EUOShape4 185 26 85 3 3 7 1 Black 7 White
+	menu Shape EUOShape4 185 148 85 3 3 7 1 Black 7 White
+  menu Font BGColor Window
+  menu Font Color Black
+	menu Combo Create Partylist 185 48 85
+	str Count %Namelist @
+	if #strres > 0
+  {
+   set %PersonNum #strres
+   set %String %NameList
+	 for %i 1 %PersonNum
+	 {
+    str Pos %String @
+    set %Position1 #strres - 1
+    set %Position2 #strres
+    str Left %String %Position1
+     menu Combo Add Partylist #strres
+    str Del %String 1 %Position2
+    set %String #strres
+   }
+  }
+	menu Edit Name 185 78 85
+	;===== Extended Menu =====
+  menu Font Color 10690205
+  menu Font Size 2
+  menu Text Signature 110 27 By Godrick
+  menu window transparent 0
+  menu Show 520 300
+ 	for %i 1 100
+ 	{
+     menu window transparent %i
+     if %i % 5 = 0
+     wait 1
+  }
+	set #menubutton Nothing
+set #lpc 10
+return
+
+sub ConfigPots
+gosub ConfigPotMenu
+PotConfig:
+if #menubutton = Return
+{
+ for %P 1 4
+ {
+   menu get Potion , %P
+   set %PTrigger , %P #menures
+ }
+ set #menubutton Nothing
+ gosub PvPMenu
+ goto EndPotConfigMenu
+}
+if #menubutton = Save3
+{
+    for %P 1 4
+    {
+     menu get Potion , %P
+     set %PTrigger , %P #menures
+    }
+    event sysmessage Saving...
+    event exmsg #charid 3 33 Saving...
+    gosub putGlobalVar 42 GPvP #charid PTrigger1 NOLOCK
+    gosub putGlobalVar 42 GPvP #charid PTrigger2 NOLOCK
+    gosub putGlobalVar 42 GPvP #charid PTrigger3 NOLOCK
+    gosub putGlobalVar 42 GPvP #charid PTrigger4 NOLOCK
+    event sysmessage Saving Complete!
+    event exmsg #charid 3 33 Saving Complete!
+    set #menubutton Nothing
+}
+goto PotConfig
+EndPotConfigMenu:
+return
+
+
+sub ConfigPotMenu
+set #lpc 100
+	menu Clear
+	menu Window Title Potion Info.
+	menu Window Color Black
+	menu Window Size 215 175
+	menu Font Transparent #true
+	menu Font Align Left
+	menu Font Name Arial
+	menu Font Size 12
+	menu Font Style i
+	menu Font Color 10690205
+	menu Text Title 12 5 Potion Info.
+	menu Font Name MS Sans Serif
+	menu Font Size 8
+	menu Font Style
+	menu Font Color Black
+	menu Font BGColor 10690205
+	menu Button Return 145 6 57 17 Return
+	menu Button Save3 95 6 57 17 Save
+	menu Shape EUOShape0 5 25 200 3 3 7 1 Black 7 White
+	menu Shape EUOShape4 5 165 200 3 3 7 1 Black 7 White
+	menu Shape EUOShape1 5 29 100 3 3 7 1 Black 7 White
+	menu Shape EUOShape2 5 33 75 3 3 7 1 Black 7 White
+	menu Shape EUOShape3 5 37 50 3 3 7 1 Black 7 White
+	menu Font Color Yellow
+	menu Text Hpot 12 50 Heal Potion Triggered at
+	menu Text Hpot 170 50 health.
+	menu Font Color 2055151
+  menu Text Cpot 12 80 Cure Potion Triggered at
+	menu Text Cpot 170 80 health.
+	menu Font Color White
+	menu Text Spot 12 140 Seconds between Auto-Chugs :
+	menu Font Color Red
+  menu Text Rpot 12 110 Refresh Triggered at
+	menu Text Rpot 153 110 stamina.
+	menu Font Color WindowText
+	menu Font BGColor Window
+  menu Edit Potion1 132 45 35 %PTrigger1
+  menu Edit Potion2 132 75 35 %PTrigger2
+  menu Edit Potion3 115 105 35 %PTrigger3
+  menu Edit Potion4 167 135 35 %PTrigger4
+	menu Show 520 300
+	set #menubutton Nothing
+set #lpc 10
+return
+
+sub WeaponSetup
+set %Combobox 1
+gosub WeaponConfigMenu 1
+L:
+menu get WSetList
+if #menures <> %ComboBox
+{
+   set %NewLoad #menures
+   gosub ComboBoxSave %NewLoad
+   gosub ComboBoxLoad %NewLoad
+}
+for %i 1 2
+{
+if #menubutton = Select , %i
+  gosub SelectEdit %i
+}
+if #menubutton = Clear1
+   gosub ClearWeaponSet %Combobox
+if #menubutton = Save1 || #menubutton = Return
+{
+   gosub SaveWeaponConfig #menubutton
+   if #result = Return
+    goto EndWeaponMenu
+}
+gosub CheckCTRLALTSHIFT
+goto L
+EndWeaponMenu:
+gosub PvPMenu
+return
+
+sub SaveWeaponConfig
+set %ReturnAction %1
+gosub ComboBoxSave %ComboBox
+for %i 1 10
+{
+ ;display ok %AltCTRLShift . %i
+  set %AltCTRLShift , %i N/A
+  if %shift . %i
+    set %AltCTRLShift , %i Shift
+  if %alt . %i
+    set %AltCTRLShift , %i Alt
+  if %ctrl . %i
+    set %AltCTRLShift , %i Ctrl
+  if %TwoHand . %i
+     set %ShieldID , %i TwoHanded
+  if %Balanced . %i
+     set %ShieldID , %i Balanced
+}
+set %CurShield %ShieldID . %WeaponsetNum
+set %CurWep %WeaponID . %WeaponsetNum
+if %CurWep <> N/A
+{
+   set %Disarm #true
+   set %RearmItem %CurWep
+   set %DisarmItem %CurWep
+}
+else
+{
+  set %RearmItem None
+  set %Disarm #false
+}
+if %CurShield <> TwoHanded && %CurShield <> Balanced && %CurShield <> N/A
+{
+   if %Disarm <> #false
+   {
+      set %Disarm #true
+      set %DisarmItem %CurShield
+   }
+}
+if %CurShield = N/A || %CurShield = Balanced
+     set %Disarm #false
+if %ReturnAction = Save1
+{
+ event sysmessage Saving...
+ event exmsg #charid 3 33 Saving...
+ for %Save 1 10
+ {
+    gosub putGlobalVar 42 GPvP #charid DisplayMessage1 , %Save NOLOCK
+    gosub putGlobalVar 42 GPvP #charid DisplayMessage2 , %Save NOLOCK
+    gosub putGlobalVar 42 GPvP #charid WeaponID , %Save NOLOCK
+    gosub putGlobalVar 42 GPvP #charid ShieldID , %Save NOLOCK
+    gosub putGlobalVar 42 GPvP #charid AltCTRLShift , %Save NOLOCK
+    gosub putGlobalVar 42 GPvP #charid WSHotkey , %Save NOLOCK
+    set *AltCTRLShift , %Save %AltCTRLShift . %Save
+    set *WSHotkey , %Save %WSHotkey . %Save
+    if %Save = 1 || %Save = 4 || %Save = 7
+       event sysmessage Saving.
+    if %Save = 2 || %Save = 5 || %Save = 8
+       event sysmessage Saving..
+    if %Save = 3 || %Save = 6 || %Save = 9
+       event sysmessage Saving...
+ }
+event sysmessage Saving Complete!
+event exmsg #charid 3 33 Saving Complete!
+}
+else
+{
+ for %Return 1 10
+ {
+  set *AltCTRLShift , %Return %AltCTRLShift . %Return
+  set *WSHotkey , %Return %WSHotkey . %Return
+ }
+}
+set #menubutton Nothing
+return %ReturnAction
+
+sub SelectEdit
+ChooseAnotherShield:
+  Menu delete Select , %1
+  menu Font Color Black
+  menu Font BGColor Maroon
+  if %1 = 1
+      set %Y 66
+  else
+      set %Y 96
+  menu Button Select , %1 10 %Y 57 20 Select
+  Menu delete Object , %1
+  menu Font BGColor Window
+  menu Font Color Red
+  if %1 = 1
+  {
+   event sysmessage Target Weapon or Book!
+   event exmsg #charid 3 33 Target Weapon or Book!
+   set %DisplayMessage Target , #spc , Weapon , #spc , or , #spc , Book!
+  }
+  else
+  {
+   event sysmessage Target Shield!
+   event exmsg #charid 3 33 Target Shield!
+   set %DisplayMessage Target , #spc , a , #spc , Shield!
+  }
+ menu Edit Object , %1 70 %Y 125 %DisplayMessage
+ set #Targcurs 1
+ while #targcurs = 1
+  wait 1
+ event property #Ltargetid
+ if Two-Handed in #Property
+   {
+    if %1 = 2
+    {
+     event sysmessage Shields CANNOT be two-handed!
+     event exmsg #charid 3 33 Shields CANNOT be two-handed!
+     set %DisplayMessage Shields , #spc , CANNOT , #spc , be , #spc , two-handed!
+     menu delete Object , %1
+     menu Edit Object , %1 70 %Y 125 %DisplayMessage
+     wait 1s
+     goto ChooseAnotherShield
+    }
+    set %TwoHand , %ComboBox #true
+    set %ShieldID , %ComboBox N/A
+    menu delete Select2
+    menu delete Object2
+   }
+   else
+       set %TwoHand , %ComboBox #false
+   if Balanced in #Property
+    set %Balanced , %ComboBox #true
+   else
+       set %Balanced , %ComboBox #false
+  if %1 = 1
+     set %WeaponID , %ComboBox #LtargetID
+  else
+      set %ShieldID , %ComboBox #LtargetID
+  str Len #property
+  set %Len #strres
+  str Pos #property $
+  str Del #property #strres %Len
+  set %DisplayMessage , %1 #strres
+  ;display ok %DisplayMessage . %1
+  menu Font Color Black
+  Menu delete Object , %1
+  menu Edit Object , %1 70 %Y 125 %DisplayMessage . %1
+  Menu delete Select , %1
+  menu Font BGColor 74112139
+  menu Button Select , %1 10 %Y 57 20 Select
+  set #menubutton Nothing
+return
+
+sub ClearWeaponSet
+  set #lpc 100
+   set %DisplayMessage1 Weapon/Book
+   set %DisplayMessage2 Shield
+   menu delete Set1
+   menu delete Alt
+   menu delete Shift
+   menu delete Ctrl
+   menu delete Select2
+   menu delete Object2
+   menu delete Select1
+   menu delete Object1
+   menu Font BGColor 82139139
+   menu Button Clear1 80 40 57 17 Clear
+   menu Font BGColor 74112139
+   menu Button Select1 10 66 57 20 Select
+   menu Button Select2 10 96 57 20 Select
+   menu Font Color WindowText
+   menu Font BGColor Window
+   menu Edit Object1 70 65 125 %DisplayMessage1
+   menu Edit Object2 70 95 125 %DisplayMessage2
+   menu Font Color WindowText
+   menu Font Align Left
+   menu Font BGColor Black
+   menu Font Color 74112139
+   menu Font BGColor Window
+   menu Text Text 264 85 Shift
+   menu Text Text 240 85 Alt
+   menu Text Text 210 85 Ctrl
+   menu Text Text 210 65 Key -
+   menu Font Color WindowText
+   menu Edit Set1 240 60 29
+   set %Y 100
+   set %Ctrl . %1 #false
+   set %Alt . %1 #false
+   set %Shift . %1 #false
+   menu Check Ctrl 212 %Y 20 17 %Ctrl . %1 Ctrl
+   menu Check Alt 240 %Y 20 17 %Alt . %1 Alt
+   menu Check Shift 268 %Y 20 17 %Shift . %1 Shift
+   set %WeaponID , %1 N/A
+	 set %ShieldID , %1 N/A
+   set %TwoHand , %1 #false
+   set %Balanced , %1 #false
+	 set #menubutton Nothing
+	 set #lpc 10
+return
+
+sub ComboBoxLoad
+set %ComboBox %1
+if ! %DisplayThis
+{
+  menu Font BGColor 74112139
+  menu Button Select2 10 96 57 20 Select
+  menu Font BGColor Window
+  menu Edit Object2 70 95 125 Shield
+}
+set %DisplayThis #true
+if %WeaponID . %1 = N/A
+   set %DisplayMessage1 , %1 Weapon/Book
+if %ShieldID . %1 = N/A
+   set %DisplayMessage2 , %1 Shield
+if %ShieldID . %1 = TwoHanded || %ShieldID . %1 = Balanced || %Balanced . %1 || %TwoHand . %1
+   set %DisplayThis #false
+if %WSHotkey . %1 = N/A
+   set %WSHotkey , %1
+if %AltCTRLShift . %1 <> ALT || %alt . %1 = N/A || %alt . %1 = #false
+     set %alt , %1 #false
+   else
+     set %alt , %1 #true
+if %AltCTRLShift . %1 <> SHIFT || %shift . %1 = N/A || %shift . %1 = #false
+     set %shift , %1 #false
+   else
+     set %shift , %1 #true
+if %AltCTRLShift . %1 <> CTRL || %ctrl . %1 = N/A || %ctrl . %1 = #false
+     set %ctrl , %1 #false
+   else
+     set %ctrl , %1 #true
+menu set Object1 %DisplayMessage1 . %1
+if %DisplayThis
+  menu set Object2 %DisplayMessage2 . %1
+else
+ {
+    menu delete Object2
+    menu delete Select2
+ }
+menu set Set1 %WSHotkey . %1
+menu set Ctrl %ctrl . %1
+menu set Alt %alt . %1
+menu set Shift %shift . %1
+return
+
+sub ComboBoxSave
+menu get Object1
+     set %DisplayMessage1 , %ComboBox #menures
+menu get Object2
+     set %DisplayMessage2 , %ComboBox #menures
+;display ok %ComboBox  %DisplayMessage1 . %ComboBox  %WeaponID . %ComboBox   %DisplayMessage2 . %ComboBox  %ShieldID . %ComboBox
+menu get Set1
+     set %WSHotkey , %ComboBox #menures
+menu get Ctrl
+     set %ctrl , %ComboBox #menures
+menu get Alt
+     set %alt , %ComboBox #menures
+menu get Shift
+     set %shift , %ComboBox #menures
+;display ok  %ctrl . %ComboBox     %alt . %ComboBox   %shift . %ComboBox
+return
+
+sub CheckCTRLALTSHIFT
+set %SC #false
+set %AC #false
+set %CC #false
+menu get Shift
+;display ok #menures
+if #menures = #true
+   set %SC #true
+menu get Alt
+if #menures = #true
+   set %AC #true
+menu get Ctrl
+if #menures = #true
+   set %CC #true
+  if ( %CC && %AC ) || ( %CC && %SC ) || ( %AC && %SC )
+  {
+   menu delete Alt
+   menu delete Shift
+   menu delete Ctrl
+   menu font BGColor Black
+   set %Y 100
+   menu Check Ctrl 212 %Y 20 17 #false Ctrl
+   menu Check Alt 240 %Y 20 17 #false Alt
+   menu Check Shift 268 %Y 20 17 #false Shift
+  }
+return
+
+sub WeaponConfigMenu
+ set #lpc 100
+   menu Clear
+   menu Window Title Weapon Set Configuration
+   menu Window Color Black
+   menu Window Size 305 125
+   menu Font Transparent #true
+   menu Font Align Right
+   menu Font Name Arial
+   menu Font Size 12
+   menu Font Style i
+   menu Font Color 10690205
+   menu Text Title 100 5 Weapon Sets
+   menu Font Name MS Sans Serif
+   menu Font Style
+   menu Font Size 10
+   menu Font Color 74112139
+   menu Text Text 250 34 Weapon Set :
+      menu Font Size 8
+   menu Font Color Black
+   menu Font BGColor 10690205
+   menu Button Return 235 6 57 17 Return
+   menu Button Save1 175 6 57 17 Save
+   menu Shape EUOShape0 5 25 290 3 3 7 1 Black 7 White
+   menu Shape EUOShape1 5 29 100 3 3 7 1 Black 7 White
+   menu Shape EUOShape2 5 33 75 3 3 7 1 Black 7 White
+   menu Shape EUOShape3 5 37 50 3 3 7 1 Black 7 White
+  menu Shape EUOShape4 5 120 290 3 3 7 1 Black 7 White
+  menu Font BGColor white
+  menu Combo Create WSetList 250 30 43
+  for %i 1 10
+    menu Combo Add WSetList %i
+  menu Combo Select WSetList %1
+   menu Font BGColor 82139139
+   menu Button Clear1 80 40 57 17 Clear
+   menu Font BGColor 74112139
+   menu Button Select1 10 66 57 20 Select
+   if %ShieldID1 <> Balanced && %ShieldID1 <> TwoHanded
+      menu Button Select2 10 96 57 20 Select
+   menu Font Color WindowText
+   menu Font BGColor Window
+   ;menu List Create Weapon1 70 44 125 21
+   menu Edit Object1 70 65 125 %DisplayMessage11
+   if %ShieldID1 <> Balanced && %ShieldID1 <> TwoHanded
+      menu Edit Object2 70 95 125 %DisplayMessage21
+   menu Font Color WindowText
+   menu Font Align Left
+   menu Font BGColor Black
+   menu Font Color 74112139
+   menu Font BGColor Window
+   menu Text Text 264 85 Shift
+   menu Text Text 240 85 Alt
+   menu Text Text 210 85 Ctrl
+   menu Text Text 210 65 Key -
+   menu Font Color WindowText
+   menu Edit Set1 240 60 29 %WSHotkey1
+   set %Y 100
+   if %AltCTRLShift1 = ALT
+     set %alt1 #true
+   else
+     set %alt1 #false
+   if %AltCTRLShift1 = SHIFT
+     set %shift1 #true
+   else
+     set %shift1 #false
+   if %AltCTRLShift1 = CTRL
+     set %ctrl1 #true
+   else
+     set %ctrl1 #false
+   menu Check Ctrl 212 %Y 20 17 %ctrl1 Ctrl
+   menu Check Alt 240 %Y 20 17 %alt1 Alt
+   menu Check Shift 268 %Y 20 17 %shift1 Shift
+   menu Show 520 300
+   set #menubutton Nothing
+ set #lpc 10
+return
+
+sub LoadStuff
+if %BandageQuestion && %RazorBandageKey <> No
+{
+ Display ok You cannot have the [bs active as well as a razor hotkey for bandages.
+ halt
+}
+gosub getGlobalVar 42 GPvP #charid NameList NOLOCK
+if ! #result
+{
+   set %NameList Godrick@
+   set *NameList Godrick@
+}
+else
+    set *NameList %Namelist
+for %Load 1 4
+{
+ gosub getGlobalVar 42 GPvP #charid PTrigger , %Load NOLOCK
+ if ! #result
+ {
+   set %PTrigger , %Load %DefaultPotSettings . %Load
+ }
+}
+for %Load 1 5
+{
+ gosub getGlobalVar 42 GPvP #charid PotStatus , %Load NOLOCK
+ if %PotStatus . %Load = Off || ! #result
+ {
+   set %PotStatus , %Load Off
+   set %PotFontColor , %Load White
+   set %PotBGColor , %Load Maroon
+ }
+ if %PotStatus . %Load = On
+ {
+   set %PotStatus , %Load On
+   set %PotFontColor , %Load Black
+   set %PotBGColor , %Load 74112139
+ }
+}
+for %Load 6 8
+{
+ gosub getGlobalVar 42 GPvP #charid MiscButton , %Load NOLOCK
+ if %MiscButton . %Load = Off || ! #result
+ {
+   set %MiscButton , %Load Off
+   set %PotFontColor , %Load White
+   set %PotBGColor , %Load Maroon
+ }
+ if %MiscButton . %Load = On
+ {
+   set %MiscButton , %Load On
+   set %PotFontColor , %Load Black
+   set %PotBGColor , %Load 74112139
+ }
+}
+for %Load 1 10
+{
+    gosub getGlobalVar 42 GPvP #charid DisplayMessage1 , %Load NOLOCK
+    gosub getGlobalVar 42 GPvP #charid DisplayMessage2 , %Load NOLOCK
+    gosub getGlobalVar 42 GPvP #charid WeaponID , %Load NOLOCK
+    gosub getGlobalVar 42 GPvP #charid ShieldID , %Load NOLOCK
+    gosub getGlobalVar 42 GPvP #charid AltCTRLShift , %Load NOLOCK
+    gosub getGlobalVar 42 GPvP #charid WSHotkey , %Load NOLOCK
+    set *AltCTRLShift , %Load %AltCTRLShift . %Load
+    set *WSHotkey , %Load %WSHotkey . %Load
+    if %DisplayMessage1 . %Load = N/A
+       set %DisplayMessage1 , %Load Weapon/Book
+    if %DisplayMessage2 . %Load = N/A
+       set %DisplayMessage2 , %Load Shield
+    ;display ok %AltCTRLShift . %Load
+    if %AltCTRLShift . %Load = ALT
+     set %alt , %Load #true
+       else
+     set %alt , %Load #false
+   if %AltCTRLShift . %Load = SHIFT
+     set %shift , %Load #true
+       else
+     set %shift , %Load #false
+   if %AltCTRLShift . %Load = CTRL
+     set %ctrl , %Load #true
+       else
+     set %ctrl , %Load #false
+}
+return
+
+;==================================
+; Script Name:  CEO*FileSystem (pseudo filesystem)
+; Author: CEO
+; Version: 1.1
+; Client Tested with: 4.0.1b
+; EUO version tested with: 1_41_103
+; Shard OSI / FS: OSI
+; Revision Date: 040219
+; Public Release: 040219
+; Globals Used: User specified (2 total)
+; Purpose: Allows you to use a * variable as a pseudo-filesystem
+;=======================================
+; CEO's global variable management subs:
+;      getGlobalVar  . putGlobalVar  . delGlobalVar
+;=======================================
+;
+;ver 1.1
+;changed the lock file to use *variablename_lock so it'll work with any named *variable
+;
+Sub getGlobalVar
+
+;ver 1.0 posted 19Feb04 by CEO
+;purpose: Allows you to store multiple variables in one global variable unique to
+;             each player and script. getGlobaVar retrieves a value from a global variable.
+;@returns: #result = #false if variable not found, #true if found
+;            % . %3 contains variable value
+;%1 is the global/persistant variable to use ( %1 + 1 is used for locking)
+;%2 is the script identifer or pseudo filename
+;%3 is #charid or pseudo filename
+;%4 is the variable to search for and return in %. %3
+;%5 is for lock control. By default getGlobalVar uses a lock to return a value. In some cases you may want to
+;       retrieve a variable (mostly for speed) without needing a lock as long as you are aware of
+;      any potentional conflicts, that very rarely may occur. Set this param to NOLOCK to access
+;      global storage without a lock.
+;sample usage:
+;               gosub getGlobalVar 50 MyScript #charid backpackid
+; Using global var *50 finds the variable labeled MyScript#charidbackpackid and returns it in %backpackid
+;
+;               gosub getGlobalVar 50 MyScript #charid clothstat NOLOCK
+; Using global var *50 find the variable labeled MyScript#charidclothstat and returns it in %clothstat without using a lock
+; Warning: do not use *1000. * %1 + 1 is used for locking and there is no *1001!
+nameSpace push
+nameSpace local #systime , _ , %2 , _ , %3 , _ , %4 , _ , GET
+set !lpc #lpc
+set #lpc 1000
+set !lock %1 , _lock
+if ( %0 = 5 ) && ( %5 = NOLOCK )
+   goto getGlobalVar_skiplock
+set !lockcount 0
+getGlobalVar_waitforlock:
+if * . !lock <> N/A && * . !lock <> #nsname
+{
+   wait 1 4
+   set !lockcount !lockcount + 1
+   if !lockcount < 10
+      goto getGlobalVar_waitforlock
+   if * . !lock <> N/A
+   {
+      set !currentlock * . !lock
+      if !currentlock = N/A
+         goto getGlobalVar_waitforlock
+      str pos !currentlock _
+      set !strres #strres - 1
+      str left !currentlock !strres
+      set !systime #systime - #strres
+      if !systime < 10000 ; if over 10 seconds assume a broken lock and take it
+      {
+         set !lockcount 0
+         goto getGlobalVar_waitforlock
+      }
+   }
+}
+set * . !lock #nsname
+wait 3 2
+if  * . !lock <> #nsname
+{
+   set !lockcount 0
+   goto getGlobalVar_waitforlock
+}
+getGlobalVar_skiplock:
+set !global * . %1
+set !varName %2 , ^ , %3 , ^ , %4 , |
+str pos !global !varName
+set #result #strres <> 0
+if #result
+{
+   set !varNamePos #strres
+   str len !varName
+   set !delString !varNamePos + #strres - 1
+   str del !global 1 !delString
+   set !global #strres
+   str pos !global |
+   set !varNamePos #strres - 1
+   str left !global !varNamePos
+   set % . %4 #strres
+}
+if ( %0 < 5 || %5 <> NOLOCK ) && * . !lock = #nsname
+   set * . !lock N/A
+set #lpc !lpc
+nameSpace Clear
+nameSpace Pop
+return #result
+
+Sub putGlobalVar
+;ver 1.0 posted 19Feb04 by CEO
+;purpose: Allows you to store multiple variables in one global variable unique to
+;             each player and script. putGlobaVar stores a value into a global variable.
+
+;@returns: #result = #false if variable not found, #true if found
+;            % . %3 contains variable
+;%1 is the global/persistant variable to use
+;%2 is the script identifer or pseudo filename
+;%3 #charid or other identifier
+;%4 is the variable name of the variable to save into the* variable identified in %1
+;sample usage:
+;               gosub putGlovalVar 50 MyScript #chardid backpackid
+; Using global var *50 stores/updates the variable labeled MyScript#charidbackpackid  with %backpackid
+; Warning: do not use *1000. * %1 + 1 is used for locking and there is no *1001!
+nameSpace push
+nameSpace local #systime , _ , %2 , _ , %3 , _ , %4 , _ , PUT
+set !lpc #lpc
+set #lpc 1000
+set !lock %1 , _lock
+set !lockcount 0
+putGlobalVar_waitforlock:
+if * . !lock <> N/A && * . !lock <> #nsname
+{
+   wait 1 4
+   set !lockcount !lockcount + 1
+   if !lockcount < 10
+      goto putGlobalVar_waitforlock
+   if * . !lock <> N/A
+   {
+      set !currentlock * . !lock
+      if !currentlock = N/A
+         goto putGlobalVar_waitforlock
+      str pos !currentlock _
+      set !strres #strres - 1
+      str left !currentlock !strres
+      set !systime #systime - #strres
+      if !systime < 10000 ; if over 10 seconds assume a hung lock and take it
+      {
+         set !lockcount 0
+         goto putGlobalVar_waitforlock
+      }
+   }
+}
+set * . !lock #nsname
+wait 4
+set !global * . %1
+set !varName %2 , ^ , %3 , ^ , %4 , |
+str pos !global !varName
+if #strres = 0
+{
+   if  * . !lock <> #nsname
+   {
+      set !lockcount 0
+      goto putGlobalVar_waitforlock
+   }
+   if |CEO*FILESYSTEM| notin !global
+      set !global |CEO*FILESYSTEM|
+   set * . %1 !global , !varName , % . %4 , |
+   ;display ok * . %1
+   ;pause
+   set * . !lock N/A
+   set #lpc !lpc
+   nameSpace clear
+   nameSpace pop
+   return #true
+}
+set !varNamePos #strres
+str len !varName
+set !splitString !varNamePos + #strres - 1
+str left !global !splitstring
+set !globalPart1 #strres
+str del !global 1 !splitString
+set !global #strres
+str len !global
+set !globalLen #strres
+str pos !global |
+set !splitString !globalLen - #strres + 1
+str right !global !splitstring
+set !global #strres
+if  * . !lock <> #nsname
+{
+   set !lockcount 0
+   goto putGlobalVar_waitforlock
+}
+set * . %1 !globalPart1 , % . %4 , !global
+;display ok * . %1
+set * . !lock N/A
+set #lpc !lpc
+nameSpace clear
+nameSpace pop
+return #true
+
+
+Sub delGlobalVar
+;ver 1.0 posted 19Feb04 by CEO
+;purpose: Allows you to delete a variable out of the globalvar pool unique to
+;             each player and script. delGlobaVar deletes a global variable in a * variable.
+
+;@returns: #result = #false if variable not found, #true if  deleted
+;
+;%1 is the global/persistant variable to use
+;%2 is the script identifer or pseudo filename
+;%3 is #charid or other identifier
+;%4 is the variable name of the variable to save into the* variable identified in %1
+;sample usage:
+;               gosub delGlovalVar 50 MyScript #charid backpackid
+; Using global var *50 deletes  the variable label MyScript#charidbackpackid  and it's associated value.
+; Warning: do not use *1000. * %1 + 1 is used for locking and there is no *1001!
+nameSpace push
+nameSpace local #systime , _ , %2 , _ , %3 , _ , %4 , _ , DEL
+set !lpc #lpc
+set #lpc 1000
+set !lock %1 , _lock
+set !lockcount 0
+delGlobalVar_waitforlock:
+if * . !lock <> N/A && * . !lock <> #nsname
+{
+   wait 1 4
+   set !lockcount !lockcount + 1
+   if !lockcount <  10
+      goto delGlobalVar_waitforlock
+
+   if * . !lock <> N/A
+   {
+      set !currentlock * . !lock
+      if !currentlock = N/A
+         goto delGlobalVar_waitforlock
+      str pos !currentlock _
+      set !strres #strres - 1
+      str left !currentlock !strres
+      set !systime #systime - #strres
+      if !systime < 10000 ; if over 10 seconds assume a broken lock and take it
+      {
+         set !lockcount 0
+         goto delGlobalVar_waitforlock
+      }
+   }
+
+}
+set * . !lock #nsname
+wait 4
+set !global * . %1
+set !varName %2 , ^ , %3 , ^ , %4 , |
+str pos !global !varName
+set #result #strres <> 0
+if #result
+{
+   set !varNamePos #strres
+   str len !varName
+   set !splitString !varNamePos + #strres - 1
+   set !delString !varNamePos - 1
+   str left !global !delString
+   set !globalPart1 #strres
+   str del !global 1 !splitString
+   set !global #strres
+   str pos !global |
+   set !delString #strres
+   str del !global 1 !delString
+   if  * . !lock <> #nsname
+   {
+      set !lockcount 0
+      goto delGlobalVar_waitforlock
+   }
+   set * . %1 !globalPart1 , #strres
+}
+if  * . !lock = #nsname
+   set * . !lock N/A
+set #lpc !lpc
+nameSpace clear
+nameSpace pop
+return #result

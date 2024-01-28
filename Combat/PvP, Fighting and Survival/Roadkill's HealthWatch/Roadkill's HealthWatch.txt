@@ -1,0 +1,432 @@
+ 
+; RoadkillsHealthWatch.txt version 2.2
+;===PURPOSE: This script does the following for yourself:
+; --HEALS and CURES when needed using bandaids, GH potions, magery, chivalry, and spiritspeak
+; --RECALLS you to safe spot if health drops below %escapehealth, using scrolls, magery, or chivalry
+; --EATS, if desired, keeping you "full" for optimal gains with other scripts.  Can eat anything but
+;       will autofind cooked fishsteaks in setup. Can be turned off.
+; --DEFENSIVE SPELLS: sets/checks them as desired for you (reactive armor, protection, relfect),
+;===NOTES- Character Status window with numbers must be open for script to work
+; -- aids and pots must be visible in open container
+; -- Script works as standalone, or as an invoked executable from another script
+;    -when implementing from another script for coordinating the two , use *20 and *21
+;       *20 is global var FROM HEALTHWATCH to pass status TO calling program to pause etc
+;           for HealthWatch to have control-- values are ok, hurt, poisoned, recall
+;       *21 should be set in calling script or other concurrent scripts to tell HealthWatch what to do
+;       'free' to tell HealthWatch when it is ok to do non-critical eating/casting tasks
+;       'busy' to tell HealthWatch to only Heal/cure/recall but not eat
+;       'pause' to tell HealthWatch to stop execution so other script can control
+;    - if you don't use *21 to let THIS script know when to mess around and *20 to
+;       let your main script know when to pause and give control to HealthWatch, you can expect
+;       some wierd conflicts between the two! Forewarned.
+;       See Roadkills UltraTamer for example of this use in main program section.
+;Version history
+;1.2  15 Dec 02 Added ability to skip all menu choices with pre-configuration below
+;             and improved global vars with pause function to allow other scripts control in fight
+;1.3  17 Dec 02 Added sub to ensure statusbar is open so it all works, lets you choose where it is
+;1.4  18 Dec 02 Modified Eat correct timing bug
+;1.5  2 Jan 03 Fixed Recall logic for Ilshenar, now just pauses.
+;1.6 10 Feb 03 Fixed spell macro numbers for new client
+;1.7 21 Mar 03 Fixed for client/aos/euo updates
+;1.8 24 Apr 03 Fixed for event macro spell renumbering
+;       Changed Ilshenar recall option to allow recall now
+;1.9 13 may03 Fixed recalling from Ilshenar
+;       modified the defensive spells to check if on, toggle all 3 on as required
+;       modified config and setup for new defensive spells ability
+;       reduced default escapehealth to 20
+;       added %food setting of 'no' to toggle off autofeeding
+;2.0 23 May03 Fixed heal sub, typo causing cure instead of heal.
+;       added option to not check defensive spells, if you're sure they are up.
+;2.1 16Jun03 added RKCharacterSetup.txt option, if you have this script you can auto set your config
+;       PUBLISHED
+;2.2 6Jul03 added checks for *21 in cure and heal loops
+;       added chivalry and spirit speak for healing, chiv for curing, chiv for recall
+;       redid setup/recall/cure/heal subs for AOS
+;=======================================
+;Configuration
+;=======================================
+;ver 2.2
+SET %usePotHits 60     ; Hitpoints at which to use GH potions in an open container
+SET %escapehealth 20   ; Hitpoints at which to emergency recall to safe spot
+SET %healsecs 15       ; how many seconds it takes you to heal with bandaids
+SET %healatHits 80     ; Hitpoints at which to begin healing
+SET %eatdelay 900      ; delay between eating in seconds, 900 = 15 min
+;---for the next 6, you can set 'menu' in which case you'll be stepped through the setting interactively.
+;   If you don't want to answer questions, want a fast startup, you may set these as indicated below
+SET %healmethod magery ; can be 'menu', 'aids', or 'magery', or 'chivalry' or 'spiritspeak'
+SET %food menu         ; can be , 'menu','no' or 'fish', for menu choosing of your food or auto-find
+                ;cooked fishsteaks. Setting %food to 'no' will keep the script from auto feeding you
+SET %recallrune xxxxxxx  ; can be 'menu' or the ID of a recall rune/runebook with default set for escape rune
+SET %recallmethod scrolls ; can be 'menu' or 'scrolls' or 'magery' or 'chivalry'
+SET %defspell PR      ; can be 'menu', 'no'=dont use, 'R'=reactive armor, 'P'=protection, 'M'= magic reflect
+SET %statusbarposn preset   ; can be 'menu' to choose location, or 'preset' to use coords you set below
+      SET %statusbarX 750     ;preset status bar position if not using 'menu' above
+      SET %statusbarY 0 ;preset status bar position if not using 'menu' above
+; =======================================================
+; Main Program (you shouldn't need to edit below here)
+; =======================================================
+ 
+INITEVENTS
+SET *21 free  ;set here in case you forgot in calling program
+SET *20 ok
+SET %eat_timer 0
+SET %aid_timer 0
+CALL RKCharacterSetup.txt HealthWatch
+GOSUB SETUP
+GOSUB CheckDefensiveSpells %defspell
+;=================
+MONITORLOOP:
+        GOSUB EnsureStatusBarUp
+        WAIT 10   ;put this in to slow cycle so you don't grind to a halt in UO, change as needed
+        IF *21 = pause
+                GOTO MONITORLOOP  ;this allows other programs to take control, pausing HealthWatch
+        GOSUB Recall %recallrune %recallmethod %escapehealth
+        IF *20 = recall
+        {
+                WAIT 5s
+                PAUSE
+        }
+        GOSUB Cure
+        GOSUB Heal
+        IF *20 = ok && *21 = free
+                GOSUB Eat %food
+GOTO MONITORLOOP
+;====================
+;Subroutines
+;====================
+SUB SETUP
+;ver 1.1 6Jul03 by Roadkill
+        DISPLAY OK Welcome to Roadkill's HealthWatch!$
+        + You need stuff to heal, cure, eat, and a recall rune/runebook$ ALL MUST BE VISIBLE in OPEN bags!$
+      ;---healmethod------------
+        IF %healmethod = menu
+        {
+                DISPLAY OK What's your main healing method? Press OK then type the number of your choice. $
+                + 1=Bandaids $ 2=Magery $ 3=Chivalry $ 4=SpiritSpeak $
+                + ALL methods use GHpots if needed/available$
+                _healmethodloop:
+                        OnHotKey 1
+                                set %healmethod aids
+                        OnHotKey 2
+                                set %healmethod magery
+                        OnHotKey 3
+                                set %healmethod chivalry
+                        OnHotKey 4
+                                set %healmethod spiritspeak
+                        if %healmethod = menu
+                                goto _healmethodloop
+                DISPLAY OK Make sure you have the bandaids, regs, or GH potions visible in an open bag/pack$
+        }
+        ;---id foodstack----------
+        IF %food = no
+                GOTO LOCATERUNE
+        IF %food = fish
+        {
+                FINDITEM HND C
+                IF #FINDKIND = 0
+                {
+                        SET %food #FINDID
+                        EVENT SYSMESSAGE Found your fishsteaks
+                        GOTO LOCATERUNE
+                }
+        }
+        DISPLAY OK Double click foodstack in your pack$You have 5 seconds$
+                WAIT 5s
+        SET %food #LOBJECTID
+        ;---id the escape rune and recall method----
+        LOCATERUNE:
+        IF %recallrune = menu
+        {
+                DISPLAY OK Double click your safe-escape rune$ --hit escape key so you dont rename it$
+                  + --or open runebook with safe default set$You have 5 seconds$
+                        WAIT 5s
+                SET %recallrune #LOBJECTID
+        }
+        IF %recallmethod = menu
+        {
+                DISPLAY YESNOcancel Do you recall with Magery or Chivalry or scrolls?$
+                + YES= Magery $ NO= Chivalry $ CANCEL = Scrolls$
+                SET %recallmethod scrolls
+                IF #DISPRES = YES
+                        SET %recallmethod magery
+                if #dispres = no
+                        set %recallmethod chivalry
+        }
+        ;---defensive spell %defspell 6 35 14-------
+        IF %defspell = menu
+        {
+                DISPLAY YESNO Would you like to maintain Protection?$
+                        + (uninterrupted casting, lowers physical resist)$
+                IF #DISPRES = YES
+                        SET %defspell %defspell , P
+                DISPLAY YESNO Would you like to maintain ReactiveArmor?$
+                        + (increase PhysicalResist, lower elemental resists)$
+                IF #DISPRES = YES
+                        SET %defspell %defspell , R
+                DISPLAY YESNO Would you like to maintain MagicReflect?$
+                        + (increase elemental resist, lowers physical resist)$
+                IF #DISPRES = YES
+                        SET %defspell %defspell , M                    
+        }
+        IF %statusbarposn  = menu
+        {
+                EVENT MACRO 8 2
+                WAIT 5
+                DISPLAY OK Drag your status bar to where you want it on your screen$ You have 3 seconds$
+                WAIT 3s
+                SET %statusbarX #CONTPOSX
+                SET %statusbarY #CONTPOSY
+        }
+RETURN
+;=====================
+SUB CheckDefensiveSpells
+;ver 1.1 24May03 by Roadkill
+;purpose: check for protection/reactivearmor/magicreflect being on, cast it ON
+;       as indicated by %1 (%defspell) of NO or including P/R/M for the 3 spells
+;%1 = %defspell which holds what spells to cast, ex: %defspell = PR or menuPR
+        display yesno would you like to check your defensive spells?$
+                + (P=protection R=reactive armor M=magic reflect)$
+                + you have requested %1 $
+        IF #dispres = no
+                RETURN
+        SET %oldAR #AR
+        IF P IN %1
+        {
+                event Macro 15 14
+                wait 4s
+                IF #AR > %oldAR 2
+                        event Macro 15 14
+                        wait 4s
+        }
+        SET %oldAR #AR         
+        IF R IN %1
+        {
+                event Macro 15 6
+                wait 3s
+                IF #AR < %oldAR 2
+                        event Macro 15 6
+                        wait 3s
+        }
+        SET %oldAR #AR 
+        IF M IN %1
+        {
+                event Macro 15 35
+                wait 4s
+                IF #AR > %oldAR 2
+                        event Macro 15 35      
+                        wait 3s
+        }
+RETURN         
+;=====================
+SUB Recall
+;ver 1.2 6Jul03 by roadkill
+; %1 is the safe recall rune or runebook id
+; %2 is the recall method, scrolls/magery/chivalry
+; %3 is the escapehealth, health at which you want to emergency recall
+        set %_recallrune %1
+        set %_recallmethod %2
+        set %_escapehealth %3
+        GOSUB EnsureStatusBarUp
+        IF #HITS > %_escapehealth
+                RETURN
+        SET *20 recall
+        SET %oldx #CHARPOSX
+        SET %oldy #CHARPOSY
+        set #ltargetkind 1
+        SET #LTARGETID %_recallrune
+RECALL:
+        IF %_recallmethod = scrolls
+        {
+                FINDITEM WTL C
+                IF #FINDKIND = 0
+                {
+                        SET #LOBJECTID #FINDID
+                        EVENT MACRO 17 0
+                        goto _recalltgt
+                }
+                SET %_recallmethod magery
+        }
+        IF %_recallmethod = magery
+                set %_em2 31
+        if %_recallmethod = chivalry
+                set %_em2 210
+        event macro 15 %_em2
+_recalltgt:
+        TARGET 5s
+        event Macro 22 0
+        WAIT 6s                
+        IF %oldx = #CHARPOSX || %oldy = #CHARPOSY
+                GOTO RECALL
+RETURN
+;=====================
+SUB CURE
+;ver 1.2 6Jul03 by Roadkill
+;purpose: cure using aids, magery, or potions (if hits < %usePotHits)
+;dependencies: %healmethod = aids or magery or chivalry (no necro/spirit curing)
+;               %aid_timer must be initialized to 0 in calling script
+;               %healsecs is now long it takes to bandage self, ~15sec
+;               %usePotHits = some hitpoint number below which you use pots too
+;               *20 is used to report char status
+Cure:
+        IF C NOTIN #CHARSTATUS
+                RETURN
+        SET *20 poisoned
+        IF *21= pause
+                return
+        IF %healmethod = aids && #SCNT > %aid_timer
+        {
+                FINDITEM ZLF C
+                IF #FINDKIND = 0
+                {
+                        SET #LOBJECTID #FINDID
+                        EVENT MACRO 17 0
+                        TARGET
+                        EVENT MACRO 23 0
+                        SET %aid_timer #SCNT + %healsecs
+                }
+        }
+        IF #HITS < %usePotHits
+        {
+                FINDITEM NUF C
+                ; Greater Cure Potions
+                IF #FINDKIND = 0
+                {
+                        SET #LOBJECTID #FINDID
+                        EVENT MACRO 17 0
+                        GOTO CURE
+                }
+        }
+        IF %healmethod = magery
+        {
+                event Macro 15 10
+                TARGET 4s
+                EVENT Macro 23 0
+                wait 30
+        }
+        IF %healmethod = chivalry
+        {
+                event Macro 15 201
+                TARGET 5s
+                EVENT Macro 23 0
+                wait 30
+        }
+        GOTO Cure
+RETURN
+;=====================
+SUB HEAL
+;ver 1.2 6Jul03 by Roadkill
+;purpose: heal using aids, magery, or potions (if hits < %usePotHits)
+;dependencies:  %healmethod = aids or magery or chivalry or spiritspeak
+;               %healatHits = some hitpoint number below which you try to heal self
+;               %aid_timer must be initialized to 0 in calling script
+;               %healsecs is now long it takes to bandage self, ~15sec
+;               %usePotHits = some hitpoint number below which you use pots too
+;               *20 is used to report char status
+HEAL:
+        IF #HITS >= %healatHits
+        {
+                SET *20 ok
+                RETURN
+        }
+        SET *20 hurt
+        IF *21= pause
+                return 
+        IF %healmethod = aids && #SCNT > %aid_timer
+        {
+                FINDITEM ZLF C
+                IF #FINDKIND = 0
+                {
+                        SET #LOBJECTID #FINDID
+                        EVENT MACRO 17 0
+                        TARGET
+                        EVENT MACRO 23 0
+                        SET %aid_timer #SCNT + %healsecs
+                }
+        }
+        IF #HITS < %usePotHits
+        {
+                FINDITEM UUF C
+                 ;GH potions
+                IF #FINDKIND = 0
+                {
+                        SET #LOBJECTID #FINDID
+                        EVENT MACRO 17 0
+                }
+        }
+        IF %healmethod = magery
+        {
+                IF P IN %defspell
+                        event Macro 15 28
+                ELSE
+                        event Macro 15 3
+                TARGET 4s
+                EVENT Macro 23 0
+                WAIT 1s
+        }
+        IF %healmethod = chivalry
+        {
+                event Macro 15 202
+                TARGET 5s
+                EVENT Macro 23 0       
+        }
+        IF %healmethod = spiritspeak
+                event Macro 13 32
+        GOTO HEAL
+RETURN
+;=====================
+SUB Eat
+;ver 1.1 13May03
+; %1 is the foodstack ID
+; initialize %eat_timer to 0 at program start
+; change the 600 up or down to adjust time between meals
+        IF %1 = no
+                RETURN
+        SET #LOBJECTID %1
+        IF %eat_timer = 0
+                GOTO EAT
+        IF #SCNT < %eat_timer
+                RETURN
+EAT:
+        FINDITEM %food
+        IF #FINDKIND = -1
+                RETURN
+        SET #LOBJECTID %food
+        EVENT MACRO 17 0
+        WAIT 10
+        FOR %i 1 3
+        {
+                SCANJOURNAL %i
+                IF feel_quite_full IN #JOURNAL
+                {
+                        SET %eat_timer #SCNT + %eatdelay
+                        DELETEJOURNAL
+                        RETURN
+                }
+                IF simply_too_full IN #JOURNAL
+                {
+                        SET %eat_timer #SCNT + %eatdelay
+                        DELETEJOURNAL
+                        RETURN
+                }
+                IF manage IN #JOURNAL
+                {
+                        SET %eat_timer #SCNT + %eatdelay
+                        DELETEJOURNAL
+                        RETURN
+                }
+        }
+        WAIT 1s
+        GOTO EAT
+RETURN
+;=============================
+SUB EnsureStatusBarUp
+        IF #CHARNAME = N/A
+        {
+                EVENT MACRO 8 2
+                WAIT 30
+                CONTPOS %statusbarX %statusbarY
+                WAIT 30
+        }
+RETURN
+;========End of RoadkillsHealthWatch=====
+ 

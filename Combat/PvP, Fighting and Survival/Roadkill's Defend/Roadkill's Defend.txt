@@ -1,0 +1,800 @@
+
+;RoadkillsDefend.txt
+; Version 1.1 15 Dec 02
+;       1.2 10 Feb03 Fixed eventmacro spell numbers for client changes
+;       1.3 23 Mar03 Fixed for AOS.  Allowed recalling from ilshenar.
+;               fixed spell macros.
+;       1.4 19 May03 Fixed spell timing for exp/fireball
+;               modded meleekill attack 5, added weaponreplacer
+;               changed way defendroutines are passed in--use the subroutine name now
+;               added necroAttack
+;               changed the way Defend.txt is called (params), see below
+;               Forced a check to find the enemyID before attacking to handle the "stuck enemyid"
+;                       problem after a recall or if it doesn't update to N/A when enemy dead
+;       1.5 25Jun03 Added attacks for Fire/Cold/Electrical/Poison, use these for creatures that
+;               are susceptable to them
+;               Added %monstersToIgnore and reflowed logic with some goto
+;               Added PeaceLightning attack
+;               Added ability to play a .wav file warning you when you are under attack
+;Var definitions:
+; *10 is global comm var to pass "underattack" or "ok" to other scripts
+; *20 is a global var that may exist (values are ok, hurt, poisoned)
+;     if using Roadkills HealthWatch, a complementary script
+; *21 is global var that can be set to 'free' 'busy' or 'pause' to tell Roadkills HealthWatch
+;     the status of this or other scripts, and can be used to pause HealthWatch if running
+; %1 is your steeds ID from its #contid
+; %2 is the defendroutine desired
+; %3 is the weaponid
+; %4 is the weapontype
+; %delay can be modified for your connection
+; %victim holds the enemyID
+; NOTES -Script pre-set as a called file now, as "CALL RoadkillsDefend.txt %steedID %defendroutine %weaponid %weapontype"
+;       --dont use steed kill with savages around, they attack pet and burn paint
+;      -If not using HealthWatch, recommend having some recall scrolls in an open container to bail!
+;      -Can be run as called file or as always on executable, if called be sure to pass in all 4 parameters
+;           if executable remark out the EXIT line noted below in main program section and mod config
+; TACTICS: post AOS several things changed.  Most importantly, the 3 defensive spells (Reactive Armor, Protection,
+;       and magic reflect) no longer decay, but instead are toggled on/off and can all be used together with these
+;       properties:
+;               protection!!- your casting CANNOT be interrupted, but physical resist is lowered
+;               Reactive Armor- no longer reflects damage back, increases physical resist and lowers elemental resist
+;               magic reflect- no longer reflects, now it is elemental resist while lowering some physical resist
+;               protection (and arch too) - allows uninterrupted casting, lowers physical resist and magic resistance
+;       This means that with protection up, you NO LONGER HAVE TO RELY ON SMALL SPELLS TO AVOID INTERRUPTION! GO BIG!
+;       Against physical attackers, run protection/reactive armor and go triple combo/ebolt
+;       Against magical attackers, run protection/magic reflect and go triple combo/ebolt
+;---------------------------------
+;      -Pass in or use one of following defend/attack routines:
+;        attack1 with steed AND magery exp/ebolt, works well against large single monsters
+;        attack2 with steed only and heal it, works very well against multiple small or single large
+;        attack3 with magery only, explode/ebolt, more offensive algorithm
+;        attack4 with magery, invis para exp ebolt invis, fireball when low mana, aggressive but multiple can nerf it
+;        attack5 with melee, haven't tested it but should be ok
+;        attack6 magery for close melee: explode/weaken/harm/arrow, good for one that closes with you
+;        necroAttack uses painspike and poison strike
+;       FSFireAttack attack with fire spells (FS/fireball)     
+;       FireAttack attack with fire spells (fireball)
+;       ColdAttack attack with cold spells (MindBlast/harm)
+;       EnergyAttack attack with energy/electrical spells (Ebolt/Lightning)
+;       LightningAttack
+;       PeaceLightning
+;       Attack8
+;=== CONFIGURATION section==============
+SET %delay 10            ; increase if script too quick for your connect when casting
+SET %pethealmethod aids  ; can be 'aids' or 'magery'
+SET %usingHealthWatch yes ; set to no, or yes if using RoadkillsHealthWatch at same time
+;                         if yes, HealthWatch will bail in an emergency, if no THIS script will recallbail
+SET %bailHits 40    ;health at which to bail
+SET %hidemana 40    ;mana below which you remain invis
+IF %recallrune = N/A
+        SET %recallrune xxxxxxx; ID of a rune to use as escape rune/runebook if not using HealthWatch
+SET %steed %1
+SET %defendroutine %2
+SET %weaponid %3
+SET %weapontype %4
+SET %issueAttackWarning #TRUE   ; #true or #false, if #true it will use dafault .wav player
+SET %AttackWarningWavFile C:/sound36.wav
+        ;be sure to set this to some valid .wav file on your computer!
+SET %MonstersToIgnore BE      ;mongbat
+        ; these are things to disregard and wrestling or whatever will kill
+;---standalone executable section, remark out 4 lines below if using as called file--
+;   for standalone, unremark them and they will be good.
+;SET %steed xxxxx
+;SET %defendroutine attack4 ;set this to a valid subroutine name
+;SET %weaponid xxxxx ;set this to your wpn id
+;SET %weapontype xxx;set this to your wpn type
+;---------------------------------
+;=====================================
+;=Main Program, don't edit below here
+;=====================================
+INITEVENTS
+ENEMYSEARCH:
+        GOSUB CheckBail
+        IF #ENEMYID <> N/A
+        {
+                SET *10 underattack
+                SET *21 pause  ;this tells RoadkillsHealthWatch to pause if running
+                FINDITEM #ENEMYID
+                IF #FINDKIND = 1
+                {
+                        SET %victim #FINDID
+                        IF #FINDTYPE IN %MonstersToIgnore
+                                GOTO ENEMYDEAD
+                        IF %issueAttackWarning
+                                execute %AttackWarningWavFile
+                        GOSUB %defendroutine %steed %victim %weaponid %weapontype
+                }
+        }
+ 
+        IF #ENEMYID = N/A
+                GOTO ENEMYDEAD
+        GOTO ENEMYSEARCH
+ENEMYDEAD:
+        SET *10 ok
+        SET *21 free  ;tells RoadkillsHealthWatch to resume function if running
+        EXIT ;put this here to use as a called file, remark out for executable
+HALT
+;========================
+; SUBROUTINES============
+;========================
+SUB ATTACK1
+;ver 1.2 12Jun03 by Roadkill
+;purpose: attack with steed AND magery (exp/ebolt)
+;%1 is the steedID   %2 is the victimID
+ SET %steed %1
+ SET %victim %2
+        ;--dismount and send steed to kill-----
+        SET #lobjectid #charid
+        EVENT MACRO 17
+        WAIT 5
+        SET #LTARGETKIND 1
+        SET #LTARGETID %victim
+        ;attack
+        event macro 3 0 all kill $
+                TARGET
+                EVENT MACRO 22 0
+                WAIT %delay
+        event macro 3 0 all kill $
+                TARGET
+                EVENT MACRO 22 0
+                WAIT %delay
+        IF #ENEMYID <> N/A
+                GOSUB Invisabit  ;this is excellent tactic
+        ;--------begin magery attack----------
+        FINDITEM %victim
+                IF #FINDKIND = 1
+                {                      
+                        Event Macro 15 42
+                        target 5s
+                        GOSUB WaitForInRange %victim 10
+                        Event Macro 22 0
+                        wait 30
+                }
+_ebolt1:
+        GOSUB CheckBail
+        event Macro 15 41
+        target 4s
+        Event Macro 22 0
+        WAIT 30
+;check if dead loop
+        FINDITEM %victim
+        IF #FINDKIND = 1
+                GOTO _ebolt1
+;get steedback
+waitforsteed1:
+        GOSUB CheckBail
+        EVENT SYSMESSAGE getting steed back
+        msg all follow me $
+        wait 1s
+        finditem %steed
+        IF #FINDKIND = 0
+                RETURN
+        if #finddist <= 1
+        {
+                MOUNT1:
+                set #lobjectid %steed
+                event macro 17
+                FINDITEM %steed
+                IF #FINDKIND = 1
+                        event macro 17
+                IF #FINDKIND = 0
+                        return
+                GOTO MOUNT1
+        }
+goto waitforsteed1
+RETURN
+;======================
+SUB Attack2
+;ver 1.1 12Jun03 by Roadkill
+;purpose: kill with just steed with pethealing
+;this is almost SUB KillWithSteed from ultratamer
+;%1 is the steedID   %2 is the victimID
+ SET %steed %1
+ SET %victim %2
+        GOSUB Invisabit  ;why? break targeting to ensure clean petkill?
+        ;dismount
+        SET #lobjectid #charid
+        EVENT MACRO 17
+        WAIT 5
+        SET #LTARGETKIND 1
+        SET #LTARGETID %victim
+        ;attack
+        event macro 3 0 all kill
+                TARGET
+                GOSUB WaitForInRange %victim 10
+                EVENT MACRO 22 0
+                WAIT %delay
+        event macro 3 0 all kill
+                TARGET
+                EVENT MACRO 22 0
+                WAIT %delay
+        IF #ENEMYID <> N/A
+                GOSUB Invisabit  ;this is excellent tactic
+;WAIT 5s
+SET %petaid_timer 0
+SET %healsecs 5
+isdeadloop2:
+        GOSUB CheckBail
+        FINDITEM %victim
+        if #findkind = 1
+        {
+                GOSUB PetHeal %pethealmethod %steed
+                IF #ENEMYID <> N/A
+                        GOSUB Invisabit  ;excellent dont remove
+                GOTO isdeadloop2
+        }
+;get steedback
+waitforsteed2:
+        GOSUB CheckBail
+        EVENT SYSMESSAGE getting steed back
+        msg all follow me $
+        wait 1s
+        finditem %steed
+        IF #FINDKIND = 0
+                RETURN
+        if #finddist <= 1
+        {
+                MOUNT2:
+                set #lobjectid %steed
+                event macro 17
+                FINDITEM %steed
+                IF #FINDKIND = 1
+                        event macro 17
+                IF #FINDKIND = 0
+                        return
+                GOTO MOUNT2
+        }
+goto waitforsteed2
+RETURN
+;=================
+SUB ATTACK3
+;ver 1.2 12Jun03 exp/ebolt
+;purpose: attack with magery only, explode/ebolt
+;%1 is the steedID   %2 is the victimID
+ SET %steed %1
+ SET %victim %2
+        SET #LTARGETID %victim
+        Event Macro 15 42  ;explosion
+                target 5s
+                GOSUB WaitForInRange %victim 10
+                Event Macro 22 0
+        wait 30
+        ebolt3:
+        GOSUB CheckBail
+        IF #MANA < 30
+                GOSUB Invisabit
+        event Macro 15 41
+                target 4s
+                Event Macro 22 0
+                WAIT 30
+        ;check if dead loop
+        FINDITEM %victim
+        IF #FINDKIND = 1
+                GOTO ebolt3
+RETURN
+;======================
+SUB ATTACK4
+;ver 1.1 13 May 03 by Roadkill
+;purpose: magery attack invis para exp ebolt invis
+;  skips para and ebolt for fireball if not enough mana
+;%1 is the steedID   %2 is the victimID
+ SET %steed %1
+ SET %victim %2
+TRIPLE:
+        GOSUB CheckBail
+        IF #ENEMYID <> N/A
+                GOSUB Invisabit  ;excellent dont remove
+        FINDITEM %victim
+                IF #FINDKIND = -1
+                        RETURN
+        SET #LTARGETID %victim
+        IF #MANA > 40  ;enough for para exp
+        {      
+                event Macro 15 37
+                TARGET 4s
+                IF #FINDDIST > 8
+                        MOVE #FINDX #FINDY 8
+                EVENT MACRO 22 0
+                WAIT %delay
+                WAIT %delay
+        }
+        Event Macro 15 42 ;explosion
+                target 5s
+                Event Macro 22 0
+                WAIT %delay
+                WAIT %delay
+        FINDITEM %victim
+                IF #FINDKIND = -1
+                        RETURN
+        IF #MANA < 38  ;enough for ebolt and invis
+        {
+                Event Macro 15 17 ;fireball
+                        target 5s
+                        Event Macro 22 0
+                        WAIT %delay
+                        WAIT %delay
+        }
+        IF #MANA > 38  ;enough for ebolt and invis
+        {
+                Event Macro 15 41 ;ebolt
+                        target 5s
+                        Event Macro 22 0
+                        WAIT %delay
+                        WAIT %delay
+        }
+        FINDITEM %victim
+        IF #FINDKIND = -1
+                RETURN
+        IF #FINDDIST > 8               
+                MOVE #FINDX #FINDY 8
+        Event Macro 15 19 ;poison
+                target 5s
+                Event Macro 22 0
+                WAIT %delay
+                WAIT %delay
+        GOTO TRIPLE
+ 
+RETURN
+;======================
+SUB ATTACK5
+;ver 1.1 13 May 03 by Roadkill
+;purpose: attack something with melee and replace wpn if needed
+;modded SUB KillMelee from roadkills ultraTamer
+; %1 is your steed's id
+; %2 is the thing to be killed
+; %3 is weaponid
+; %4 is weapontype
+        SET %_victim %2
+        GOSUB WeaponReplacer %3 %4
+        IF G NOTIN #CHARSTATUS
+                event macro 6
+        SET #LTARGETID %_victim
+        EVENT MACRO 27
+        %GOSUBorRemark utmenu Press_1_to_self_heal_with_bandaid _
+ISDEADLOOP5:
+        GOSUB CheckBail
+        FINDITEM %_victim
+        if #findkind = 1
+        {
+                OnHotKey 1
+                        GOSUB BandaidHeal
+                GOTO ISDEADLOOP5
+        }
+RETURN
+;===========================
+SUB WeaponReplacer
+; ver 1.1 13 May 03 by Roadkill
+;purpose: keep a weapon in your hand, replace it from an open pack if it breaks
+; %1 = %weaponid %2 = %weapontype
+;returns: %weaponid may be modified when weapon is replaced, so use these varnames!
+        SET %weaponid %1
+        SET %weapontype %2
+        FINDITEM %weaponid
+        IF #FINDKIND = 0
+        {
+                event macro 15 0
+                target
+                key esc
+                WAIT 5
+                GOTO _rearm
+        }
+; find a new weapon of %weapontype in any open pack and put in hand
+        FINDITEM %weapontype C
+        IF #FINDKIND = -1
+        {
+                display OK cant find any of your weapons, halting$
+                HALT
+        }
+        SET %weaponid #FINDID
+_rearm:
+        SET #LHANDID %weaponid
+        SET #RHANDID %weaponid
+        WAIT 5
+        event macro 24 2
+        WAIT 3s
+        event macro 24 1
+        WAIT 3s
+RETURN
+;=======================
+SUB ATTACK6
+;ver 1.2 12Jun03 by Roadkill
+;purpose: explode/weaken/harm/magicarrow loop
+;good for one that closes with you, cant be disrupted
+;%1 is the steedID   %2 is the victimID
+ SET %steed %1
+ SET %victim %2
+        SET #LTARGETID %victim
+        Event Macro 15 42 ;explosion
+                target 4s
+                GOSUB WaitForInRange %victim 10
+                Event Macro 22 0
+                wait %delay
+                WAIT %delay
+        EVENT MACRO 15 7
+                TARGET
+                EVENT MACRO 22 0
+                WAIT %delay
+        EVENT MACRO 15 11
+                TARGET
+                EVENT MACRO 22 0
+                WAIT %delay
+        MAGICARROW:
+        GOSUB CheckBail
+        IF #MANA < 30
+                GOSUB Invisabit
+        Event Macro 15 4
+                target 2s
+                Event Macro 22 0
+                WAIT 15  ;%delay
+        ;check if dead loop
+        FINDITEM %victim
+        IF #FINDKIND = 1
+                GOTO MAGICARROW
+RETURN
+;======================
+SUB NecroAttack
+;ver 1.1 12 jun 03 by VictorLacroix/Roadkill
+;purpose: attack with necro pain spike and poison strike
+;%1 is the steedID   %2 is the victimID
+        SET %steed %1
+        SET %victim %2
+        SET #LTARGETID %victim
+        Event Macro 15 109 ;pain spike
+                target 5s
+                GOSUB WaitForInRange %victim 10
+                Event Macro 22 0
+                WAIT 30
+NecroAttackLoop:
+        Event Macro 15 110 ;poison strike
+                target 5s
+                Event Macro 22 0
+                WAIT 30
+        ;check if dead loop
+        FINDITEM %victim
+        IF #FINDKIND = 1
+                GOTO NecroAttackLoop
+RETURN
+;========================
+SUB FSFireAttack
+;ver 1.0 16Jun03 by Roadkill
+;purpose: attack with fire spells (FS/MS/exp/fireball/arrow possible)
+;%1 is the steedID   %2 is the victimID
+        SET %steed %1
+        SET %victim %2
+        SET #LTARGETID %victim
+        event Macro 15 50  ;flame strike
+                target 5s
+                GOSUB WaitForInRange %victim 10
+                Event Macro 22 0
+                WAIT 30
+BigFireAttackLoop:
+        event Macro 15 17 ;fireball
+                target 5s
+                Event Macro 22 0
+                WAIT 30
+        ;check if dead loop
+        FINDITEM %victim
+        IF #FINDKIND = 1
+                GOTO BigFireAttackLoop
+RETURN
+;========================
+SUB FireAttack
+;ver 1.0 16Jun03 by Roadkill
+;purpose: attack with fire spells (FS/MS/exp/fireball/arrow possible)
+;%1 is the steedID   %2 is the victimID
+        SET %steed %1
+        SET %victim %2
+        SET #LTARGETID %victim
+        event Macro 15 17  ;fireball
+                target 5s
+                GOSUB WaitForInRange %victim 10
+                Event Macro 22 0
+                WAIT 30
+FireAttackLoop:
+        event Macro 15 17 ;fireball
+                target 5s
+                Event Macro 22 0
+                WAIT 30
+        ;check if dead loop
+        FINDITEM %victim
+        IF #FINDKIND = 1
+                GOTO FireAttackLoop
+RETURN
+;=======================
+SUB ColdAttack
+;ver 1.0 16Jun03 by Roadkill
+;purpose: attack with cold spells (MindBlast/harm)
+;%1 is the steedID   %2 is the victimID
+        SET %steed %1
+        SET %victim %2
+        SET #LTARGETID %victim
+        event Macro 15 36  ;mindblast
+                target 5s
+                GOSUB WaitForInRange %victim 10
+                Event Macro 22 0
+                WAIT 30
+ColdAttackLoop:
+        event Macro 15 11 ;harm
+                target 3s
+                Event Macro 22 0
+                WAIT 30
+        ;check if dead loop
+        FINDITEM %victim
+        IF #FINDKIND = 1
+                GOTO ColdAttackLoop
+RETURN
+;=======================
+SUB EnergyAttack
+;ver 1.0 16Jun03 by Roadkill
+;purpose: attack with energy/electrical spells (Ebolt/Lightning)
+;%1 is the steedID   %2 is the victimID
+        SET %steed %1
+        SET %victim %2
+        SET #LTARGETID %victim
+        event Macro 15 41  ;ebolt
+                target 5s
+                GOSUB WaitForInRange %victim 10
+                Event Macro 22 0
+                WAIT 30
+EnergyAttackLoop:
+        event Macro 15 29 ;lightning
+                target 3s
+                Event Macro 22 0
+                WAIT 30
+        ;check if dead loop
+        FINDITEM %victim
+        IF #FINDKIND = 1
+                GOTO EnergyAttackLoop
+RETURN
+;========================
+SUB LightningAttack
+;ver 1.0 16Jun03 by Roadkill
+;purpose: attack with lightning
+;%1 is the steedID   %2 is the victimID
+        SET %steed %1
+        SET %victim %2
+        SET #LTARGETID %victim
+        event Macro 15 29  ;fireball
+                target 5s
+                GOSUB WaitForInRange %victim 10
+                Event Macro 22 0
+                WAIT 30
+LightningAttackLoop:
+        event Macro 15 17 ;lightning
+                target 5s
+                Event Macro 22 0
+                WAIT 30
+        ;check if dead loop
+        FINDITEM %victim
+        IF #FINDKIND = 1
+                GOTO LightningAttackLoop
+RETURN
+;=====================
+SUB PeaceLightning
+;ver 1.0 20Jun03 by Roadkill
+;purpose: attack with peace and lightning and pet
+;%1 is the steedID   %2 is the victimID
+        SET %steed %1
+        SET %victim %2
+        SET #Ltargetkind 1
+        SET #LTARGETID %victim
+ PLpeace:
+        event Macro 13 9  ;peace
+                GOSUB WaitForInRange %victim 10
+                target 5s
+                Event Macro 22 0
+                WAIT 30
+PLightningAttackLoop:
+        event Macro 15 29 ;lightning
+                target 5s
+                Event Macro 22 0
+                WAIT 30
+        ;check if dead loop
+        FINDITEM %victim
+        IF #FINDKIND = 1
+                GOTO PLpeace
+RETURN
+;=======================
+SUB Attack8
+;version 1.0 11 Jan 03 by Roadkill
+;purpose: kill with pet with pethealing
+;this is almost SUB KillWithSteed from ultratamer; from DR
+;%1 is your fighting pet   %2 is the victimID
+        SET %pet_attack8 %1
+        SET %victim_attack8 %2
+        ;IF #ENEMYID <> N/A
+        ;{
+        ;       FINDITEM #ENEMYID
+        ;       IF #FINDDIST < %DRenemyInvisRange
+        ;               GOSUB Invisabit ;break targeting to ensure clean petkill
+        ;}
+        SET #LTARGETKIND 1
+        SET #LTARGETID %victim_attack8
+        ;attack
+        EVENT MACRO 3 0 all kill
+                TARGET
+                EVENT MACRO 22 0
+                WAIT %delay
+        EVENT MACRO 3 0 all kill
+                TARGET
+                EVENT MACRO 22 0
+                WAIT %delay
+        IF #ENEMYID <> N/A
+        {
+                FINDITEM #ENEMYID
+                IF #FINDDIST < %DRenemyInvisRange
+                        GOSUB Invisabit ;break targeting to ensure clean petkill
+        }
+;WAIT 5s
+SET %petaid_timer 0
+SET %healsecs 5
+ATTACK8LOOP:
+        IF %useBlueHealer = yes
+                GOSUB BlueHealerMsgs
+        FINDITEM %victim_attack8
+        if #findkind = 1
+        {
+                GOSUB PetHeal %DR_pethealmethod %pet_attack8
+                IF #ENEMYID <> N/A
+                {
+                        FINDITEM #ENEMYID
+                        IF #FINDDIST < %DRenemyInvisRange
+                                GOSUB Invisabit ;break targeting to ensure clean petkill
+                }
+                GOTO ATTACK8LOOP
+        }
+RETURN
+;===========================
+SUB PetHeal
+;version 1.2 13May03 by Roadkill
+;  --added no-move near for magery to deal with aura monsters
+; Requirements: %aid_timer must be initialized to 0 in calling script
+; %1 is the pethealmethod, aids or magery
+; %2 is the pet
+SET %pethealmethod %1
+SET %healtarget %2
+;move close to be sure you can heal
+        FINDITEM %healtarget
+        IF %pethealmethod = aids
+                MOVE #FINDX #FINDY 1 2s
+        IF %pethealmethod = magery
+                MOVE #FINDX #FINDY 4 2s
+HEAL:
+        SET #LTARGETID %healtarget
+        IF %pethealmethod = aids && #SCNT > %aid_timer
+        {
+                FINDITEM ZLF C
+                IF #FINDKIND = -1
+                        SET %_NoAids #TRUE
+                IF #FINDKIND = 0
+                {
+                        SET %_NoAids #FALSE
+                        SET #LOBJECTID #FINDID
+                        EVENT MACRO 17 0
+                        TARGET
+                        EVENT MACRO 22 0
+                        SET %aid_timer #SCNT + %healsecs
+                }
+        }
+        IF %pethealmethod = magery || %_NoAids
+        {
+                EVENT Macro 15 28
+                TARGET
+                EVENT Macro 22 0
+                WAIT 1s
+        }
+RETURN
+;===========================
+SUB Invisabit
+HIDE:
+        GOSUB CheckBail
+        EVENT MACRO 15 43
+        TARGET 4s
+        EVENT MACRO 23 0
+        IF H NOTIN #CHARSTATUS
+                GOTO HIDE
+WAIT_FOR_UNTARGETED:
+        IF #ENEMYID <> N/A
+        {
+                WAIT 5
+                GOTO WAIT_FOR_UNTARGETED
+        }
+        WAIT 4s
+        IF #MANA < %hidemana
+                GOTO WAIT_FOR_UNTARGETED
+RETURN 
+;=======================
+SUB BandaidHeal
+;ver 1.1 13 May 03 by Roadkill
+;heals self with bandaids
+        FINDITEM ZLF C
+        IF #FINDKIND = -1 2
+                event sysmessage no aids found
+                RETURN
+        SET #LOBJECTID #FINDID
+        EVENT MACRO 17
+        TARGET
+        EVENT MACRO 23
+RETURN
+;========================
+SUB CheckBail
+        IF #HITS > %bailHits
+                RETURN
+        IF %usingHealthWatch = yes
+        {
+                SET *21 busy
+                ;this reactivates HealthWatch to bail
+                RETURN
+        }
+        GOSUB Bail %recallrune
+        SET *21 pause
+        PAUSE
+RETURN
+;=========================
+SUB Bail
+; %1 is the safe recall rune or runebook id
+        SET %recallrune %1
+        SET %oldx #charposx
+        SET %oldy #charposy
+RECALL1:
+        FINDITEM WTL C
+        IF #FINDKIND = 0
+        {
+                SET #LOBJECTID #FINDID
+                SET #LTARGETID %recallrune
+                EVENT MACRO 17 0
+                TARGET 3s
+                WAIT 5
+                EVENT MACRO 22 0
+                WAIT 5
+        }
+        IF #FINDKIND = -1
+        {
+                SET #LTARGETID %recallrune
+                EVENT MACRO 15 31
+                TARGET 3s
+                EVENT Macro 22 0
+                WAIT 5
+        }
+        IF %oldx = #CHARPOSX || %oldy = #CHARPOSY  
+                GOTO RECALL1
+;recalled, now get back on steed if needed
+waitforsteedb:
+        WAIT 3s
+        msg all follow me $
+        wait 1s
+        finditem %steed
+        IF #FINDKIND = 0
+                RETURN
+        IF #FINDKIND = -1
+                RETURN
+        if #finddist <= 1
+        {
+                MOUNTb:
+                set #lobjectid %steed
+                event macro 17
+                FINDITEM %steed
+                IF #FINDKIND = 1
+                        event macro 17
+                IF #FINDKIND = 0
+                        RETURN
+                GOTO MOUNTb
+        }
+goto waitforsteedb
+RETURN
+ 
+;=========================
+SUB WaitForInRange
+;ver 1.1 20Jun03 by Roadkill
+;purpose: wait until a victim is inrange then return. Used to delay triggering attacks.
+;must be <= 10 tiles to cast a spell on something
+;%1= victimID %2=desired range to be <= %3 is timeout in seconds
+        IF %0 < 3 || %3 = N/A
+                set %3 5
+        set %_WFIRtimeout #scnt + %3
+_WaitForInRange:
+        FINDITEM %1 G
+        IF #FINDKIND = -1 || #FINDDIST <= %2 || #scnt > %_WFIRtimeout
+                RETURN
+        GOTO _WaitForInRange
+;===========================

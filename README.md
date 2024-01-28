@@ -3,10 +3,11 @@ Below are scripts archived from the EasyUO website. These are stored in the even
 
 ## Scripts
 
-### [Combat](https://github.com/davidadas/easyuo/tree/main/Combat) (10)
+### [Combat](https://github.com/davidadas/easyuo/tree/main/Combat) (17)
 * [Archery](https://github.com/davidadas/easyuo/tree/main/Combat/Archery) (2)
 * [Bushido](https://github.com/davidadas/easyuo/tree/main/Combat/Bushido) (4)
 * [Ninjitsu](https://github.com/davidadas/easyuo/tree/main/Combat/Ninjitsu) (4)
+* [PvP, Fighting and Survival](https://github.com/davidadas/easyuo/tree/main/Combat/PvP%2C%20Fighting%20and%20Survival) (7)
 
 ### [Resource Gathering](https://github.com/davidadas/easyuo/tree/main/Resource%20Gathering) (13)
 * [Lumberjacking](https://github.com/davidadas/easyuo/tree/main/Resource%20Gathering/Lumberjacking) (10)
